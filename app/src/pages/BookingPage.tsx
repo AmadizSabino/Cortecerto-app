@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { euros, supabase, type Professional, type Salon, type Service } from '../lib/supabase'
 import { freeSlots, type OpeningHours } from '../lib/slots'
+import ThemePicker from '../ThemePicker'
+import { clientTheme, setClientTheme, themeById, themeStyle } from '../lib/themes'
 import { addDays, dateInTz, formatTime, zonedToUtc } from '../lib/time'
 
 const ERRORS: Record<string, string> = {
@@ -26,6 +28,8 @@ export default function BookingPage() {
   const [consent, setConsent] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
+  const [myTheme, setMyTheme] = useState<string | null>(() => clientTheme(slug!))
+  const [picking, setPicking] = useState(false)
 
   useEffect(() => {
     (async () => {
@@ -77,8 +81,11 @@ export default function BookingPage() {
     setDone(true)
   }
 
+  const theme = themeById(myTheme ?? salon.theme)
+  const chooseTheme = (id: string | null) => { setClientTheme(salon.slug, id); setMyTheme(id) }
+
   if (done) return (
-    <main className="page">
+    <div className="themed" style={themeStyle(theme)}><main className="page">
       <h1>Marcação recebida ✂️</h1>
       <p>{service!.name} com {pro!.name}, {new Date(slot!).toLocaleDateString('pt-PT', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long' })} às {formatTime(slot!, tz)}.</p>
       {salon.deposit_cents > 0 && salon.mbway_number && (
@@ -87,11 +94,11 @@ export default function BookingPage() {
           <p>Envie para <b>{salon.mbway_number}</b>. O salão confirma a marcação quando receber.</p>
         </div>
       )}
-    </main>
+    </main></div>
   )
 
   return (
-    <main className={`page theme-${salon.theme}`}>
+    <div className="themed" style={themeStyle(theme)}><main className="page">
       <h1>{salon.name}</h1>
 
       <h2>1. Serviço</h2>
@@ -143,6 +150,18 @@ export default function BookingPage() {
           <button className="btn" type="submit">Confirmar marcação</button>
         </form>
       )}
-    </main>
+
+      <footer className="foot">
+        {picking ? <>
+          <p className="muted">Escolha um estilo só para si. O salão não vê esta escolha.</p>
+          <ThemePicker value={theme.id} type={salon.type} showAll onChange={id => chooseTheme(id)} />
+          <p className="row">
+            {myTheme && <button className="link" onClick={() => chooseTheme(null)}>Usar o estilo do salão</button>}
+            <button className="link" onClick={() => setPicking(false)}>Feito</button>
+          </p>
+        </> : <button className="link" onClick={() => setPicking(true)}>Mudar o estilo da página</button>}
+        <p className="muted">Feito com CorteCerto</p>
+      </footer>
+    </main></div>
   )
 }

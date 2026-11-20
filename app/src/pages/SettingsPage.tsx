@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { supabase, type Salon } from '../lib/supabase'
 import { parseEuros, WEEKDAYS } from '../lib/onboarding'
+import ThemePicker from '../ThemePicker'
 
 interface SvcRow { id?: string; name: string; duration: string; price: string; active: boolean }
 interface ProRow { id?: string; name: string; active: boolean }
@@ -13,7 +14,8 @@ const centsToText = (c: number) => (c / 100).toFixed(2).replace('.', ',')
 export default function SettingsPage() {
   const [session, setSession] = useState<Session | null>()
   const [salon, setSalon] = useState<Salon | null>()
-  const [info, setInfo] = useState({ name: '', whatsapp: '', mbway: '', deposit: '0' })
+  const [info, setInfo] = useState({ name: '', whatsapp: '', mbway: '', deposit: '0', theme: '' })
+  const [allThemes, setAllThemes] = useState(false)
   const [services, setServices] = useState<SvcRow[]>([])
   const [pros, setPros] = useState<ProRow[]>([])
   const [days, setDays] = useState<DayRow[]>([])
@@ -26,7 +28,7 @@ export default function SettingsPage() {
     const { data: s } = await supabase.from('salons').select('*').eq('owner_id', userId).maybeSingle()
     setSalon(s)
     if (!s) return
-    setInfo({ name: s.name, whatsapp: s.whatsapp ?? '', mbway: s.mbway_number ?? '', deposit: centsToText(s.deposit_cents) })
+    setInfo({ name: s.name, whatsapp: s.whatsapp ?? '', mbway: s.mbway_number ?? '', deposit: centsToText(s.deposit_cents), theme: s.theme })
     const [sv, pr, hr] = await Promise.all([
       supabase.from('services').select('id,name,duration_min,price_cents,active').eq('salon_id', s.id).order('name'),
       supabase.from('professionals').select('id,name,active').eq('salon_id', s.id).order('name'),
@@ -70,7 +72,7 @@ export default function SettingsPage() {
     const results = await Promise.all([
       supabase.from('salons').update({
         name: info.name.trim(), whatsapp: info.whatsapp.replace(/\D/g, '') || null,
-        mbway_number: info.mbway.replace(/\D/g, '') || null, deposit_cents: parseEuros(info.deposit),
+        mbway_number: info.mbway.replace(/\D/g, '') || null, deposit_cents: parseEuros(info.deposit), theme: info.theme,
       }).eq('id', s.id),
       // Services and team are switched off rather than deleted, so past bookings keep their history.
       ...services.filter(x => x.name.trim()).map(x => {
@@ -103,6 +105,10 @@ export default function SettingsPage() {
       <label>WhatsApp<input inputMode="tel" value={info.whatsapp} onChange={e => setInfo({ ...info, whatsapp: e.target.value })} /></label>
       <label>Sinal por marcação (€)<input inputMode="decimal" value={info.deposit} onChange={e => setInfo({ ...info, deposit: e.target.value })} /></label>
       <label>Número MB Way<input inputMode="tel" value={info.mbway} onChange={e => setInfo({ ...info, mbway: e.target.value })} /></label>
+
+      <h2>Estilo da página</h2>
+      <ThemePicker value={info.theme} type={salon!.type} showAll={allThemes} onChange={theme => setInfo({ ...info, theme })} />
+      <button type="button" className="link" onClick={() => setAllThemes(!allThemes)}>{allThemes ? 'Ver só os do meu tipo de salão' : 'Ver todos os estilos'}</button>
 
       <h2>Serviços e preços</h2>
       {services.map((s, i) => (

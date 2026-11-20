@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import ThemePicker from '../ThemePicker'
+import { TYPE_DEFAULT } from '../lib/themes'
 import { parseEuros, SALON_TYPES, slugify, SUGGESTED_SERVICES, WEEKDAYS, type SalonType } from '../lib/onboarding'
 
 interface ServiceRow { name: string; duration: string; price: string }
@@ -29,6 +31,7 @@ export default function OnboardingPage() {
   const [whatsapp, setWhatsapp] = useState('')
   const [mbway, setMbway] = useState('')
   const [deposit, setDeposit] = useState('0')
+  const [theme, setTheme] = useState(TYPE_DEFAULT.barbearia)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -37,7 +40,7 @@ export default function OnboardingPage() {
   if (session === undefined) return <main className="page">A carregar…</main>
   if (!session) return <Navigate to="/painel" replace />
 
-  function pickType(t: SalonType) { setType(t); setServices(toRows(t)) }
+  function pickType(t: SalonType) { setType(t); setServices(toRows(t)); setTheme(TYPE_DEFAULT[t]) }
   const setSvc = (i: number, patch: Partial<ServiceRow>) => setServices(s => s.map((r, j) => j === i ? { ...r, ...patch } : r))
   const setDay = (i: number, patch: Partial<DayRow>) => setDays(d => d.map((r, j) => j === i ? { ...r, ...patch } : r))
 
@@ -68,7 +71,7 @@ export default function OnboardingPage() {
     const { error } = await supabase.rpc('create_salon', {
       p: {
         slug, name: name.trim(), type, whatsapp: whatsapp.replace(/\D/g, ''), mbway_number: mbway.replace(/\D/g, ''),
-        deposit_cents: parseEuros(deposit), theme: 'classico',
+        deposit_cents: parseEuros(deposit), theme,
         services: services.filter(s => s.name.trim()).map(s => ({ name: s.name.trim(), duration_min: Number(s.duration), price_cents: parseEuros(s.price) })),
         professionals: team.map(t => t.trim()).filter(Boolean),
         hours: days.flatMap((d, i) => d.open ? [{ weekday: i, opens: d.opens, closes: d.closes }] : []),
@@ -101,6 +104,9 @@ export default function OnboardingPage() {
             <span className="prefix"><span className="muted">{location.host}/s/</span>
               <input value={slug} onChange={e => { setSlugTouched(true); setSlug(slugify(e.target.value)) }} /></span>
           </label>
+          <h2>Estilo da página</h2>
+          <p className="muted">Pode mudar mais tarde. Os clientes também podem escolher outro estilo só para eles.</p>
+          <ThemePicker value={theme} type={type} onChange={setTheme} />
         </>}
 
         {step === 2 && <>

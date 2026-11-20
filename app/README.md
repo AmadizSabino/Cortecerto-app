@@ -25,4 +25,6 @@ Connect this repo in Cloudflare Pages with root directory `app`, build command `
 - `/painel`: salon agenda by day with confirm, done, no-show, cancel, deposit received, and a WhatsApp message link.
 - Database rules: clients book through `create_booking`, which validates the slot and blocks double booking; only the salon owner can read client data.
 
-Next: themes.
+Themes: the 32 themes from the prototype live in `src/lib/themes.ts`. The owner picks one at sign-up or in settings, and a client can choose their own on the booking page (kept only in their browser).
+
+Next: deploy to Cloudflare Pages and test the full flow on the live Supabase project.

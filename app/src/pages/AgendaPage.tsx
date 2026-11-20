@@ -4,6 +4,7 @@ import type { Session } from '@supabase/supabase-js'
 import { euros, supabase, type Booking, type Professional, type Salon, type Service } from '../lib/supabase'
 import { addDays, dateInTz, formatTime, zonedToUtc } from '../lib/time'
 import { waLink } from '../lib/whatsapp'
+import { themeById, themeStyle } from '../lib/themes'
 
 const STATUS_LABEL: Record<Booking['status'], string> = {
   pendente: 'Pendente', confirmada: 'Confirmada', concluida: 'Concluída', faltou: 'Faltou', cancelada: 'Cancelada',
@@ -81,7 +82,7 @@ export default function AgendaPage() {
   const bookingLink = `${location.origin}/s/${salon.slug}`
 
   return (
-    <main className="page wide">
+    <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page wide">
       <header className="row">
         <h1>{salon.name}</h1>
         <span className="row"><Link to="/definicoes">Definições</Link><button className="link" onClick={() => supabase.auth.signOut()}>Sair</button></span>
@@ -122,6 +123,6 @@ export default function AgendaPage() {
           </article>
         )
       })}
-    </main>
+    </main></div>
   )
 }
