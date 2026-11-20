@@ -23,7 +23,8 @@ export default function PosterPage() {
 
   if (session === undefined) return <main className="page">A carregar…</main>
   if (!session) return <Navigate to="/painel" replace />
-  if (salon === undefined || !qr) return salon === null ? <Navigate to="/registar" replace /> : <main className="page">A carregar…</main>
+  if (salon === null) return <Navigate to="/registar" replace />
+  if (salon === undefined || !qr) return <main className="page">A carregar…</main>
 
   function print() {
     saveMarks(salon!.id, { ...loadMarks(salon!.id), poster: true })
