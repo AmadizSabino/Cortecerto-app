@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { buildClients, filterClients, isAtRisk } from './clients'
+import { buildClients, daysUntilBirthday, filterClients, isAtRisk } from './clients'
 import type { Booking } from './supabase'
 
 const now = new Date('2026-11-20T12:00:00Z')
@@ -52,4 +52,25 @@ it('searches by name without accents or by phone digits, and filters', () => {
   expect(filterClients(clients, '963 222', 'todos', now).map(c => c.name)).toEqual(['Rui'])
   expect(filterClients(clients, '', 'faltas', now).map(c => c.name)).toEqual(['Rui'])
   expect(filterClients(clients, '', 'consentimento', now).map(c => c.name)).toEqual(['Joana Conceição'])
+})
+
+it('counts days to the next birthday, wrapping into next year', () => {
+  expect(daysUntilBirthday(20, 11, '2026-11-20')).toBe(0)
+  expect(daysUntilBirthday(25, 11, '2026-11-20')).toBe(5)
+  expect(daysUntilBirthday(19, 11, '2026-11-20')).toBe(364)
+  expect(daysUntilBirthday(2, 1, '2026-12-30')).toBe(3)
+  expect(daysUntilBirthday(29, 2, '2027-02-27')).toBe(2) // 1 March in a non-leap year
+})
+
+it('filters coming birthdays and searches the notes', () => {
+  const clients = buildClients([
+    bk({ client_name: 'Joana', client_phone: '912000111' }),
+    bk({ client_name: 'Rui', client_phone: '963222333' }),
+  ], services, now)
+  const notes = {
+    '351912000111': { phone_key: '351912000111', notes: 'Gosta de degradê baixo', birthday_day: 23, birthday_month: 11 },
+    '351963222333': { phone_key: '351963222333', notes: '', birthday_day: 1, birthday_month: 12 },
+  }
+  expect(filterClients(clients, '', 'aniversario', now, notes, '2026-11-20').map(c => c.name)).toEqual(['Joana'])
+  expect(filterClients(clients, 'degrade', 'todos', now, notes, '2026-11-20').map(c => c.name)).toEqual(['Joana'])
 })
