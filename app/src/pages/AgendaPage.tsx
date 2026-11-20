@@ -85,7 +85,7 @@ export default function AgendaPage() {
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page wide">
       <header className="row">
         <h1>{salon.name}</h1>
-        <span className="row"><Link to="/definicoes">Definições</Link><button className="link" onClick={() => supabase.auth.signOut()}>Sair</button></span>
+        <span className="row"><Link to="/clientes">Clientes</Link><Link to="/definicoes">Definições</Link><button className="link" onClick={() => supabase.auth.signOut()}>Sair</button></span>
       </header>
       <p className="muted">Link de marcação: <a href={bookingLink}>{bookingLink}</a></p>
 
