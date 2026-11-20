@@ -1,0 +1,10 @@
+// Cloudflare Workers static-assets deploy. Build first (npm run build), then `npx wrangler deploy`.
+{
+  "name": "cortecerto-app",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist",
+    // Serve index.html for app routes such as /s/salon-name and /painel.
+    "not_found_handling": "single-page-application"
+  }
+}

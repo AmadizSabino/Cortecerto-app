@@ -13,9 +13,15 @@ The production app, built from the [prototype](../prototype/index.html). React +
 
 `npm test` runs the unit tests (slot calculation, WhatsApp links).
 
-## Deploy (Cloudflare Pages, free)
+## Deploy (Cloudflare Workers, free)
 
-Connect this repo in Cloudflare Pages with root directory `app`, build command `npm run build`, output `dist`, and the two `VITE_SUPABASE_*` variables. In Supabase > Authentication > URL configuration, add the Pages URL as the site URL.
+In the Cloudflare dashboard, open the `cortecerto-app` Worker, then Settings > Build:
+- Root directory: `app`
+- Build command: `npm run build`
+- Deploy command: `npx wrangler deploy` (uses `wrangler.jsonc`, which serves `dist` as a single-page app)
+- Build variables: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. They must be **build** variables, because Vite bakes them in at build time.
+
+In Supabase > Authentication > URL configuration, set the site URL to the Worker's address and add `<address>/**` to the redirect URLs.
 
 ## What's here
 
