@@ -5,6 +5,7 @@ import AgendaPage from './pages/AgendaPage'
 import OnboardingPage from './pages/OnboardingPage'
 import SettingsPage from './pages/SettingsPage'
 import ClientsPage from './pages/ClientsPage'
+import PosterPage from './pages/PosterPage'
 
 function Home() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/registar" element={<OnboardingPage />} />
         <Route path="/definicoes" element={<SettingsPage />} />
         <Route path="/clientes" element={<ClientsPage />} />
+        <Route path="/poster" element={<PosterPage />} />
         <Route path="*" element={<main className="page"><h1>Página não encontrada</h1></main>} />
       </Routes>
     </>
