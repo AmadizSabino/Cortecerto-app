@@ -60,3 +60,4 @@ h1, h2 { font-family: var(--heading-font, inherit); }
 .theme-swatch .sw-btn { background: var(--accent); color: var(--accent-fg); border-radius: 6px; padding: 4px 8px; font-size: .75rem; justify-self: start; }
 .theme-swatch.on { outline: 3px solid #0b6b66; outline-offset: 2px; }
 .foot { margin-top: 32px; text-align: center; font-size: .9rem; }
+.themed a, .themed a:visited { color: var(--accent); }
