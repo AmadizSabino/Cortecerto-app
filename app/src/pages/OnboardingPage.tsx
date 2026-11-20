@@ -120,7 +120,7 @@ export default function OnboardingPage() {
               <button type="button" className="link" onClick={() => setServices(r => r.filter((_, j) => j !== i))}>Remover</button>
             </div>
           ))}
-          <button type="button" onClick={() => setServices(r => [...r, { name: '', duration: '30', price: '' }])}>+ Adicionar serviço</button>
+          <button type="button" className="btn sm" onClick={() => setServices(r => [...r, { name: '', duration: '30', price: '' }])}>+ Adicionar serviço</button>
         </>}
 
         {step === 3 && <>
@@ -132,7 +132,7 @@ export default function OnboardingPage() {
               {team.length > 1 && <button type="button" className="link" onClick={() => setTeam(x => x.filter((_, j) => j !== i))}>Remover</button>}
             </div>
           ))}
-          <button type="button" onClick={() => setTeam(x => [...x, ''])} style={{ marginTop: 8 }}>+ Adicionar profissional</button>
+          <button type="button" className="btn sm" onClick={() => setTeam(x => [...x, ''])} style={{ marginTop: 8 }}>+ Adicionar profissional</button>
           <h2>Horário</h2>
           {days.map((d, i) => (
             <div key={i} className="row day-row">
@@ -154,7 +154,7 @@ export default function OnboardingPage() {
         </>}
 
         {error && <p className="error">{error}</p>}
-        <button className="btn" disabled={saving}>{step < 4 ? 'Continuar' : saving ? 'A guardar…' : 'Criar salão'}</button>
+        <button className="btn primary block" disabled={saving}>{step < 4 ? 'Continuar' : saving ? 'A guardar…' : 'Criar salão'}</button>
         {step > 1 && <button type="button" className="link back" onClick={() => { setError(''); setStep(step - 1) }}>Voltar</button>}
       </form>
     </main>

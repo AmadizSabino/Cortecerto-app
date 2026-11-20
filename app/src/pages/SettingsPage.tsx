@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
-import type { Session } from '@supabase/supabase-js'
-import { supabase, type Salon } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
+import { usePanel } from './panel/PanelContext'
 import { parseEuros, WEEKDAYS } from '../lib/onboarding'
 import ThemePicker from '../ThemePicker'
 
@@ -12,9 +11,8 @@ interface DayRow { open: boolean; opens: string; closes: string }
 const centsToText = (c: number) => (c / 100).toFixed(2).replace('.', ',')
 
 export default function SettingsPage() {
-  const [session, setSession] = useState<Session | null>()
-  const [salon, setSalon] = useState<Salon | null>()
-  const [info, setInfo] = useState({ name: '', whatsapp: '', mbway: '', deposit: '0', theme: '' })
+  const { salon, reload } = usePanel()
+  const [info, setInfo] = useState({ name: '', whatsapp: '', mbway: '', deposit: '0', theme: '', address: '', news: '', review: '' })
   const [allThemes, setAllThemes] = useState(false)
   const [services, setServices] = useState<SvcRow[]>([])
   const [pros, setPros] = useState<ProRow[]>([])
@@ -22,13 +20,11 @@ export default function SettingsPage() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>()
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => { supabase.auth.getSession().then(({ data }) => setSession(data.session)) }, [])
-
-  async function load(userId: string) {
-    const { data: s } = await supabase.from('salons').select('*').eq('owner_id', userId).maybeSingle()
-    setSalon(s)
+  async function load() {
+    const { data: s } = await supabase.from('salons').select('*').eq('id', salon.id).single()
     if (!s) return
-    setInfo({ name: s.name, whatsapp: s.whatsapp ?? '', mbway: s.mbway_number ?? '', deposit: centsToText(s.deposit_cents), theme: s.theme })
+    setInfo({ name: s.name, whatsapp: s.whatsapp ?? '', mbway: s.mbway_number ?? '', deposit: centsToText(s.deposit_cents), theme: s.theme,
+      address: s.address ?? '', news: s.news ?? '', review: s.google_review_url ?? '' })
     const [sv, pr, hr] = await Promise.all([
       supabase.from('services').select('id,name,duration_min,price_cents,active').eq('salon_id', s.id).order('name'),
       supabase.from('professionals').select('id,name,active').eq('salon_id', s.id).order('name'),
@@ -41,11 +37,8 @@ export default function SettingsPage() {
       return h ? { open: true, opens: h.opens.slice(0, 5), closes: h.closes.slice(0, 5) } : { open: false, opens: '09:00', closes: '19:00' }
     }))
   }
-  useEffect(() => { if (session) load(session.user.id) }, [session])
-
-  if (session === undefined || (session && salon === undefined)) return <main className="page">A carregar…</main>
-  if (!session) return <Navigate to="/painel" replace />
-  if (salon === null) return <Navigate to="/registar" replace />
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load() }, [salon.id])
 
   const setSvc = (i: number, p: Partial<SvcRow>) => setServices(r => r.map((x, j) => j === i ? { ...x, ...p } : x))
   const setPro = (i: number, p: Partial<ProRow>) => setPros(r => r.map((x, j) => j === i ? { ...x, ...p } : x))
@@ -68,11 +61,12 @@ export default function SettingsPage() {
     const v = validate()
     if (v) { setMsg({ ok: false, text: v }); return }
     setSaving(true); setMsg(undefined)
-    const s = salon!
+    const s = salon
     const results = await Promise.all([
       supabase.from('salons').update({
         name: info.name.trim(), whatsapp: info.whatsapp.replace(/\D/g, '') || null,
         mbway_number: info.mbway.replace(/\D/g, '') || null, deposit_cents: parseEuros(info.deposit), theme: info.theme,
+        address: info.address.trim() || null, news: info.news.trim() || null, google_review_url: info.review.trim() || null,
       }).eq('id', s.id),
       // Services and team are switched off rather than deleted, so past bookings keep their history.
       ...services.filter(x => x.name.trim()).map(x => {
@@ -93,21 +87,26 @@ export default function SettingsPage() {
     }
     setSaving(false)
     setMsg(failed ? { ok: false, text: 'Algumas alterações não foram guardadas. Tente de novo.' } : { ok: true, text: 'Alterações guardadas.' })
-    await load(session!.user.id)
+    await load()
+    await reload()
   }
 
   return (
     <main className="page">
-      <header className="row"><h1>Definições</h1><Link to="/painel">‹ Agenda</Link></header>
+      <h1 style={{ marginTop: 8 }}>Definições</h1>
+      <p className="muted" style={{ marginTop: 4 }}>Link de marcação: <a href={`/s/${salon.slug}`}>{location.host}/s/{salon.slug}</a></p>
 
-      <h2>Salão</h2>
+      <h2 style={{ marginTop: 24 }}>Salão</h2>
       <label>Nome<input value={info.name} onChange={e => setInfo({ ...info, name: e.target.value })} /></label>
+      <label><span>Morada <span className="muted">(aparece na página de marcação)</span></span><input value={info.address} placeholder="Rua das Flores 12, Lisboa" onChange={e => setInfo({ ...info, address: e.target.value })} /></label>
+      <label><span>Novidades <span className="muted">(opcional)</span></span><textarea rows={2} value={info.news} placeholder="Chegou a nova pomada mate. Experimente na próxima visita." onChange={e => setInfo({ ...info, news: e.target.value })} /></label>
+      <label><span>Link de avaliações Google <span className="muted">(opcional, para o poster)</span></span><input value={info.review} placeholder="https://g.page/r/…" onChange={e => setInfo({ ...info, review: e.target.value })} /></label>
       <label>WhatsApp<input inputMode="tel" value={info.whatsapp} onChange={e => setInfo({ ...info, whatsapp: e.target.value })} /></label>
       <label>Sinal por marcação (€)<input inputMode="decimal" value={info.deposit} onChange={e => setInfo({ ...info, deposit: e.target.value })} /></label>
       <label>Número MB Way<input inputMode="tel" value={info.mbway} onChange={e => setInfo({ ...info, mbway: e.target.value })} /></label>
 
       <h2>Estilo da página</h2>
-      <ThemePicker value={info.theme} type={salon!.type} showAll={allThemes} onChange={theme => setInfo({ ...info, theme })} />
+      <ThemePicker value={info.theme} type={salon.type} showAll={allThemes} onChange={theme => setInfo({ ...info, theme })} />
       <button type="button" className="link" onClick={() => setAllThemes(!allThemes)}>{allThemes ? 'Ver só os do meu tipo de salão' : 'Ver todos os estilos'}</button>
 
       <h2>Serviços e preços</h2>
@@ -119,7 +118,7 @@ export default function SettingsPage() {
           <label className="check"><input type="checkbox" checked={s.active} onChange={e => setSvc(i, { active: e.target.checked })} />Ativo</label>
         </div>
       ))}
-      <button type="button" onClick={() => setServices(r => [...r, { name: '', duration: '30', price: '', active: true }])}>+ Adicionar serviço</button>
+      <button type="button" className="btn sm" onClick={() => setServices(r => [...r, { name: '', duration: '30', price: '', active: true }])}>+ Adicionar serviço</button>
 
       <h2>Equipa</h2>
       {pros.map((p, i) => (
@@ -128,7 +127,7 @@ export default function SettingsPage() {
           <label className="check"><input type="checkbox" checked={p.active} onChange={e => setPro(i, { active: e.target.checked })} />Ativo</label>
         </div>
       ))}
-      <button type="button" onClick={() => setPros(r => [...r, { name: '', active: true }])} style={{ marginTop: 8 }}>+ Adicionar profissional</button>
+      <button type="button" className="btn sm" onClick={() => setPros(r => [...r, { name: '', active: true }])} style={{ marginTop: 8 }}>+ Adicionar profissional</button>
 
       <h2>Horário</h2>
       {days.map((d, i) => (
@@ -142,7 +141,8 @@ export default function SettingsPage() {
       ))}
 
       {msg && <p className={msg.ok ? 'ok' : 'error'}>{msg.text}</p>}
-      <button className="btn" onClick={save} disabled={saving}>{saving ? 'A guardar…' : 'Guardar alterações'}</button>
+      <div className="sticky-cta"><button className="btn primary block" onClick={save} disabled={saving}>{saving ? 'A guardar…' : 'Guardar alterações'}</button></div>
+      <button className="link" style={{ display: 'block', margin: '16px auto' }} onClick={() => supabase.auth.signOut()}>Sair da conta</button>
     </main>
   )
 }
