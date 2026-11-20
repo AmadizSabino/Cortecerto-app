@@ -1,0 +1,14 @@
+// Cloudflare Workers static-assets deploy. Cloudflare runs `npx wrangler deploy` from the repo root,
+// which first runs the build below, then uploads app/dist.
+{
+  "name": "cortecerto-app",
+  "compatibility_date": "2026-11-01",
+  "build": {
+    "command": "cd app && npm ci && npm run build"
+  },
+  "assets": {
+    "directory": "./app/dist",
+    // Serve index.html for app routes such as /s/salon-name and /painel.
+    "not_found_handling": "single-page-application"
+  }
+}

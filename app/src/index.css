@@ -1,0 +1,62 @@
+:root {
+  --bg: #faf7f2; --fg: #1d1b18; --muted: #6b655c; --card: #ffffff; --line: #e6e0d6;
+  --accent: #b5462f; --accent-fg: #ffffff;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--fg); background: var(--bg);
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #161513; --fg: #f1ede6; --muted: #a39c90; --card: #211f1c; --line: #34302b; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); }
+.page { max-width: 480px; margin: 0 auto; padding: 16px; }
+.page.wide { max-width: 720px; }
+h1 { font-size: 1.6rem; margin: 8px 0 16px; }
+h2 { font-size: 1.05rem; margin: 24px 0 8px; }
+.muted { color: var(--muted); }
+.error { color: #c0392b; }
+.banner { background: #fff3cd; color: #5c4400; padding: 8px 16px; font-size: .9rem; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin: 10px 0; }
+.row { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.choices { display: grid; gap: 8px; }
+button, .btn, .wa { font: inherit; cursor: pointer; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--fg); padding: 10px 12px; text-decoration: none; }
+.choice { display: flex; justify-content: space-between; text-align: left; }
+.choice small { color: var(--muted); }
+.on { border-color: var(--accent); outline: 2px solid var(--accent); }
+.btn { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); display: inline-block; width: 100%; text-align: center; margin-top: 8px; }
+.link { border: 0; background: none; color: var(--accent); padding: 0; text-decoration: underline; }
+.days { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+.day { white-space: nowrap; }
+.slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; margin-top: 10px; }
+label { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; margin: 10px 0; font-size: .95rem; }
+label.check { display: flex; gap: 8px; align-items: flex-start; }
+input:not([type=checkbox]) { font: inherit; padding: 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
+.tag { font-size: .8rem; padding: 2px 8px; border-radius: 99px; background: var(--line); }
+.actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.actions button, .wa { padding: 6px 10px; font-size: .9rem; }
+.wa { background: #25d366; color: #fff; border-color: #25d366; }
+.st-cancelada, .st-faltou { opacity: .55; }
+/* Themes: the prototype's palette set gets ported here, one class per theme. */
+.choices.two { grid-template-columns: 1fr 1fr; }
+.prefix { display: flex; align-items: center; gap: 4px; min-width: 0; }
+label { min-width: 0; }
+.prefix input { flex: 1; min-width: 0; }
+.svc-row { display: grid; grid-template-columns: 1fr 64px 76px; gap: 8px; align-items: end; }
+.svc-row > input { grid-column: 1 / -1; }
+.svc-row label { margin: 0; font-size: .8rem; }
+.svc-row input { width: 100%; min-width: 0; }
+.svc-row .link { justify-self: end; }
+.day-row { margin: 4px 0; }
+.day-row label.check { margin: 6px 0; min-width: 110px; }
+.back { display: block; margin: 12px auto 0; }
+.ok { color: #1e8449; }
+.svc-row.off { opacity: .55; }
+.svc-row label.check { margin: 0; align-self: center; }
+.themed { background: var(--bg); color: var(--fg); min-height: 100vh; }
+h1, h2 { font-family: var(--heading-font, inherit); }
+.themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin: 8px 0; }
+.theme-swatch { background: var(--bg); color: var(--fg); border: 1px solid var(--line); display: grid; gap: 10px; text-align: left; padding: 12px; }
+.theme-swatch .sw-name { font-family: var(--heading-font, inherit); font-size: .95rem; }
+.theme-swatch .sw-btn { background: var(--accent); color: var(--accent-fg); border-radius: 6px; padding: 4px 8px; font-size: .75rem; justify-self: start; }
+.theme-swatch.on { outline: 3px solid #0b6b66; outline-offset: 2px; }
+.foot { margin-top: 32px; text-align: center; font-size: .9rem; }

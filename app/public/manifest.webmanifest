@@ -1,0 +1,2 @@
+{ "name": "CorteCerto", "short_name": "CorteCerto", "start_url": "/painel", "display": "standalone",
+  "background_color": "#faf7f2", "theme_color": "#b5462f", "lang": "pt-PT", "icons": [] }
