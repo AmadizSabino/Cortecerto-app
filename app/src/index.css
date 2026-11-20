@@ -76,3 +76,30 @@ textarea { width: 100%; resize: vertical; }
 .note-preview { color: var(--muted); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60vw; }
 .tag.bday { background: #fbe7b5; color: #6b4a00; }
 button:disabled { opacity: .5; cursor: default; }
+/* Poster with QR (printable A4) */
+.poster-wrap { padding-bottom: 24px; }
+.link-box { word-break: break-all; font-size: .9rem; color: var(--muted); }
+.poster { background: var(--card); color: var(--fg); border: 1px solid var(--line); border-radius: 12px; max-width: 480px; margin: 16px auto; padding: 32px 24px; text-align: center; aspect-ratio: 210 / 297; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+.poster-name { font-family: var(--heading-font, inherit); font-size: 2rem; margin: 0; }
+.poster-title { font-size: 1.3rem; margin: 0; color: var(--accent); font-weight: 600; }
+.poster-qr { width: 70%; max-width: 320px; border-radius: 8px; }
+.poster-hint { margin: 0; }
+.poster-link { margin: 0; font-size: .85rem; color: var(--muted); word-break: break-all; }
+@media print {
+  @page { size: A4; margin: 0; }
+  body, .themed { background: #fff !important; min-height: 0; }
+  .no-print, .banner { display: none !important; }
+  .poster { border: 0; border-radius: 0; max-width: none; width: 210mm; height: 297mm; margin: 0; padding: 25mm 20mm; aspect-ratio: auto; gap: 8mm; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .poster-name { font-size: 40pt; }
+  .poster-title { font-size: 24pt; }
+  .poster-qr { width: 120mm; max-width: none; }
+  .poster-hint { font-size: 16pt; }
+  .poster-link { font-size: 12pt; }
+}
+/* Setup checklist on the agenda */
+.setup ol { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 6px; }
+.setup li { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.setup .check-mark { width: 1.4em; text-align: center; }
+.setup li.done > span:not(.check-mark) { color: var(--muted); text-decoration: line-through; }
+.progress { height: 6px; background: var(--line); border-radius: 99px; overflow: hidden; }
+.progress > span { display: block; height: 100%; background: var(--accent); }

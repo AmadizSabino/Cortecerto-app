@@ -5,6 +5,7 @@ import { euros, supabase, type Booking, type Professional, type Salon, type Serv
 import { addDays, dateInTz, formatTime, zonedToUtc } from '../lib/time'
 import { formatPhone, waLink } from '../lib/whatsapp'
 import { themeById, themeStyle } from '../lib/themes'
+import SetupChecklist from '../SetupChecklist'
 
 const STATUS_LABEL: Record<Booking['status'], string> = {
   pendente: 'Pendente', confirmada: 'Confirmada', concluida: 'Concluída', faltou: 'Faltou', cancelada: 'Cancelada',
@@ -87,7 +88,8 @@ export default function AgendaPage() {
         <h1>{salon.name}</h1>
         <span className="row"><Link to="/clientes">Clientes</Link><Link to="/definicoes">Definições</Link><button className="link" onClick={() => supabase.auth.signOut()}>Sair</button></span>
       </header>
-      <p className="muted">Link de marcação: <a href={bookingLink}>{bookingLink}</a></p>
+      <p className="muted">Link de marcação: <a href={bookingLink}>{bookingLink}</a> · <Link to="/poster">Poster com QR</Link></p>
+      <SetupChecklist salon={salon} services={Object.keys(services).length} professionals={Object.keys(pros).length} />
 
       <div className="row">
         <button className="day" onClick={() => setDate(addDays(date, -1))}>‹</button>
