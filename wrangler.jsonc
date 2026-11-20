@@ -3,6 +3,8 @@
 {
   "name": "cortecerto-app",
   "compatibility_date": "2026-11-01",
+  // Required by `wrangler preview`, which Cloudflare runs for non-main branches. Empty is fine.
+  "previews": {},
   "build": {
     "command": "cd app && npm ci && npm run build"
   },
