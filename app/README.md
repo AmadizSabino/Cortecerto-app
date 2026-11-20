@@ -4,7 +4,7 @@ The production app, built from the [prototype](../prototype/index.html). React +
 
 ## Run locally
 
-1. Create a free Supabase project (region: Frankfurt, `eu-central-1`).
+1. Create a free Supabase project (an EU region, e.g. Frankfurt or Stockholm).
 2. In the Supabase SQL editor, run the files in `../supabase/migrations/` in order.
 3. Copy `.env.example` to `.env.local` and fill in the project URL and anon key (Project settings > API).
 4. `npm install && npm run dev`, open http://localhost:5173/painel and sign in with your email.
@@ -21,7 +21,8 @@ Connect this repo in Cloudflare Pages with root directory `app`, build command `
 
 - `/s/:slug`: public booking page (service, professional, day and time, client details, opt-in consent, MB Way deposit instructions).
 - `/registar`: salon onboarding. Services start from suggestions by salon type, and the salon sets every price.
+- `/definicoes`: edit salon details, services and prices, team and hours. Services and team members are switched off rather than deleted, so past bookings keep their history.
 - `/painel`: salon agenda by day with confirm, done, no-show, cancel, deposit received, and a WhatsApp message link.
 - Database rules: clients book through `create_booking`, which validates the slot and blocks double booking; only the salon owner can read client data.
 
-Next: editing services, team and hours after sign-up, and themes.
+Next: themes.

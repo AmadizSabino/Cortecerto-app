@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { euros, supabase, type Booking, type Professional, type Salon, type Service } from '../lib/supabase'
 import { addDays, dateInTz, formatTime, zonedToUtc } from '../lib/time'
@@ -84,7 +84,7 @@ export default function AgendaPage() {
     <main className="page wide">
       <header className="row">
         <h1>{salon.name}</h1>
-        <button className="link" onClick={() => supabase.auth.signOut()}>Sair</button>
+        <span className="row"><Link to="/definicoes">Definições</Link><button className="link" onClick={() => supabase.auth.signOut()}>Sair</button></span>
       </header>
       <p className="muted">Link de marcação: <a href={bookingLink}>{bookingLink}</a></p>
 
