@@ -15,11 +15,7 @@ The production app, built from the [prototype](../prototype/index.html). React +
 
 ## Deploy (Cloudflare Workers, free)
 
-In the Cloudflare dashboard, open the `cortecerto-app` Worker, then Settings > Build:
-- Root directory: `app`
-- Build command: `npm run build`
-- Deploy command: `npx wrangler deploy` (uses `wrangler.jsonc`, which serves `dist` as a single-page app)
-- Build variables: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. They must be **build** variables, because Vite bakes them in at build time.
+The `cortecerto-app` Worker builds `main` with the default settings (root directory `/`, deploy command `npx wrangler deploy`). `../wrangler.jsonc` runs the app build first and serves `app/dist` as a single-page app. The Supabase URL and publishable key are in `.env.production`. They're public by design, so nothing has to be entered in Cloudflare.
 
 In Supabase > Authentication > URL configuration, set the site URL to the Worker's address and add `<address>/**` to the redirect URLs.
 
