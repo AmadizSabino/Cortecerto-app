@@ -15,7 +15,18 @@ export interface Client {
   consent: boolean       // opted in to messages in their most recent booking
 }
 
-export type ClientFilter = 'todos' | 'em_risco' | 'faltas' | 'consentimento'
+export type ClientFilter = 'todos' | 'em_risco' | 'faltas' | 'consentimento' | 'aniversario'
+
+/** What the salon keeps about a client (table client_notes). */
+export interface ClientNote {
+  phone_key: string
+  notes: string
+  birthday_day: number | null
+  birthday_month: number | null
+}
+
+/** Birthdays this many days ahead (today included) count as coming up. */
+export const BIRTHDAY_SOON_DAYS = 7
 
 /** Days without a visit after which a client counts as at risk of leaving. */
 export const AT_RISK_DAYS = 45
@@ -72,14 +83,38 @@ function fold(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
 
-export function filterClients(clients: Client[], query: string, filter: ClientFilter, now = new Date()): Client[] {
+/**
+ * Days from `today` ("YYYY-MM-DD", in the salon's timezone) to the next birthday,
+ * 0 when it is today. A 29 February birthday falls on 1 March in other years.
+ */
+export function daysUntilBirthday(day: number, month: number, today: string): number {
+  const [y, m, d] = today.split('-').map(Number)
+  const t = Date.UTC(y, m - 1, d)
+  let next = Date.UTC(y, month - 1, day)
+  if (next < t) next = Date.UTC(y + 1, month - 1, day)
+  return Math.round((next - t) / DAY_MS)
+}
+
+export function birthdaySoon(note: ClientNote | undefined, today: string): number | null {
+  if (!note?.birthday_day || !note.birthday_month) return null
+  const n = daysUntilBirthday(note.birthday_day, note.birthday_month, today)
+  return n < BIRTHDAY_SOON_DAYS ? n : null
+}
+
+export function filterClients(
+  clients: Client[], query: string, filter: ClientFilter, now = new Date(),
+  notes: Record<string, ClientNote> = {}, today = now.toISOString().slice(0, 10),
+): Client[] {
   const q = fold(query.trim())
   const qDigits = query.replace(/\D/g, '')
   return clients.filter(c => {
     if (filter === 'em_risco' && !isAtRisk(c, now)) return false
     if (filter === 'faltas' && c.noShows === 0) return false
     if (filter === 'consentimento' && !c.consent) return false
+    if (filter === 'aniversario' && birthdaySoon(notes[c.key], today) === null) return false
     if (!q) return true
-    return fold(c.name).includes(q) || (qDigits.length >= 3 && c.key.includes(qDigits))
+    return fold(c.name).includes(q)
+      || (qDigits.length >= 3 && c.key.includes(qDigits))
+      || fold(notes[c.key]?.notes ?? '').includes(q)
   })
 }

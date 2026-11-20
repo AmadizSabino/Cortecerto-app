@@ -24,7 +24,7 @@ In Supabase > Authentication > URL configuration, set the site URL to the Worker
 - `/s/:slug`: public booking page (service, professional, day and time, client details, opt-in consent, MB Way deposit instructions).
 - `/registar`: salon onboarding. Services start from suggestions by salon type, and the salon sets every price.
 - `/definicoes`: edit salon details, services and prices, team and hours. Services and team members are switched off rather than deleted, so past bookings keep their history.
-- `/clientes`: client list built from the bookings, grouped by phone number. Search by name or phone, filter by at risk (no visit for 45 days and nothing booked), no-shows or message consent, and open a client to see their history and total spent. "Convidar a voltar" sends a WhatsApp invite with the booking link, only to clients who opted in to messages.
+- `/clientes`: client list built from the bookings, grouped by phone number. Search by name or phone, filter by at risk (no visit for 45 days and nothing booked), no-shows or message consent, and open a client to see their history and total spent. Each client also has notes and a birthday (day and month only), kept in `client_notes` (migration 0003); coming birthdays get a filter, a 🎂 tag and a "Dar os parabéns" WhatsApp message for clients who opted in. "Convidar a voltar" sends a WhatsApp invite with the booking link, only to clients who opted in to messages.
 - `/painel`: salon agenda by day with confirm, done, no-show, cancel, deposit received, and a WhatsApp message link.
 - Database rules: clients book through `create_booking`, which validates the slot and blocks double booking; only the salon owner can read client data.
 

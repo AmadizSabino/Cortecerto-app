@@ -69,3 +69,10 @@ h1, h2 { font-family: var(--heading-font, inherit); }
 .history { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; font-size: .9rem; }
 .history li { display: grid; grid-template-columns: 7.5em 1fr auto; gap: 8px; align-items: center; }
 input[type=search] { width: 100%; }
+textarea, select { font: inherit; padding: 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
+textarea { width: 100%; resize: vertical; }
+.note-editor { margin-top: 8px; }
+.birthday { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 4px 0 10px; font-size: .95rem; }
+.note-preview { color: var(--muted); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60vw; }
+.tag.bday { background: #fbe7b5; color: #6b4a00; }
+button:disabled { opacity: .5; cursor: default; }
