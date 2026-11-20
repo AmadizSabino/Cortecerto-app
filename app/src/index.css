@@ -28,7 +28,7 @@ button, .btn, .wa { font: inherit; cursor: pointer; border-radius: 10px; border:
 .days { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
 .day { white-space: nowrap; }
 .slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; margin-top: 10px; }
-label { display: grid; gap: 4px; margin: 10px 0; font-size: .95rem; }
+label { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; margin: 10px 0; font-size: .95rem; }
 label.check { display: flex; gap: 8px; align-items: flex-start; }
 input:not([type=checkbox]) { font: inherit; padding: 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
 .tag { font-size: .8rem; padding: 2px 8px; border-radius: 99px; background: var(--line); }
@@ -37,3 +37,15 @@ input:not([type=checkbox]) { font: inherit; padding: 10px; border-radius: 8px; b
 .wa { background: #25d366; color: #fff; border-color: #25d366; }
 .st-cancelada, .st-faltou { opacity: .55; }
 /* Themes: the prototype's palette set gets ported here, one class per theme. */
+.choices.two { grid-template-columns: 1fr 1fr; }
+.prefix { display: flex; align-items: center; gap: 4px; min-width: 0; }
+label { min-width: 0; }
+.prefix input { flex: 1; min-width: 0; }
+.svc-row { display: grid; grid-template-columns: 1fr 64px 76px; gap: 8px; align-items: end; }
+.svc-row > input { grid-column: 1 / -1; }
+.svc-row label { margin: 0; font-size: .8rem; }
+.svc-row input { width: 100%; min-width: 0; }
+.svc-row .link { justify-self: end; }
+.day-row { margin: 4px 0; }
+.day-row label.check { margin: 6px 0; min-width: 110px; }
+.back { display: block; margin: 12px auto 0; }

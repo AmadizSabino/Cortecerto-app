@@ -5,10 +5,11 @@ The production app, built from the [prototype](../prototype/index.html). React +
 ## Run locally
 
 1. Create a free Supabase project (region: Frankfurt, `eu-central-1`).
-2. In the Supabase SQL editor, run `../supabase/migrations/0001_core.sql`.
+2. In the Supabase SQL editor, run the files in `../supabase/migrations/` in order.
 3. Copy `.env.example` to `.env.local` and fill in the project URL and anon key (Project settings > API).
 4. `npm install && npm run dev`, open http://localhost:5173/painel and sign in with your email.
-5. Put your user id into `../supabase/seed.sql`, run it, then open `/s/barbearia-demo` to book.
+5. The first sign-in goes to `/registar`, a 4-step setup: salon type and name, services and prices, team and hours, WhatsApp and MB Way deposit. Then open your booking link to book.
+   (`../supabase/seed.sql` creates a demo salon instead, if you prefer.)
 
 `npm test` runs the unit tests (slot calculation, WhatsApp links).
 
@@ -19,7 +20,8 @@ Connect this repo in Cloudflare Pages with root directory `app`, build command `
 ## What's here
 
 - `/s/:slug`: public booking page (service, professional, day and time, client details, opt-in consent, MB Way deposit instructions).
+- `/registar`: salon onboarding. Services start from suggestions by salon type, and the salon sets every price.
 - `/painel`: salon agenda by day with confirm, done, no-show, cancel, deposit received, and a WhatsApp message link.
 - Database rules: clients book through `create_booking`, which validates the slot and blocks double booking; only the salon owner can read client data.
 
-Next: salon sign-up and onboarding, services/team/hours editing, themes.
+Next: editing services, team and hours after sign-up, and themes.

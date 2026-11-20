@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { euros, supabase, type Booking, type Professional, type Salon, type Service } from '../lib/supabase'
 import { addDays, dateInTz, formatTime, zonedToUtc } from '../lib/time'
@@ -74,7 +75,7 @@ export default function AgendaPage() {
   if (session === undefined) return <main className="page">A carregar…</main>
   if (!session) return <Login />
   if (salon === undefined) return <main className="page">A carregar…</main>
-  if (salon === null) return <main className="page"><h1>Ainda não tem salão</h1><p>O registo do salão chega no próximo passo.</p></main>
+  if (salon === null) return <Navigate to="/registar" replace />
 
   const tz = salon.timezone
   const bookingLink = `${location.origin}/s/${salon.slug}`
