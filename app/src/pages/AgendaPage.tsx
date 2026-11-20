@@ -3,7 +3,7 @@ import { Link, Navigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { euros, supabase, type Booking, type Professional, type Salon, type Service } from '../lib/supabase'
 import { addDays, dateInTz, formatTime, zonedToUtc } from '../lib/time'
-import { waLink } from '../lib/whatsapp'
+import { formatPhone, waLink } from '../lib/whatsapp'
 import { themeById, themeStyle } from '../lib/themes'
 
 const STATUS_LABEL: Record<Booking['status'], string> = {
@@ -107,7 +107,7 @@ export default function AgendaPage() {
               <span>{svc?.name} · {pros[b.professional_id]?.name}</span>
               <span className="tag">{STATUS_LABEL[b.status]}</span>
             </div>
-            <div>{b.client_name} · {b.client_phone}{svc && <> · {euros(svc.price_cents)}</>}</div>
+            <div>{b.client_name} · <a href={`tel:+${formatPhone(b.client_phone).replace(/\D/g, "")}`}>{formatPhone(b.client_phone)}</a>{svc && <> · {euros(svc.price_cents)}</>}</div>
             {b.deposit !== 'nenhum' && (
               <div>Sinal: {b.deposit === 'pago' ? 'pago ✓' : <button className="link" onClick={() => update(b, { deposit: 'pago' })}>marcar como recebido</button>}</div>
             )}
