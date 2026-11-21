@@ -3,10 +3,14 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App'
+import ErrorBoundary from './ErrorBoundary'
+import { installErrorReporting } from './lib/errorReporting'
+
+installErrorReporting()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter><App /></BrowserRouter>
+    <ErrorBoundary><BrowserRouter><App /></BrowserRouter></ErrorBoundary>
   </StrictMode>,
 )
 

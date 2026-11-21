@@ -7,6 +7,8 @@
   "main": "worker/index.ts",
   // Keep variables added in the Cloudflare dashboard (e.g. EMAIL_FROM) on each deploy.
   "keep_vars": true,
+  // Worker logs (including browser error reports) in Cloudflare > Workers > cortecerto-app > Logs.
+  "observability": { "enabled": true },
   "vars": {
     "SUPABASE_URL": "https://ahevsnyhcyyaojdzfgse.supabase.co"
   },

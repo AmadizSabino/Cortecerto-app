@@ -2,6 +2,7 @@
  * CorteCerto Worker: serves the app (static assets) and a small API.
  *
  * POST /api/notify-booking { id } — emails the salon owner about a new booking.
+ * POST /api/errors — error reports from the app (see errors.ts).
  * Secrets, set in Cloudflare > Workers > cortecerto-app > Settings > Variables:
  *   RESEND_API_KEY             Resend API key
  *   SUPABASE_SERVICE_ROLE_KEY  Supabase secret key (Project settings > API keys)
@@ -12,6 +13,7 @@
  */
 
 import { bookingEmail } from './email'
+import { reportError } from './errors'
 
 interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> }
@@ -36,6 +38,7 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
     if (url.pathname === '/api/notify-booking') return notifyBooking(request, env, url.origin)
+    if (url.pathname === '/api/errors') return reportError(request, env)
     if (url.pathname.startsWith('/api/')) return new Response('Not found', { status: 404 })
     return env.ASSETS.fetch(request)
   },
