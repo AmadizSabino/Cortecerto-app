@@ -20,6 +20,7 @@ export interface Booking {
   status: 'pendente' | 'confirmada' | 'concluida' | 'faltou' | 'cancelada'
   deposit: 'nenhum' | 'pendente' | 'pago'
   service_id: string; professional_id: string
+  reminder_sent_at?: string | null // migration 0006
 }
 
 export const euros = (cents: number) =>

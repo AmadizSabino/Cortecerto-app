@@ -106,3 +106,8 @@ button:disabled { opacity: .5; cursor: default; }
 .small { font-size: .85rem; }
 .legal h2 { margin-top: 20px; }
 .legal p { line-height: 1.5; }
+/* Reminders */
+.reminders-card { display: flex; justify-content: space-between; gap: 8px; text-decoration: none; color: var(--fg); border-color: var(--accent); }
+.reminders-card span:last-child { color: var(--accent); font-weight: 600; }
+.booking.reminded { opacity: .7; }
+.tag.ok-tag { background: #d4efdf; color: #1e5631; }

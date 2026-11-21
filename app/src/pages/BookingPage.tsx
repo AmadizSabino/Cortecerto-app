@@ -148,9 +148,9 @@ export default function BookingPage() {
           <label>Telemóvel<input value={phone} onChange={e => setPhone(e.target.value)} required inputMode="tel" autoComplete="tel" /></label>
           <label className="check">
             <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />
-            Aceito receber lembretes e novidades do salão por WhatsApp (opcional).
+            Aceito receber novidades e promoções do salão por WhatsApp (opcional).
           </label>
-          <p className="muted small">Os seus dados são usados pelo salão para gerir a marcação. <a href="/privacidade" target="_blank" rel="noreferrer">Política de privacidade</a></p>
+          <p className="muted small">O salão pode enviar-lhe um lembrete desta marcação por WhatsApp. Os seus dados são usados apenas para gerir a marcação. <a href="/privacidade" target="_blank" rel="noreferrer">Política de privacidade</a></p>
           {salon.deposit_cents > 0 && <p className="muted">Esta marcação pede um sinal de {euros(salon.deposit_cents)} por MB Way.</p>}
           {error && <p className="error">{error}</p>}
           <button className="btn" type="submit">Confirmar marcação</button>

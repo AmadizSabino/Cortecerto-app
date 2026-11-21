@@ -7,6 +7,7 @@ import { formatPhone, waLink } from '../lib/whatsapp'
 import { themeById, themeStyle } from '../lib/themes'
 import SetupChecklist from '../SetupChecklist'
 import TermsGate from '../TermsGate'
+import RemindersCard from '../RemindersCard'
 import { pendingDocs } from '../lib/acceptance'
 import type { LegalDoc } from '../lib/legal'
 
@@ -91,11 +92,12 @@ export default function AgendaPage() {
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page wide">
       <header className="row">
         <h1>{salon.name}</h1>
-        <span className="row"><Link to="/clientes">Clientes</Link><Link to="/definicoes">Definições</Link><button className="link" onClick={() => supabase.auth.signOut()}>Sair</button></span>
+        <span className="row"><Link to="/lembretes">Lembretes</Link><Link to="/clientes">Clientes</Link><Link to="/definicoes">Definições</Link><button className="link" onClick={() => supabase.auth.signOut()}>Sair</button></span>
       </header>
       {pending && pending.length > 0 && <TermsGate docs={pending} salonId={salon.id} onAccepted={() => setPending([])} />}
       {!(pending && pending.length > 0) && <>
       <p className="muted">Link de marcação: <a href={bookingLink}>{bookingLink}</a> · <Link to="/poster">Poster com QR</Link></p>
+      <RemindersCard salon={salon} />
       <SetupChecklist salon={salon} services={Object.keys(services).length} professionals={Object.keys(pros).length} />
 
       <div className="row">
