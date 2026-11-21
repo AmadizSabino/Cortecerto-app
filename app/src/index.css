@@ -132,3 +132,14 @@ button:disabled { opacity: .5; cursor: default; }
 .card.danger { border-color: #c0392b; }
 .btn-danger { background: #c0392b; color: #fff; border-color: #c0392b; }
 .danger-link { color: #c0392b; margin-top: 12px; justify-self: start; }
+/* Week view */
+.week-day { padding: 10px 14px; }
+.week-day.today { border-color: var(--accent); }
+.week-head { display: flex; justify-content: space-between; gap: 8px; text-decoration: none; color: var(--fg); text-transform: capitalize; }
+.week-head .muted { text-transform: none; }
+.week-row { display: grid; grid-template-columns: 3.4em 1fr auto; gap: 8px; padding: 6px 0 0; font-size: .92rem; }
+.week-row.off { grid-template-columns: 1fr auto; color: var(--muted); font-style: italic; }
+.week-row.st-faltou { opacity: .55; text-decoration: line-through; }
+.week-row.st-pendente .week-time::after { content: ' •'; color: var(--accent); }
+.week-time { font-variant-numeric: tabular-nums; font-weight: 600; }
+.page > header.row { align-items: flex-start; } .page > header.row > .row { flex-wrap: wrap; justify-content: flex-end; gap: 6px 12px; }
