@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { euros, supabase, type Professional, type Salon, type Service } from '../lib/supabase'
-import { freeSlots, type OpeningHours } from '../lib/slots'
+import { freeSlots } from '../lib/slots'
+import { hoursFor, NO_HOURS, type SalonHours } from '../lib/schedule'
+import { loadHours } from '../lib/scheduleData'
 import ThemePicker from '../ThemePicker'
 import { clientTheme, setClientTheme, themeById, themeStyle } from '../lib/themes'
 import { addDays, dateInTz, formatTime, zonedToUtc } from '../lib/time'
@@ -18,7 +20,7 @@ export default function BookingPage() {
   const [salon, setSalon] = useState<Salon | null>()
   const [services, setServices] = useState<Service[]>([])
   const [pros, setPros] = useState<Professional[]>([])
-  const [hours, setHours] = useState<OpeningHours[]>([])
+  const [hours, setHours] = useState<SalonHours>(NO_HOURS)
   const [service, setService] = useState<Service>()
   const [pro, setPro] = useState<Professional>()
   const [date, setDate] = useState(() => dateInTz(new Date(), 'Europe/Lisbon'))
@@ -40,9 +42,9 @@ export default function BookingPage() {
       const [sv, pr, hr] = await Promise.all([
         supabase.from('services').select('id,name,duration_min,price_cents').eq('salon_id', s.id).eq('active', true).order('name'),
         supabase.from('professionals').select('id,name').eq('salon_id', s.id).eq('active', true).order('name'),
-        supabase.from('opening_hours').select('weekday,opens,closes').eq('salon_id', s.id),
+        loadHours(s.id),
       ])
-      setServices(sv.data ?? []); setPros(pr.data ?? []); setHours(hr.data ?? [])
+      setServices(sv.data ?? []); setPros(pr.data ?? []); setHours(hr)
       if (pr.data?.length === 1) setPro(pr.data[0])
     })()
   }, [slug])
@@ -58,7 +60,7 @@ export default function BookingPage() {
   }, [salon, pro, date])
 
   const slots = useMemo(() => salon && service && pro
-    ? freeSlots({ date, tz: salon.timezone, hours, durationMin: service.duration_min, busy, now: new Date() })
+    ? freeSlots({ date, tz: salon.timezone, hours: hoursFor(hours, pro.id), durationMin: service.duration_min, busy, now: new Date() })
     : [], [salon, service, pro, date, hours, busy])
 
   if (salon === undefined) return <main className="page">A carregar…</main>

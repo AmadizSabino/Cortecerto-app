@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase, type Booking, type Professional, type Salon, type Service } from './lib/supabase'
-import { freeSlots, type OpeningHours } from './lib/slots'
+import { freeSlots } from './lib/slots'
+import { hoursFor, NO_HOURS, type SalonHours } from './lib/schedule'
+import { loadHours } from './lib/scheduleData'
 import { addDays, dateInTz, formatTime, zonedToUtc } from './lib/time'
 import { draftInterval, saveErrorText, validateDraft, type BookingDraft } from './lib/bookingForm'
 
@@ -12,7 +14,7 @@ export default function BookingEditor({ salon, booking, defaultDate, onSaved, on
   const tz = salon.timezone
   const [services, setServices] = useState<Service[]>([])
   const [pros, setPros] = useState<Professional[]>([])
-  const [hours, setHours] = useState<OpeningHours[]>([])
+  const [hours, setHours] = useState<SalonHours>(NO_HOURS)
   const [busy, setBusy] = useState<{ start: Date; end: Date }[]>([])
   const [d, setD] = useState<BookingDraft>(() => booking ? {
     clientName: booking.client_name, clientPhone: booking.client_phone,
@@ -26,12 +28,12 @@ export default function BookingEditor({ salon, booking, defaultDate, onSaved, on
     Promise.all([
       supabase.from('services').select('id,name,duration_min,price_cents,active').eq('salon_id', salon.id).order('name'),
       supabase.from('professionals').select('id,name,active').eq('salon_id', salon.id).order('name'),
-      supabase.from('opening_hours').select('weekday,opens,closes').eq('salon_id', salon.id),
+      loadHours(salon.id),
     ]).then(([sv, pr, hr]) => {
       // Active ones, plus the booking's own service and professional even if switched off since.
       const svc = (sv.data ?? []).filter((x: Service & { active: boolean }) => x.active || x.id === booking?.service_id)
       const prs = (pr.data ?? []).filter((x: Professional & { active: boolean }) => x.active || x.id === booking?.professional_id)
-      setServices(svc); setPros(prs); setHours(hr.data ?? [])
+      setServices(svc); setPros(prs); setHours(hr)
       setD(cur => ({
         ...cur,
         serviceId: cur.serviceId || (svc.length === 1 ? svc[0].id : ''),
@@ -53,7 +55,7 @@ export default function BookingEditor({ salon, booking, defaultDate, onSaved, on
 
   const service = services.find(s => s.id === d.serviceId)
   const slots = useMemo(() => service && d.professionalId
-    ? freeSlots({ date: d.date, tz, hours, durationMin: service.duration_min, busy, now: new Date() })
+    ? freeSlots({ date: d.date, tz, hours: hoursFor(hours, d.professionalId), durationMin: service.duration_min, busy, now: new Date() })
     : [], [service, d.professionalId, d.date, tz, hours, busy])
 
   const set = (patch: Partial<BookingDraft>) => { setD(cur => ({ ...cur, ...patch })); setError('') }

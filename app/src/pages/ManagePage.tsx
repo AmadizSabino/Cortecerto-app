@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { euros, supabase } from '../lib/supabase'
-import { freeSlots, type OpeningHours } from '../lib/slots'
+import { freeSlots } from '../lib/slots'
+import { hoursFor, NO_HOURS, type SalonHours } from '../lib/schedule'
+import { loadHours } from '../lib/scheduleData'
 import { changeState, limitText } from '../lib/clientChanges'
 import { clientTheme, themeById, themeStyle } from '../lib/themes'
 import { addDays, dateInTz, formatTime, zonedToUtc } from '../lib/time'
@@ -30,7 +32,7 @@ export default function ManagePage() {
   const { id } = useParams()
   const [b, setB] = useState<ClientBooking | null | 'indisponivel'>()
   const [mode, setMode] = useState<'ver' | 'cancelar' | 'mudar'>('ver')
-  const [hours, setHours] = useState<OpeningHours[]>([])
+  const [hours, setHours] = useState<SalonHours>(NO_HOURS)
   const [date, setDate] = useState('')
   const [busy, setBusy] = useState<{ start: Date; end: Date }[]>([])
   const [slot, setSlot] = useState<Date>()
@@ -52,7 +54,7 @@ export default function ManagePage() {
 
   useEffect(() => {
     if (mode !== 'mudar' || !booking) return
-    supabase.from('opening_hours').select('weekday,opens,closes').eq('salon_id', booking.salon_id).then(({ data }) => setHours(data ?? []))
+    loadHours(booking.salon_id).then(setHours)
   }, [mode, booking?.salon_id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -67,7 +69,7 @@ export default function ManagePage() {
   }, [mode, booking, date])
 
   const slots = useMemo(() => booking && mode === 'mudar'
-    ? freeSlots({ date, tz: booking.salon_timezone, hours, durationMin: booking.duration_min, busy, now: new Date() })
+    ? freeSlots({ date, tz: booking.salon_timezone, hours: hoursFor(hours, booking.professional_id), durationMin: booking.duration_min, busy, now: new Date() })
     : [], [booking, mode, date, hours, busy])
 
   if (b === undefined) return <main className="page">A carregar…</main>

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase, type Booking, type Professional, type Salon, type Service } from './lib/supabase'
-import { freeSlots, type OpeningHours } from './lib/slots'
+import { freeSlots } from './lib/slots'
+import { hoursFor, type SalonHours } from './lib/schedule'
+import { loadHours } from './lib/scheduleData'
 import { addDays, dateInTz, formatTime, zonedToUtc } from './lib/time'
 import { closestSlot, DEFAULT_WEEKS, suggestNextDate, WEEK_OPTIONS } from './lib/nextVisit'
 import { manageLink } from './lib/clientChanges'
@@ -23,7 +25,8 @@ export default function NextVisit({ salon, booking, service, pro, onBooked, onCl
 }) {
   const tz = salon.timezone
   const visitDate = dateInTz(new Date(booking.starts_at), tz)
-  const [hours, setHours] = useState<OpeningHours[] | null>(null)
+  const [allHours, setAllHours] = useState<SalonHours | null>(null)
+  const hours = useMemo(() => allHours ? hoursFor(allHours, pro.id) : null, [allHours, pro.id])
   const [weeks, setWeeks] = useState(DEFAULT_WEEKS[salon.type] ?? 4)
   const [date, setDate] = useState('')
   const [busy, setBusy] = useState<{ start: Date; end: Date }[] | null>(null)
@@ -33,7 +36,7 @@ export default function NextVisit({ salon, booking, service, pro, onBooked, onCl
   const [booked, setBooked] = useState<Booking | null>(null)
 
   useEffect(() => {
-    supabase.from('opening_hours').select('weekday,opens,closes').eq('salon_id', salon.id).then(({ data }) => setHours(data ?? []))
+    loadHours(salon.id).then(setAllHours)
   }, [salon.id])
 
   useEffect(() => { if (hours) setDate(suggestNextDate(visitDate, weeks, hours)) }, [hours, weeks, visitDate])
