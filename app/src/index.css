@@ -113,3 +113,10 @@ button:disabled { opacity: .5; cursor: default; }
 .tag.ok-tag { background: #d4efdf; color: #1e5631; }
 .next-visit { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
 .next-visit .slots { margin-top: 0; }
+/* Walk-in queue */
+.queue-place, .queue-turn { text-align: center; }
+.queue-big { font-size: 3.2rem; font-weight: 700; margin: 8px 0 0; color: var(--accent); font-family: var(--heading-font, inherit); }
+.queue-turn { border-color: var(--accent); outline: 2px solid var(--accent); }
+.queue-turn h2 { font-size: 1.5rem; }
+.booking.called { border-color: var(--accent); }
+.btn-inline { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
