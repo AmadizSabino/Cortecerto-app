@@ -19,6 +19,10 @@ The `cortecerto-app` Worker builds `main` with the default settings (root direct
 
 In Supabase > Authentication > URL configuration, set the site URL to the Worker's address and add `<address>/**` to the redirect URLs.
 
+## Installable app
+
+The app installs to the home screen (`public/manifest.webmanifest`, icons in `public/`). `public/sw.js` keeps the app shell for offline opening: pages network first with the cached app as fallback, hashed assets cache first, and Supabase and `/api/*` never cached. Bump `VERSION` in `sw.js` to drop old caches. The panel shows an install card once (Android prompt, or Safari steps on iPhone).
+
 ## Booking emails
 
 `../worker/index.ts` serves the app and answers `POST /api/notify-booking`. After a client books, the booking page calls it, and the Worker emails the salon owner (the email they sign in with) through Resend. Migration 0005 adds `claim_booking_notification`, which only the service role can call and which hands out each booking once, within 10 minutes of it being made.

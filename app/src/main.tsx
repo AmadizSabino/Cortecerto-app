@@ -9,3 +9,8 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter><App /></BrowserRouter>
   </StrictMode>,
 )
+
+// Installable app and offline shell, in production only (dev reloads must stay fresh).
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}) })
+}

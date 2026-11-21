@@ -169,3 +169,4 @@ button:disabled { opacity: .5; cursor: default; }
 .col-fill.current { opacity: 1; }
 .col-value { font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums; min-height: 1em; }
 .col-label { font-size: .78rem; color: var(--muted); }
+.install-card { display: flex; gap: 12px; align-items: flex-start; } .install-card img { border-radius: 10px; flex: none; }
