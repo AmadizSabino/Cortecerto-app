@@ -78,7 +78,7 @@ export default function StatsPage() {
 
   return (
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page wide">
-      <header className="row"><h1>Estatísticas</h1><Link to="/painel">‹ Agenda</Link></header>
+      <header className="row"><h1>Estatísticas</h1><Link to="/mais">‹ Mais</Link></header>
       <div className="days">
         {PERIODS.map(p => <button key={p.id} className={p.id === period ? 'day on' : 'day'} onClick={() => setPeriod(p.id)}>{p.label}</button>)}
       </div>

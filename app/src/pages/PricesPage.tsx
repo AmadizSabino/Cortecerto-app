@@ -90,7 +90,7 @@ export default function PricesPage() {
 
   return (
     <main className="page">
-      <header className="row"><h1>Preços por profissional</h1><Link to="/definicoes">‹ Definições</Link></header>
+      <header className="row"><h1>Preços por profissional</h1><Link to="/mais">‹ Mais</Link></header>
       {!ready ? <p className="banner">Para usar preços por profissional, corra <code>supabase/migrations/0011_professional_prices.sql</code> no editor SQL do Supabase.</p> : <>
         <p className="muted">Deixe em branco para usar o preço e a duração do serviço. Desmarque quem não faz o serviço: deixa de aparecer na marcação.</p>
         {pros.length < 2 && <p className="muted">Com um só profissional, basta o preço do serviço nas <Link to="/definicoes">Definições</Link>.</p>}

@@ -113,7 +113,7 @@ export default function SchedulePage() {
 
   return (
     <main className="page">
-      <header className="row"><h1>Horários e folgas</h1><Link to="/definicoes">‹ Definições</Link></header>
+      <header className="row"><h1>Horários e folgas</h1><Link to="/mais">‹ Mais</Link></header>
       {missing && <p className="banner">Para usar horários por profissional e folgas, corra <code>supabase/migrations/0009_schedules.sql</code> no editor SQL do Supabase.</p>}
       {msg && <p className={msg.ok ? 'ok' : 'error'}>{msg.text}</p>}
 

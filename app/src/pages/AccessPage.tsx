@@ -78,7 +78,7 @@ export default function AccessPage() {
 
   return (
     <main className="page">
-      <header className="row"><h1>Acessos da equipa</h1><Link to="/definicoes">‹ Definições</Link></header>
+      <header className="row"><h1>Acessos da equipa</h1><Link to="/mais">‹ Mais</Link></header>
       {missing ? <p className="banner">Para dar acesso à equipa, corra <code>supabase/migrations/0013_team_accounts.sql</code> no editor SQL do Supabase.</p> : <>
         <p className="muted">Quem tem acesso vê e gere a agenda, a semana, os clientes, a fila e os lembretes. As definições, os preços, os horários, as estatísticas e a exportação de dados ficam só consigo.</p>
 

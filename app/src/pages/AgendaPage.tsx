@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link, Navigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useSearchParams } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
-import { euros, supabase, type Booking, type Professional, type Salon, type Service } from '../lib/supabase'
+import Icon, { WhatsAppIcon } from '../components/Icon'
+import { euros, initials, supabase, type Booking, type Professional, type Salon, type Service } from '../lib/supabase'
 import { addDays, dateInTz, formatTime, zonedToUtc } from '../lib/time'
 import { formatPhone, waLink } from '../lib/whatsapp'
 import { themeById, themeStyle } from '../lib/themes'
@@ -134,31 +135,44 @@ export default function AgendaPage() {
   if (salon === null) return <Navigate to="/registar" replace />
 
   const tz = salon.timezone
-  const bookingLink = `${location.origin}/s/${salon.slug}`
+  const today = dateInTz(new Date(), tz)
+  const live = bookings.filter(b => b.status !== 'cancelada')
+  const revenue = live.filter(b => b.status !== 'faltou').reduce((sum, b) => sum + bookingPrice(b, services), 0)
+  const deposits = live.filter(b => b.deposit === 'pendente').length
+  const hour = Number(new Date().toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', hour12: false }))
+  const greeting = hour < 12 ? 'Bom dia' : hour < 20 ? 'Boa tarde' : 'Boa noite'
+  const dayLabel = date === today ? 'Hoje' : date === addDays(today, 1) ? 'Amanhã' : date === addDays(today, -1) ? 'Ontem'
+    : new Date(date + 'T12:00:00Z').toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
+  const openNew = () => { setEditing('nova'); requestAnimationFrame(() => document.getElementById('agenda')?.scrollIntoView({ behavior: 'smooth' })) }
 
   return (
-    <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page wide">
-      <header className="row">
-        <h1>{salon.name}</h1>
-        <span className="row"><Link to="/semana">Semana</Link><Link to="/fila">Fila</Link><Link to="/lembretes">Lembretes</Link><Link to="/clientes">Clientes</Link>{role === 'dono' && <><Link to="/estatisticas">Estatísticas</Link><Link to="/definicoes">Definições</Link></>}<button className="link" onClick={() => supabase.auth.signOut()}>Sair</button></span>
+    <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page wide with-fab">
+      <header className="greet">
+        <div>
+          <p className="eyebrow">{salon.name} · {new Date().toLocaleDateString('pt-PT', { timeZone: tz, day: 'numeric', month: 'short' }).replace('.', '')}</p>
+          <h1>{greeting}</h1>
+        </div>
+        <span className="avatar">{initials(salon.name)}</span>
       </header>
       {pending && pending.length > 0 && <TermsGate docs={pending} salonId={salon.id} onAccepted={() => setPending([])} />}
       {!(pending && pending.length > 0) && <>
-      <p className="muted">Link de marcação: <a href={bookingLink}>{bookingLink}</a> · <Link to="/poster">Poster com QR</Link></p>
       {role === 'dono' && <BillingNotice salon={salon} />}
+      <div className="stats">
+        <div className="stat"><b>{live.length}</b><span>Marcações {date === today ? 'hoje' : 'no dia'}</span></div>
+        <div className="stat"><b>{euros(revenue).replace(',00', '')}</b><span>Faturação prevista</span></div>
+        <div className="stat"><b>{deposits}</b><span>Sinais por confirmar</span></div>
+      </div>
       <InstallCard />
       <RemindersCard salon={salon} />
       <SetupChecklist salon={salon} services={Object.keys(services).length} professionals={Object.keys(pros).length} />
 
-      <div className="row">
-        <button className="day" onClick={() => setDate(addDays(date, -1))}>‹</button>
-        <strong>{new Date(date + 'T12:00:00Z').toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}</strong>
-        <button className="day" onClick={() => setDate(addDays(date, 1))}>›</button>
+      <div className="daynav" id="agenda">
+        <button className="icon-btn" aria-label="Dia anterior" onClick={() => setDate(addDays(date, -1))}><Icon name="chevronLeft" /></button>
+        <button className="link" style={{ textDecoration: 'none', color: 'var(--fg)', fontWeight: 700, fontSize: '1.05rem' }} onClick={() => setDate(today)}><strong>{dayLabel}</strong></button>
+        <button className="icon-btn" aria-label="Dia seguinte" onClick={() => setDate(addDays(date, 1))}><Icon name="chevronRight" /></button>
       </div>
 
-      {editing === 'nova'
-        ? <BookingEditor salon={salon} defaultDate={date} onClose={() => setEditing(null)} onSaved={saved} />
-        : <button className="btn" onClick={() => setEditing('nova')}>+ Nova marcação</button>}
+      {editing === 'nova' && <BookingEditor salon={salon} defaultDate={date} onClose={() => setEditing(null)} onSaved={saved} />}
 
       {offs.map(t => {
         const s = new Date(t.starts_at), e = new Date(t.ends_at)
@@ -172,37 +186,47 @@ export default function AgendaPage() {
         )
       })}
       {actionError && <p className="error" role="alert">{actionError}</p>}
-      {bookings.length === 0 && <p className="muted">Sem marcações neste dia.</p>}
+      {bookings.length === 0 && editing !== 'nova' && (
+        <div className="card" style={{ textAlign: 'center' }}>
+          <p className="muted" style={{ margin: '4px 0 12px' }}>Sem marcações neste dia.</p>
+          <button className="btn ghost inline sm" onClick={openNew}><Icon name="plus" size={16} />Adicionar marcação</button>
+        </div>
+      )}
       {bookings.map(b => {
         const svc = services[b.service_id]
         const when = new Date(b.starts_at)
+        const mins = Math.round((new Date(b.ends_at).getTime() - when.getTime()) / 60000)
         const msg = `Olá ${b.client_name}! A sua marcação de ${svc?.name ?? ''} no ${salon.name} está confirmada para ${when.toLocaleDateString('pt-PT', { timeZone: tz, day: 'numeric', month: 'long' })} às ${formatTime(when, tz)}.${salon.client_change_hours != null ? ` Se precisar de cancelar ou mudar: ${manageLink(location.origin, b.id)}` : ''} Até já!`
         if (editing === b.id) return (
           <BookingEditor key={b.id} salon={salon} booking={b} defaultDate={date} onClose={() => setEditing(null)} onSaved={saved} />
         )
+        const hasPhone = /\d{6}/.test(b.client_phone.replace(/\D/g, ''))
         return (
           <article key={b.id} className={`card booking st-${b.status}`}>
-            <div className="row">
-              <strong>{formatTime(when, tz)}</strong>
-              <span>{svc?.name} · {pros[b.professional_id]?.name}</span>
-              <span className="tag">{STATUS_LABEL[b.status]}</span>
-              {b.client_action === 'mudou' && <span className="tag warn">Cliente mudou a hora</span>}
-              {b.client_action === 'cancelou' && <span className="tag warn">Cancelada pelo cliente</span>}
-            </div>
-            <div>{b.client_name} · <a href={`tel:+${formatPhone(b.client_phone).replace(/\D/g, "")}`}>{formatPhone(b.client_phone)}</a>{svc && <> · {euros(bookingPrice(b, services))}</>}</div>
-            {b.deposit !== 'nenhum' && (
-              <div>Sinal: {b.deposit === 'pago' ? 'pago ✓' : <button className="link" onClick={() => update(b, { deposit: 'pago' })}>marcar como recebido</button>}</div>
-            )}
-            <div className="actions">
-              {b.status === 'pendente' && <button onClick={() => update(b, { status: 'confirmada' })}>Confirmar</button>}
-              {(b.status === 'pendente' || b.status === 'confirmada') && <>
-                <button onClick={() => update(b, { status: 'concluida' })}>Concluída</button>
-                <button onClick={() => update(b, { status: 'faltou' })}>Faltou</button>
-                <button onClick={() => update(b, { status: 'cancelada' })}>Cancelar</button>
-              </>}
-              <a className="wa" href={waLink(b.client_phone, msg)} target="_blank" rel="noreferrer">WhatsApp</a>
-              {b.status === 'concluida' && nextFor !== b.id && <button onClick={() => setNextFor(b.id)}>Próxima visita</button>}
-              {(b.status === 'pendente' || b.status === 'confirmada') && <button className="link" onClick={() => setEditing(b.id)}>Editar</button>}
+            <div className="time">{formatTime(when, tz)}<small>{mins} min</small></div>
+            <div style={{ minWidth: 0 }}>
+              <div className="who"><b>{b.client_name}</b><span className={`tag ${b.status}`}>{STATUS_LABEL[b.status]}</span></div>
+              <div className="muted small" style={{ marginTop: 2 }}>{svc?.name} · {pros[b.professional_id]?.name}{svc && <> · {euros(bookingPrice(b, services))}</>}</div>
+              {(b.client_action === 'mudou' || b.client_action === 'cancelou') && (
+                <div style={{ marginTop: 6 }}><span className="tag warn">{b.client_action === 'mudou' ? 'Cliente mudou a hora' : 'Cancelada pelo cliente'}</span></div>
+              )}
+              {hasPhone && <div className="small" style={{ marginTop: 4 }}><a href={`tel:+${formatPhone(b.client_phone).replace(/\D/g, '')}`}>{formatPhone(b.client_phone)}</a></div>}
+              {b.deposit !== 'nenhum' && (
+                <div className="small" style={{ marginTop: 4 }}>Sinal: {b.deposit === 'pago'
+                  ? <span className="ok" style={{ fontWeight: 600 }}>recebido ✓</span>
+                  : <button className="link" onClick={() => update(b, b.status === 'pendente' ? { deposit: 'pago', status: 'confirmada' } : { deposit: 'pago' })}>marcar como recebido</button>}</div>
+              )}
+              <div className="actions">
+                {b.status === 'pendente' && <button className="btn-inline" onClick={() => update(b, { status: 'confirmada' })}>Confirmar</button>}
+                {(b.status === 'pendente' || b.status === 'confirmada') && <>
+                  <button onClick={() => update(b, { status: 'concluida' })}>Concluída</button>
+                  <button onClick={() => update(b, { status: 'faltou' })}>Faltou</button>
+                  <button onClick={() => update(b, { status: 'cancelada' })}>Cancelar</button>
+                </>}
+                {hasPhone && <a className="wa" href={waLink(b.client_phone, msg)} target="_blank" rel="noreferrer"><WhatsAppIcon size={16} />WhatsApp</a>}
+                {b.status === 'concluida' && nextFor !== b.id && <button onClick={() => setNextFor(b.id)}>Próxima visita</button>}
+                {(b.status === 'pendente' || b.status === 'confirmada') && <button className="link" onClick={() => setEditing(b.id)}>Editar</button>}
+              </div>
             </div>
             {nextFor === b.id && svc && pros[b.professional_id] && (
               <NextVisit salon={salon} booking={b} service={svc} pro={pros[b.professional_id]}
@@ -212,6 +236,7 @@ export default function AgendaPage() {
           </article>
         )
       })}
+      {editing !== 'nova' && <button className="btn inline fab" onClick={openNew}><Icon name="plus" size={18} />Marcação</button>}
       </>}
     </main></div>
   )

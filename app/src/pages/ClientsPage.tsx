@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { euros, supabase, type Booking, type Salon, type Service } from '../lib/supabase'
 import { AT_RISK_DAYS, birthdaySoon, buildClients, daysSince, filterClients, isAtRisk, type Client, type ClientFilter, type ClientNote } from '../lib/clients'
@@ -167,10 +167,7 @@ export default function ClientsPage() {
 
   return (
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page wide">
-      <header className="row">
-        <h1>Clientes</h1>
-        <span className="row"><Link to="/painel">Agenda</Link><Link to="/definicoes">Definições</Link></span>
-      </header>
+      <header className="row"><h1>Clientes</h1></header>
 
       {bookings === null ? <p className="muted">A carregar…</p> : <>
         <p className="muted">
@@ -201,7 +198,7 @@ export default function ClientsPage() {
                   <strong>{c.name}</strong>
                   <small className="muted">
                     {c.visits} {c.visits === 1 ? 'visita' : 'visitas'}
-                    {c.lastVisit && <> · última há {daysSince(c.lastVisit, now)} dias</>}
+                    {c.lastVisit && (() => { const d = daysSince(c.lastVisit, now); return <> · {d <= 0 ? 'veio hoje' : d === 1 ? 'última há 1 dia' : `última há ${d} dias`}</> })()}
                   </small>
                   {notes[c.key]?.notes && !expanded && <small className="note-preview">{notes[c.key].notes}</small>}
                 </span>

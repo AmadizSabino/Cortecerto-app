@@ -41,7 +41,7 @@ export default function PosterPage() {
   return (
     <div className="themed poster-wrap" style={themeStyle(themeById(salon.theme))}>
       <div className="page no-print">
-        <header className="row"><h1>{queue ? 'Poster da fila' : 'Poster com QR'}</h1><Link to={queue ? '/fila' : '/painel'}>‹ {queue ? 'Fila' : 'Agenda'}</Link></header>
+        <header className="row"><h1>{queue ? 'Poster da fila' : 'Poster com QR'}</h1><Link to={queue ? '/fila' : '/mais'}>‹ {queue ? 'Fila' : 'Mais'}</Link></header>
         <p className="muted">{queue
           ? 'Imprima em A4 e ponha à entrada. Quem chega sem marcação lê o QR e entra na fila sem esperar ao balcão.'
           : 'Imprima em A4 e ponha no balcão, no espelho ou na montra. O QR abre a sua página de marcação.'}</p>

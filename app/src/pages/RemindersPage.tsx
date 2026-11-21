@@ -72,7 +72,7 @@ export default function RemindersPage() {
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page wide">
       <header className="row">
         <h1>Lembretes</h1>
-        <Link to="/painel">‹ Agenda</Link>
+        <Link to="/mais">‹ Mais</Link>
       </header>
       <p className="muted">Envie um lembrete por WhatsApp na véspera. Os clientes avisam quando não podem vir e a vaga não se perde.</p>
 

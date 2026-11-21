@@ -1,4 +1,8 @@
+import { useEffect } from 'react'
 import { Route, Routes } from 'react-router-dom'
+import TabBar from './TabBar'
+import { usePanelTabs } from './panelTabs'
+import MorePage from './pages/MorePage'
 import { supabaseConfigured } from './lib/supabase'
 import BookingPage from './pages/BookingPage'
 import AgendaPage from './pages/AgendaPage'
@@ -21,6 +25,9 @@ import LegalPage from './pages/LegalPage'
 import { LEGAL_DOCS } from './lib/legal'
 
 export default function App() {
+  const tabs = usePanelTabs()
+  // Room at the bottom of every panel page for the tab bar.
+  useEffect(() => { document.body.classList.toggle('has-tabs', tabs) }, [tabs])
   return (
     <>
       {!supabaseConfigured && (
@@ -39,6 +46,7 @@ export default function App() {
         <Route path="/fila" element={<QueuePage />} />
         <Route path="/horarios" element={<SchedulePage />} />
         <Route path="/semana" element={<WeekPage />} />
+        <Route path="/mais" element={<MorePage />} />
         <Route path="/precos" element={<PricesPage />} />
         <Route path="/estatisticas" element={<StatsPage />} />
         <Route path="/acessos" element={<AccessPage />} />
@@ -47,6 +55,7 @@ export default function App() {
         {LEGAL_DOCS.map(d => <Route key={d.id} path={d.path} element={<LegalPage doc={d} />} />)}
         <Route path="*" element={<main className="page"><h1>Página não encontrada</h1></main>} />
       </Routes>
+      {tabs && <TabBar />}
     </>
   )
 }

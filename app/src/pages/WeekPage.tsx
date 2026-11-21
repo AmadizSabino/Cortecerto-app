@@ -1,3 +1,4 @@
+import Icon from '../components/Icon'
 import { useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
@@ -79,15 +80,12 @@ export default function WeekPage() {
 
   return (
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page wide">
-      <header className="row">
-        <h1>Semana</h1>
-        <span className="row"><Link to="/painel">Dia</Link><Link to="/clientes">Clientes</Link></span>
-      </header>
+      <header className="row"><h1>Semana</h1></header>
 
-      <div className="row">
-        <button className="day" onClick={() => setMonday(addDays(monday, -7))} aria-label="Semana anterior">‹</button>
+      <div className="daynav">
+        <button className="icon-btn" onClick={() => setMonday(addDays(monday, -7))} aria-label="Semana anterior"><Icon name="chevronLeft" /></button>
         <strong>{fmtDay(monday, { day: 'numeric', month: 'short' })} – {fmtDay(addDays(monday, 6), { day: 'numeric', month: 'short' })}</strong>
-        <button className="day" onClick={() => setMonday(addDays(monday, 7))} aria-label="Semana seguinte">›</button>
+        <button className="icon-btn" onClick={() => setMonday(addDays(monday, 7))} aria-label="Semana seguinte"><Icon name="chevronRight" /></button>
       </div>
       {monday !== weekStart(today) && <button className="link" onClick={() => setMonday(weekStart(today))}>Voltar a esta semana</button>}
 

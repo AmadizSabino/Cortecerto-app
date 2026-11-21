@@ -82,7 +82,7 @@ export default function QueuePage() {
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page wide">
       <header className="row">
         <h1>Fila de espera</h1>
-        <Link to="/painel">‹ Agenda</Link>
+        <Link to="/mais">‹ Mais</Link>
       </header>
 
       {missing ? (

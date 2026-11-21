@@ -38,7 +38,7 @@ export default function BillingPage() {
 
   return (
     <main className="page">
-      <header className="row"><h1>Assinatura</h1><Link to="/definicoes">‹ Definições</Link></header>
+      <header className="row"><h1>Assinatura</h1><Link to="/mais">‹ Mais</Link></header>
       <section className="card">
         <strong>{status}</strong>
         {b.kind === 'experimental' && salon.trial_ends_at && <p className="muted">Até {fmt(salon.trial_ends_at)}. Até lá pode usar tudo, sem pagar nada.</p>}
