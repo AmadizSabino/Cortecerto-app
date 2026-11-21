@@ -45,6 +45,10 @@ select pg_temp.check(status = 'pendente' and client_action = 'mudou' and ends_at
 set role anon; select cancel_booking_by_client(:'b1') \g /dev/null
 reset role;
 select pg_temp.check(status = 'cancelada' and client_action = 'cancelou', 'client cancel') from bookings where id=:'b1';
+set role service_role;
+select pg_temp.check(action = 'cancelou' and owner_email = 'dono@x.pt', 'change email claimed') from claim_client_change_notification(:'b1');
+select pg_temp.check(count(*) = 0, 'change email claimed once') from claim_client_change_notification(:'b1');
+reset role;
 
 -- Notification claim once (service role)
 set role anon;

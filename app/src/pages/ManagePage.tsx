@@ -27,6 +27,11 @@ const ERRORS: Record<string, string> = {
 }
 const errorText = (m: string) => Object.entries(ERRORS).find(([k]) => m.includes(k))?.[1] ?? 'Não foi possível guardar. Tente de novo.'
 
+/** Emails the salon that the client cancelled or moved (best effort; the change is already saved). */
+const notifyChange = (id: string) => {
+  fetch('/api/notify-change', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }), keepalive: true }).catch(() => {})
+}
+
 /** The client's private page for one booking: /m/<booking id>. */
 export default function ManagePage() {
   const { id } = useParams()
@@ -92,6 +97,7 @@ export default function ManagePage() {
     const { error } = await supabase.rpc('cancel_booking_by_client', { p_booking: bookingId })
     setSaving(false)
     if (error) { setError(errorText(error.message)); return }
+    notifyChange(bookingId)
     setMode('ver'); setNotice('A sua marcação foi cancelada. O salão já pode ver a vaga livre.')
     load()
   }
@@ -102,6 +108,7 @@ export default function ManagePage() {
     const { error } = await supabase.rpc('move_booking_by_client', { p_booking: bookingId, p_starts_at: slot.toISOString() })
     setSaving(false)
     if (error) { setError(errorText(error.message)); if (error.message.includes('horario_ocupado')) setSlot(undefined); return }
+    notifyChange(bookingId)
     setMode('ver'); setSlot(undefined); setNotice('Marcação alterada. O salão vai confirmar o novo horário.')
     load()
   }
