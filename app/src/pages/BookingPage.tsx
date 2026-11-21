@@ -69,7 +69,7 @@ export default function BookingPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    const { error } = await supabase.rpc('create_booking', {
+    const { data: bookingId, error } = await supabase.rpc('create_booking', {
       p_salon: salon!.id, p_service: service!.id, p_professional: pro!.id, p_starts_at: slot!.toISOString(),
       p_client_name: name, p_client_phone: phone, p_consent: consent,
     })
@@ -78,6 +78,11 @@ export default function BookingPage() {
       if (error.message.includes('horario_ocupado')) setSlot(undefined)
       return
     }
+    // Emails the salon about the new booking. Best effort: the booking is already saved.
+    fetch('/api/notify-booking', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: bookingId }), keepalive: true,
+    }).catch(() => {})
     setDone(true)
   }
 
