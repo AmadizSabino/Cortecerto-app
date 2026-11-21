@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
+import { loadMySalon, type Role } from '../lib/mySalon'
 import { euros, supabase, type Professional, type Salon, type Service } from '../lib/supabase'
 import { parseEuros } from '../lib/onboarding'
 import { overrideKey, type Overrides } from '../lib/pricing'
@@ -12,6 +13,7 @@ const centsToText = (c: number) => (c / 100).toFixed(2).replace('.', ',')
 /** For each service, who does it, and at what price and length if different from the service's. */
 export default function PricesPage() {
   const [session, setSession] = useState<Session | null>()
+  const [role, setRole] = useState<Role>('dono')
   const [salon, setSalon] = useState<Salon | null>()
   const [services, setServices] = useState<Service[]>([])
   const [pros, setPros] = useState<Professional[]>([])
@@ -24,7 +26,7 @@ export default function PricesPage() {
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setSession(data.session)) }, [])
   useEffect(() => {
     if (!session) return
-    supabase.from('salons').select('*').eq('owner_id', session.user.id).maybeSingle().then(({ data }) => setSalon(data))
+    loadMySalon(session.user.id).then(r => { setRole(r.role); setSalon(r.salon) })
   }, [session])
 
   const load = useCallback(async () => {
@@ -52,6 +54,8 @@ export default function PricesPage() {
   if (!session) return <Navigate to="/painel" replace />
   if (salon === undefined) return <main className="page">A carregar…</main>
   if (salon === null) return <Navigate to="/registar" replace />
+  // Team members don't see the salon's settings, prices, hours or revenue.
+  if (role !== 'dono') return <Navigate to="/painel" replace />
 
   const setCell = (k: string, patch: Partial<Cell>) => { setCells(c => ({ ...c, [k]: { ...c[k], ...patch } })); setMsg(undefined) }
 

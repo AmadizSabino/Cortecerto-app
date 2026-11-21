@@ -6,6 +6,7 @@ import { AT_RISK_DAYS, birthdaySoon, buildClients, daysSince, filterClients, isA
 import { dateInTz, formatTime } from '../lib/time'
 import { formatPhone, waLink } from '../lib/whatsapp'
 import { themeById, themeStyle } from '../lib/themes'
+import { loadMySalon, type Role } from '../lib/mySalon'
 
 const FILTERS: { id: ClientFilter; label: string }[] = [
   { id: 'todos', label: 'Todos' },
@@ -82,6 +83,7 @@ const STATUS_LABEL: Record<Booking['status'], string> = {
 
 export default function ClientsPage() {
   const [session, setSession] = useState<Session | null>()
+  const [role, setRole] = useState<Role>('dono')
   const [salon, setSalon] = useState<Salon | null>()
   const [services, setServices] = useState<Record<string, Service>>({})
   const [bookings, setBookings] = useState<Booking[] | null>(null)
@@ -100,7 +102,9 @@ export default function ClientsPage() {
   useEffect(() => {
     if (!session) return
     (async () => {
-      const { data: s } = await supabase.from('salons').select('*').eq('owner_id', session.user.id).maybeSingle()
+      const mine = await loadMySalon(session.user.id)
+      const s = mine.salon
+      setRole(mine.role)
       setSalon(s)
       if (!s) return
       const [sv, bk, nt] = await Promise.all([
@@ -241,7 +245,7 @@ export default function ClientsPage() {
                       <button className="link" onClick={() => setForgetting(null)}>Cancelar</button>
                     </div>
                   </div>
-                ) : <button className="link danger-link" onClick={() => setForgetting(c.key)}>Apagar dados deste cliente (pedido RGPD)</button>}
+                ) : role === 'dono' && <button className="link danger-link" onClick={() => setForgetting(c.key)}>Apagar dados deste cliente (pedido RGPD)</button>}
               </div>}
             </article>
           )

@@ -5,6 +5,7 @@ import { euros, supabase, type Booking, type Professional, type Salon, type Serv
 import { addDays, dateInTz, formatTime, zonedToUtc } from '../lib/time'
 import { groupByDay, weekDays, weekStart } from '../lib/week'
 import { themeById, themeStyle } from '../lib/themes'
+import { loadMySalon } from '../lib/mySalon'
 import { bookingPrice } from '../lib/pricing'
 
 interface Off { id: string; professional_id: string | null; starts_at: string; ends_at: string; reason: string | null }
@@ -24,7 +25,9 @@ export default function WeekPage() {
   useEffect(() => {
     if (!session) return
     (async () => {
-      const { data: s } = await supabase.from('salons').select('*').eq('owner_id', session.user.id).maybeSingle()
+      const mine = await loadMySalon(session.user.id)
+      const s = mine.salon
+      if (mine.professionalId) setPro(mine.professionalId) // a team member starts on their own week
       setSalon(s)
       if (!s) return
       setMonday(weekStart(dateInTz(new Date(), s.timezone)))

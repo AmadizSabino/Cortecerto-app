@@ -6,6 +6,7 @@ import { parseEuros, WEEKDAYS } from '../lib/onboarding'
 import ThemePicker from '../ThemePicker'
 import { CHANGE_OPTIONS } from '../lib/clientChanges'
 import { exportBookings, exportClients } from '../lib/exportData'
+import { loadMySalon } from '../lib/mySalon'
 
 interface SvcRow { id?: string; name: string; duration: string; price: string; active: boolean }
 interface ProRow { id?: string; name: string; active: boolean }
@@ -24,13 +25,16 @@ export default function SettingsPage() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>()
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState('')
+  const [teamMember, setTeamMember] = useState(false)
 
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setSession(data.session)) }, [])
 
   async function load(userId: string) {
-    const { data: s } = await supabase.from('salons').select('*').eq('owner_id', userId).maybeSingle()
+    const mine = await loadMySalon(userId)
+    setTeamMember(mine.role !== 'dono')
+    const s = mine.salon
     setSalon(s)
-    if (!s) return
+    if (!s || mine.role !== 'dono') return
     setInfo({ name: s.name, whatsapp: s.whatsapp ?? '', mbway: s.mbway_number ?? '', deposit: centsToText(s.deposit_cents), theme: s.theme, change: s.client_change_hours == null ? '' : String(s.client_change_hours) })
     const [sv, pr, hr] = await Promise.all([
       supabase.from('services').select('id,name,duration_min,price_cents,active').eq('salon_id', s.id).order('name'),
@@ -49,6 +53,7 @@ export default function SettingsPage() {
   if (session === undefined || (session && salon === undefined)) return <main className="page">A carregar…</main>
   if (!session) return <Navigate to="/painel" replace />
   if (salon === null) return <Navigate to="/registar" replace />
+  if (teamMember) return <Navigate to="/painel" replace />
 
   const setSvc = (i: number, p: Partial<SvcRow>) => setServices(r => r.map((x, j) => j === i ? { ...x, ...p } : x))
   const setPro = (i: number, p: Partial<ProRow>) => setPros(r => r.map((x, j) => j === i ? { ...x, ...p } : x))
@@ -135,6 +140,7 @@ export default function SettingsPage() {
       <button type="button" onClick={() => setServices(r => [...r, { name: '', duration: '30', price: '', active: true }])}>+ Adicionar serviço</button>
 
       <h2>Equipa</h2>
+      <p className="muted"><Link to="/acessos">Dar acesso ao painel a alguém da equipa</Link></p>
       {pros.map((p, i) => (
         <div key={p.id ?? 'new' + i} className="row">
           <input aria-label="Nome do profissional" value={p.name} onChange={e => setPro(i, { name: e.target.value })} style={{ flex: 1 }} />

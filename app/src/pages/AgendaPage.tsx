@@ -5,6 +5,7 @@ import { euros, supabase, type Booking, type Professional, type Salon, type Serv
 import { addDays, dateInTz, formatTime, zonedToUtc } from '../lib/time'
 import { formatPhone, waLink } from '../lib/whatsapp'
 import { themeById, themeStyle } from '../lib/themes'
+import { loadMySalon, type Role } from '../lib/mySalon'
 import SetupChecklist from '../SetupChecklist'
 import TermsGate from '../TermsGate'
 import RemindersCard from '../RemindersCard'
@@ -43,6 +44,7 @@ function Login() {
 
 export default function AgendaPage() {
   const [session, setSession] = useState<Session | null>()
+  const [role, setRole] = useState<Role>('dono')
   const [salon, setSalon] = useState<Salon | null>()
   const [services, setServices] = useState<Record<string, Service>>({})
   const [pros, setPros] = useState<Record<string, Professional>>({})
@@ -64,10 +66,13 @@ export default function AgendaPage() {
   useEffect(() => {
     if (!session) return
     (async () => {
-      const { data: s } = await supabase.from('salons').select('*').eq('owner_id', session.user.id).maybeSingle()
+      const mine = await loadMySalon(session.user.id)
+      const s = mine.salon
+      setRole(mine.role)
       setSalon(s)
       if (!s) return
-      pendingDocs().then(setPending)
+      // The terms are the owner's to accept, for the salon.
+      if (mine.role === 'dono') pendingDocs().then(setPending)
       const [sv, pr] = await Promise.all([
         supabase.from('services').select('id,name,duration_min,price_cents').eq('salon_id', s.id),
         supabase.from('professionals').select('id,name').eq('salon_id', s.id),
@@ -115,7 +120,7 @@ export default function AgendaPage() {
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page wide">
       <header className="row">
         <h1>{salon.name}</h1>
-        <span className="row"><Link to="/semana">Semana</Link><Link to="/fila">Fila</Link><Link to="/lembretes">Lembretes</Link><Link to="/clientes">Clientes</Link><Link to="/estatisticas">Estatísticas</Link><Link to="/definicoes">Definições</Link><button className="link" onClick={() => supabase.auth.signOut()}>Sair</button></span>
+        <span className="row"><Link to="/semana">Semana</Link><Link to="/fila">Fila</Link><Link to="/lembretes">Lembretes</Link><Link to="/clientes">Clientes</Link>{role === 'dono' && <><Link to="/estatisticas">Estatísticas</Link><Link to="/definicoes">Definições</Link></>}<button className="link" onClick={() => supabase.auth.signOut()}>Sair</button></span>
       </header>
       {pending && pending.length > 0 && <TermsGate docs={pending} salonId={salon.id} onAccepted={() => setPending([])} />}
       {!(pending && pending.length > 0) && <>

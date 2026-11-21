@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
+import { loadMySalon, type Role } from '../lib/mySalon'
 import { supabase, type Professional, type Salon } from '../lib/supabase'
 import { WEEKDAYS } from '../lib/onboarding'
 import { emptyWeek, weekToRows, type DayForm, type SalonHours } from '../lib/schedule'
@@ -12,6 +13,7 @@ interface TimeOff { id: string; professional_id: string | null; starts_at: strin
 /** Each professional's weekly hours (with breaks), and time off for one person or the whole salon. */
 export default function SchedulePage() {
   const [session, setSession] = useState<Session | null>()
+  const [role, setRole] = useState<Role>('dono')
   const [salon, setSalon] = useState<Salon | null>()
   const [pros, setPros] = useState<Professional[]>([])
   const [hours, setHours] = useState<SalonHours | null>(null)
@@ -24,7 +26,7 @@ export default function SchedulePage() {
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setSession(data.session)) }, [])
   useEffect(() => {
     if (!session) return
-    supabase.from('salons').select('*').eq('owner_id', session.user.id).maybeSingle().then(({ data }) => setSalon(data))
+    loadMySalon(session.user.id).then(r => { setRole(r.role); setSalon(r.salon) })
   }, [session])
 
   const load = useCallback(async () => {
@@ -46,6 +48,8 @@ export default function SchedulePage() {
   if (!session) return <Navigate to="/painel" replace />
   if (salon === undefined) return <main className="page">A carregar…</main>
   if (salon === null) return <Navigate to="/registar" replace />
+  // Team members don't see the salon's settings, prices, hours or revenue.
+  if (role !== 'dono') return <Navigate to="/painel" replace />
 
   const tz = salon.timezone
   const proName = (id: string | null) => id ? pros.find(p => p.id === id)?.name ?? 'Profissional' : 'Todo o salão'
