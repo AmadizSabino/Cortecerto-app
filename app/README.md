@@ -5,13 +5,13 @@ The production app, built from the [prototype](../prototype/index.html). React +
 ## Run locally
 
 1. Create a free Supabase project (an EU region, e.g. Frankfurt or Stockholm).
-2. In the Supabase SQL editor, run the files in `../supabase/migrations/` in order (0001 to 0006).
+2. In the Supabase SQL editor, run the files in `../supabase/migrations/` in order (0001 to 0007).
 3. Copy `.env.example` to `.env.local` and fill in the project URL and anon key (Project settings > API).
 4. `npm install && npm run dev`, open http://localhost:5173/painel and sign in with your email.
 5. The first sign-in goes to `/registar`, a 4-step setup: salon type and name, services and prices, team and hours, WhatsApp and MB Way deposit. Then open your booking link to book.
    (`../supabase/seed.sql` creates a demo salon instead, if you prefer.)
 
-`npm test` runs the unit tests (slot calculation, WhatsApp links, client list, setup checklist, terms acceptance, reminders).
+`npm test` runs the unit tests (slot calculation, WhatsApp links, client list, setup checklist, terms acceptance, reminders, client changes).
 
 ## Deploy (Cloudflare Workers, free)
 
@@ -38,6 +38,7 @@ Until a domain is verified in Resend, emails go from the test sender `onboarding
 - `/clientes`: client list built from the bookings, grouped by phone number. Search by name or phone, filter by at risk (no visit for 45 days and nothing booked), no-shows or message consent, and open a client to see their history and total spent. Each client also has notes and a birthday (day and month only), kept in `client_notes` (migration 0003); coming birthdays get a filter, a 🎂 tag and a "Dar os parabéns" WhatsApp message for clients who opted in. "Convidar a voltar" sends a WhatsApp invite with the booking link, only to clients who opted in to messages.
 - `/poster`: printable A4 poster with the salon's booking QR code, in the salon's theme, plus the link to copy for the Instagram bio and Google profile. The QR code uses qrcode-generator 1.4.4 (MIT), vendored in `src/vendor/`.
 - `/lembretes`: WhatsApp reminders for tomorrow's bookings (any day can be picked). Each opens WhatsApp with the message ready, including any deposit still owed, and is marked as sent in `bookings.reminder_sent_at` (migration 0006; before it runs, the browser remembers). The agenda shows how many are left for tomorrow. Reminders are part of the service, so they don't depend on the marketing consent, which now covers news and promotions only.
+- `/m/:id`: the client's private page for a booking, linked from the confirmation page, the WhatsApp confirmation and the reminder. The client can cancel or move the booking up to the limit the salon sets in settings (2 hours before by default, or not at all). Moving puts the booking back to pending for the salon to confirm, and the agenda tags what the client did. Rules live in the database (migration 0007), so the limit can't be bypassed.
 - `/painel`: salon agenda by day with confirm, done, no-show, cancel, deposit received, and a WhatsApp message link.
 - Setup checklist ("Primeiros passos") on the agenda: services, team and hours, WhatsApp, MB Way when a deposit is asked, poster, Instagram bio, Google profile and the first booking. Steps the app can't check are ticked by the owner and kept in the browser. It hides when done or when closed.
 - Terms: `/termos`, `/tratamento-dados` and `/privacidade` are drafts for legal review, in `src/lib/legal.ts`. The owner accepts the terms and the data processing agreement at sign-up, and each acceptance is stored in `legal_acceptances` (migration 0004) with the document version, time and browser. Changing a document's `version` asks every owner to accept again before the panel opens. The booking page links to the privacy policy.

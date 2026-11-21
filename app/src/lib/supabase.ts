@@ -11,6 +11,7 @@ export interface Salon {
   id: string; slug: string; name: string; type: string
   whatsapp: string | null; mbway_number: string | null
   deposit_cents: number; theme: string; timezone: string
+  client_change_hours?: number | null // migration 0007
 }
 export interface Service { id: string; name: string; duration_min: number; price_cents: number }
 export interface Professional { id: string; name: string }
@@ -21,6 +22,8 @@ export interface Booking {
   deposit: 'nenhum' | 'pendente' | 'pago'
   service_id: string; professional_id: string
   reminder_sent_at?: string | null // migration 0006
+  client_action?: 'cancelou' | 'mudou' | null // migration 0007
+  client_action_at?: string | null
 }
 
 export const euros = (cents: number) =>
