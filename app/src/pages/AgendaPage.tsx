@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { euros, supabase, type Booking, type Professional, type Salon, type Service } from '../lib/supabase'
 import { addDays, dateInTz, formatTime, zonedToUtc } from '../lib/time'
@@ -44,7 +44,9 @@ export default function AgendaPage() {
   const [salon, setSalon] = useState<Salon | null>()
   const [services, setServices] = useState<Record<string, Service>>({})
   const [pros, setPros] = useState<Record<string, Professional>>({})
-  const [date, setDate] = useState(() => dateInTz(new Date(), 'Europe/Lisbon'))
+  const [params] = useSearchParams()
+  // ?dia=YYYY-MM-DD opens a given day (from the week view).
+  const [date, setDate] = useState(() => /^\d{4}-\d{2}-\d{2}$/.test(params.get('dia') ?? '') ? params.get('dia')! : dateInTz(new Date(), 'Europe/Lisbon'))
   const [bookings, setBookings] = useState<Booking[]>([])
   const [offs, setOffs] = useState<{ id: string; professional_id: string | null; starts_at: string; ends_at: string; reason: string | null }[]>([])
   const [pending, setPending] = useState<LegalDoc[] | null>(null)
@@ -111,7 +113,7 @@ export default function AgendaPage() {
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page wide">
       <header className="row">
         <h1>{salon.name}</h1>
-        <span className="row"><Link to="/fila">Fila</Link><Link to="/lembretes">Lembretes</Link><Link to="/clientes">Clientes</Link><Link to="/definicoes">Definições</Link><button className="link" onClick={() => supabase.auth.signOut()}>Sair</button></span>
+        <span className="row"><Link to="/semana">Semana</Link><Link to="/fila">Fila</Link><Link to="/lembretes">Lembretes</Link><Link to="/clientes">Clientes</Link><Link to="/definicoes">Definições</Link><button className="link" onClick={() => supabase.auth.signOut()}>Sair</button></span>
       </header>
       {pending && pending.length > 0 && <TermsGate docs={pending} salonId={salon.id} onAccepted={() => setPending([])} />}
       {!(pending && pending.length > 0) && <>
