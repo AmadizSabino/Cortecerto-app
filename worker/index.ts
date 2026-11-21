@@ -2,6 +2,7 @@
  * CorteCerto Worker: serves the app (static assets) and a small API.
  *
  * POST /api/notify-booking { id } — emails the salon owner about a new booking.
+ * POST /api/notify-change { id } — emails the owner when a client cancels or moves it.
  * POST /api/errors — error reports from the app (see errors.ts).
  * Secrets, set in Cloudflare > Workers > cortecerto-app > Settings > Variables:
  *   RESEND_API_KEY             Resend API key
@@ -12,7 +13,7 @@
  * Without the secrets the endpoint does nothing, and the app works as before.
  */
 
-import { bookingEmail } from './email'
+import { bookingEmail, changeEmail, type ChangeClaimed } from './email'
 import { reportError } from './errors'
 
 interface Env {
@@ -37,14 +38,23 @@ const TEST_SENDER = 'CorteCerto <onboarding@resend.dev>'
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
-    if (url.pathname === '/api/notify-booking') return notifyBooking(request, env, url.origin)
+    if (url.pathname === '/api/notify-booking') return notifyOwner<Claimed>(request, env, url.origin, 'claim_booking_notification', bookingEmail)
+    if (url.pathname === '/api/notify-change') return notifyOwner<ChangeClaimed>(request, env, url.origin, 'claim_client_change_notification', changeEmail)
     if (url.pathname === '/api/errors') return reportError(request, env)
     if (url.pathname.startsWith('/api/')) return new Response('Not found', { status: 404 })
     return env.ASSETS.fetch(request)
   },
 }
 
-async function notifyBooking(request: Request, env: Env, origin: string): Promise<Response> {
+type Email = { subject: string; html: string; text: string }
+
+/**
+ * Claims a booking event through a service-role RPC (once, within 10 minutes; nothing
+ * comes back if already sent, too old or unknown) and emails the salon owner.
+ */
+async function notifyOwner<T extends { owner_email: string }>(
+  request: Request, env: Env, origin: string, rpcName: string, build: (row: T, appUrl: string) => Email,
+): Promise<Response> {
   if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 })
   if (!env.RESEND_API_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) return new Response(null, { status: 204 })
 
@@ -52,22 +62,19 @@ async function notifyBooking(request: Request, env: Env, origin: string): Promis
   try { id = String(((await request.json()) as { id?: unknown }).id ?? '') } catch { /* bad body */ }
   if (!UUID.test(id)) return new Response('Bad request', { status: 400 })
 
-  // Claims the booking once; returns nothing if already sent, too old or unknown.
-  const rpc = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/claim_booking_notification`, {
+  const rpc = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/${rpcName}`, {
     method: 'POST',
     headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, 'Content-Type': 'application/json' },
     body: JSON.stringify({ p_booking: id }),
   })
   if (!rpc.ok) return new Response('Lookup failed', { status: 502 })
-  const rows = (await rpc.json()) as Claimed[]
-  const b = rows[0]
-  if (!b?.owner_email) return new Response(null, { status: 204 })
+  const row = ((await rpc.json()) as T[])[0]
+  if (!row?.owner_email) return new Response(null, { status: 204 })
 
-  const email = bookingEmail(b, env.APP_URL || origin)
   const sent = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: env.EMAIL_FROM || TEST_SENDER, to: [b.owner_email], ...email }),
+    body: JSON.stringify({ from: env.EMAIL_FROM || TEST_SENDER, to: [row.owner_email], ...build(row, env.APP_URL || origin) }),
   })
   return new Response(null, { status: sent.ok ? 202 : 502 })
 }
