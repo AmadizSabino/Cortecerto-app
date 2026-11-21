@@ -8,6 +8,7 @@ import { themeById, themeStyle } from '../lib/themes'
 import SetupChecklist from '../SetupChecklist'
 import TermsGate from '../TermsGate'
 import RemindersCard from '../RemindersCard'
+import NextVisit from '../NextVisit'
 import { pendingDocs } from '../lib/acceptance'
 import type { LegalDoc } from '../lib/legal'
 import { manageLink } from '../lib/clientChanges'
@@ -45,6 +46,7 @@ export default function AgendaPage() {
   const [date, setDate] = useState(() => dateInTz(new Date(), 'Europe/Lisbon'))
   const [bookings, setBookings] = useState<Booking[]>([])
   const [pending, setPending] = useState<LegalDoc[] | null>(null)
+  const [nextFor, setNextFor] = useState<string | null>(null) // booking id with the next-visit panel open
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -79,6 +81,8 @@ export default function AgendaPage() {
   async function update(b: Booking, patch: Partial<Booking>) {
     const { error } = await supabase.from('bookings').update(patch).eq('id', b.id)
     if (!error) setBookings(bs => bs.map(x => x.id === b.id ? { ...x, ...patch } : x))
+    // Right after a visit is the moment to book the next one.
+    if (!error && patch.status === 'concluida') setNextFor(b.id)
   }
 
   if (session === undefined) return <main className="page">A carregar…</main>
@@ -133,7 +137,13 @@ export default function AgendaPage() {
                 <button onClick={() => update(b, { status: 'cancelada' })}>Cancelar</button>
               </>}
               <a className="wa" href={waLink(b.client_phone, msg)} target="_blank" rel="noreferrer">WhatsApp</a>
+              {b.status === 'concluida' && nextFor !== b.id && <button onClick={() => setNextFor(b.id)}>Próxima visita</button>}
             </div>
+            {nextFor === b.id && svc && pros[b.professional_id] && (
+              <NextVisit salon={salon} booking={b} service={svc} pro={pros[b.professional_id]}
+                onClose={() => setNextFor(null)}
+                onBooked={nb => { if (dateInTz(new Date(nb.starts_at), tz) === date) setBookings(bs => [...bs, nb].sort((x, y) => x.starts_at.localeCompare(y.starts_at))) }} />
+            )}
           </article>
         )
       })}
