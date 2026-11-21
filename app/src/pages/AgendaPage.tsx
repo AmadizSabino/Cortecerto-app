@@ -9,6 +9,7 @@ import SetupChecklist from '../SetupChecklist'
 import TermsGate from '../TermsGate'
 import RemindersCard from '../RemindersCard'
 import NextVisit from '../NextVisit'
+import BookingEditor from '../BookingEditor'
 import { pendingDocs } from '../lib/acceptance'
 import type { LegalDoc } from '../lib/legal'
 import { manageLink } from '../lib/clientChanges'
@@ -47,6 +48,7 @@ export default function AgendaPage() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [pending, setPending] = useState<LegalDoc[] | null>(null)
   const [nextFor, setNextFor] = useState<string | null>(null) // booking id with the next-visit panel open
+  const [editing, setEditing] = useState<'nova' | string | null>(null) // 'nova' or the id of the booking being edited
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -85,6 +87,14 @@ export default function AgendaPage() {
     if (!error && patch.status === 'concluida') setNextFor(b.id)
   }
 
+  /** After creating or editing: show it if it's on the day being viewed, otherwise go to its day. */
+  function saved(nb: Booking) {
+    setEditing(null)
+    const day = dateInTz(new Date(nb.starts_at), salon?.timezone ?? 'Europe/Lisbon')
+    if (day !== date) { setDate(day); return }
+    setBookings(bs => [...bs.filter(x => x.id !== nb.id), nb].sort((x, y) => x.starts_at.localeCompare(y.starts_at)))
+  }
+
   if (session === undefined) return <main className="page">A carregar…</main>
   if (!session) return <Login />
   if (salon === undefined) return <main className="page">A carregar…</main>
@@ -111,11 +121,18 @@ export default function AgendaPage() {
         <button className="day" onClick={() => setDate(addDays(date, 1))}>›</button>
       </div>
 
+      {editing === 'nova'
+        ? <BookingEditor salon={salon} defaultDate={date} onClose={() => setEditing(null)} onSaved={saved} />
+        : <button className="btn" onClick={() => setEditing('nova')}>+ Nova marcação</button>}
+
       {bookings.length === 0 && <p className="muted">Sem marcações neste dia.</p>}
       {bookings.map(b => {
         const svc = services[b.service_id]
         const when = new Date(b.starts_at)
         const msg = `Olá ${b.client_name}! A sua marcação de ${svc?.name ?? ''} no ${salon.name} está confirmada para ${when.toLocaleDateString('pt-PT', { timeZone: tz, day: 'numeric', month: 'long' })} às ${formatTime(when, tz)}.${salon.client_change_hours != null ? ` Se precisar de cancelar ou mudar: ${manageLink(location.origin, b.id)}` : ''} Até já!`
+        if (editing === b.id) return (
+          <BookingEditor key={b.id} salon={salon} booking={b} defaultDate={date} onClose={() => setEditing(null)} onSaved={saved} />
+        )
         return (
           <article key={b.id} className={`card booking st-${b.status}`}>
             <div className="row">
@@ -138,6 +155,7 @@ export default function AgendaPage() {
               </>}
               <a className="wa" href={waLink(b.client_phone, msg)} target="_blank" rel="noreferrer">WhatsApp</a>
               {b.status === 'concluida' && nextFor !== b.id && <button onClick={() => setNextFor(b.id)}>Próxima visita</button>}
+              {(b.status === 'pendente' || b.status === 'confirmada') && <button className="link" onClick={() => setEditing(b.id)}>Editar</button>}
             </div>
             {nextFor === b.id && svc && pros[b.professional_id] && (
               <NextVisit salon={salon} booking={b} service={svc} pro={pros[b.professional_id]}
