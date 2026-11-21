@@ -4,6 +4,8 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import ThemePicker from '../ThemePicker'
 import { TYPE_DEFAULT } from '../lib/themes'
+import { REQUIRED } from '../lib/legal'
+import { recordAcceptance } from '../lib/acceptance'
 import { parseEuros, SALON_TYPES, slugify, SUGGESTED_SERVICES, WEEKDAYS, type SalonType } from '../lib/onboarding'
 
 interface ServiceRow { name: string; duration: string; price: string }
@@ -34,6 +36,7 @@ export default function OnboardingPage() {
   const [theme, setTheme] = useState(TYPE_DEFAULT.barbearia)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [accepted, setAccepted] = useState<Record<string, boolean>>({})
 
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setSession(data.session)) }, [])
 
@@ -58,6 +61,7 @@ export default function OnboardingPage() {
     }
     if (step === 4 && isNaN(parseEuros(deposit))) return 'Valor do sinal inválido.'
     if (step === 4 && parseEuros(deposit) > 0 && mbway.replace(/\D/g, '').length < 9) return 'Para pedir sinal, indique o número MB Way do salão.'
+    if (step === 4 && !REQUIRED.every(d => accepted[d.id])) return 'Para criar o salão, aceite os termos de utilização e o acordo de tratamento de dados.'
     return ''
   }
 
@@ -68,7 +72,7 @@ export default function OnboardingPage() {
     if (v) return
     if (step < 4) { setStep(step + 1); return }
     setSaving(true)
-    const { error } = await supabase.rpc('create_salon', {
+    const { data: salonId, error } = await supabase.rpc('create_salon', {
       p: {
         slug, name: name.trim(), type, whatsapp: whatsapp.replace(/\D/g, ''), mbway_number: mbway.replace(/\D/g, ''),
         deposit_cents: parseEuros(deposit), theme,
@@ -83,6 +87,8 @@ export default function OnboardingPage() {
       if (error.message.includes('slug_ocupado')) setStep(1)
       return
     }
+    // Before migration 0004 this fails quietly; the panel then asks again once it can record it.
+    await recordAcceptance(REQUIRED, salonId ?? null)
     nav('/painel', { replace: true })
   }
 
@@ -151,6 +157,13 @@ export default function OnboardingPage() {
           <label>Sinal por marcação (€, 0 para não pedir)<input inputMode="decimal" value={deposit} onChange={e => setDeposit(e.target.value)} /></label>
           <label>Número MB Way para receber o sinal<input inputMode="tel" value={mbway} onChange={e => setMbway(e.target.value)} placeholder="912 345 678" /></label>
           <p className="muted">O sinal vai diretamente para o MB Way do salão. A CorteCerto nunca recebe dinheiro dos clientes.</p>
+          <h2>Termos</h2>
+          {REQUIRED.map(d => (
+            <label key={d.id} className="check">
+              <input type="checkbox" checked={Boolean(accepted[d.id])} onChange={e => setAccepted(a => ({ ...a, [d.id]: e.target.checked }))} />
+              <span>Li e aceito {d.withArticle.split(' ')[0]} <a href={d.path} target="_blank" rel="noreferrer">{d.withArticle.split(' ').slice(1).join(' ')}</a>.</span>
+            </label>
+          ))}
         </>}
 
         {error && <p className="error">{error}</p>}

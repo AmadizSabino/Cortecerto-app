@@ -6,6 +6,9 @@ import { addDays, dateInTz, formatTime, zonedToUtc } from '../lib/time'
 import { formatPhone, waLink } from '../lib/whatsapp'
 import { themeById, themeStyle } from '../lib/themes'
 import SetupChecklist from '../SetupChecklist'
+import TermsGate from '../TermsGate'
+import { pendingDocs } from '../lib/acceptance'
+import type { LegalDoc } from '../lib/legal'
 
 const STATUS_LABEL: Record<Booking['status'], string> = {
   pendente: 'Pendente', confirmada: 'Confirmada', concluida: 'Concluída', faltou: 'Faltou', cancelada: 'Cancelada',
@@ -39,6 +42,7 @@ export default function AgendaPage() {
   const [pros, setPros] = useState<Record<string, Professional>>({})
   const [date, setDate] = useState(() => dateInTz(new Date(), 'Europe/Lisbon'))
   const [bookings, setBookings] = useState<Booking[]>([])
+  const [pending, setPending] = useState<LegalDoc[] | null>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -52,6 +56,7 @@ export default function AgendaPage() {
       const { data: s } = await supabase.from('salons').select('*').eq('owner_id', session.user.id).maybeSingle()
       setSalon(s)
       if (!s) return
+      pendingDocs().then(setPending)
       const [sv, pr] = await Promise.all([
         supabase.from('services').select('id,name,duration_min,price_cents').eq('salon_id', s.id),
         supabase.from('professionals').select('id,name').eq('salon_id', s.id),
@@ -88,6 +93,8 @@ export default function AgendaPage() {
         <h1>{salon.name}</h1>
         <span className="row"><Link to="/clientes">Clientes</Link><Link to="/definicoes">Definições</Link><button className="link" onClick={() => supabase.auth.signOut()}>Sair</button></span>
       </header>
+      {pending && pending.length > 0 && <TermsGate docs={pending} salonId={salon.id} onAccepted={() => setPending([])} />}
+      {!(pending && pending.length > 0) && <>
       <p className="muted">Link de marcação: <a href={bookingLink}>{bookingLink}</a> · <Link to="/poster">Poster com QR</Link></p>
       <SetupChecklist salon={salon} services={Object.keys(services).length} professionals={Object.keys(pros).length} />
 
@@ -125,6 +132,7 @@ export default function AgendaPage() {
           </article>
         )
       })}
+      </>}
     </main></div>
   )
 }
