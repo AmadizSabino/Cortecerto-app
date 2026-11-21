@@ -129,3 +129,6 @@ button:disabled { opacity: .5; cursor: default; }
 .sched-times input { width: 7.2em; padding: 6px; }
 .off-row { grid-template-columns: 1fr 1fr auto !important; }
 .off-card { background: repeating-linear-gradient(-45deg, var(--card), var(--card) 8px, var(--line) 8px, var(--line) 10px); }
+.card.danger { border-color: #c0392b; }
+.btn-danger { background: #c0392b; color: #fff; border-color: #c0392b; }
+.danger-link { color: #c0392b; margin-top: 12px; justify-self: start; }
