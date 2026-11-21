@@ -27,3 +27,26 @@ jobs:
         run: npm test
       - name: Type check the Worker
         run: npx tsc --noEmit --strict --target es2022 --lib es2022,dom --module esnext --moduleResolution bundler ../worker/index.ts
+
+  database:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply every migration in order
+        run: |
+          psql -v ON_ERROR_STOP=1 -q -c 'create database t'
+          psql -v ON_ERROR_STOP=1 -q -d t -f supabase/tests/supabase_stub.sql
+          for f in supabase/migrations/*.sql; do echo "$f"; psql -v ON_ERROR_STOP=1 -q -d t -f "$f"; done
+      - name: Check the database rules
+        run: psql -v ON_ERROR_STOP=1 -q -d t -f supabase/tests/scenarios.sql

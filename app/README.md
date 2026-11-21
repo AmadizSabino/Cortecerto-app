@@ -27,6 +27,10 @@ Uncaught errors, rejected promises and page crashes in the browser are sent to `
 
 The app installs to the home screen (`public/manifest.webmanifest`, icons in `public/`). `public/sw.js` keeps the app shell for offline opening: pages network first with the cached app as fallback, hashed assets cache first, and Supabase and `/api/*` never cached. Bump `VERSION` in `sw.js` to drop old caches. The panel shows an install card once (Android prompt, or Safari steps on iPhone).
 
+## Database checks
+
+CI applies every migration in `../supabase/migrations/` to a plain Postgres 16 (with `../supabase/tests/supabase_stub.sql` standing in for Supabase's roles and `auth`) and runs `../supabase/tests/scenarios.sql`: bookings, prices, time off, client changes, booking emails, the queue, team access, terms and privacy rules. Each migration is meant to run once, in order.
+
 ## Booking emails
 
 `../worker/index.ts` serves the app and answers `POST /api/notify-booking`. After a client books, the booking page calls it, and the Worker emails the salon owner (the email they sign in with) through Resend. Migration 0005 adds `claim_booking_notification`, which only the service role can call and which hands out each booking once, within 10 minutes of it being made.
