@@ -4,6 +4,7 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase, type Salon } from '../lib/supabase'
 import { parseEuros, WEEKDAYS } from '../lib/onboarding'
 import ThemePicker from '../ThemePicker'
+import { themeById, themeStyle } from '../lib/themes'
 import { CHANGE_OPTIONS } from '../lib/clientChanges'
 import { exportBookings, exportClients } from '../lib/exportData'
 import { loadMySalon } from '../lib/mySalon'
@@ -26,6 +27,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState('')
   const [teamMember, setTeamMember] = useState(false)
+  const [themeState, setThemeState] = useState<'' | 'saving' | 'saved' | 'error'>('')
 
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setSession(data.session)) }, [])
 
@@ -72,6 +74,14 @@ export default function SettingsPage() {
     return ''
   }
 
+  /** The style is saved as soon as it's picked, on its own, so nothing else on the page can block it. */
+  async function chooseTheme(theme: string) {
+    setInfo(i => ({ ...i, theme }))
+    setThemeState('saving')
+    const { data, error } = await supabase.from('salons').update({ theme }).eq('id', salon!.id).select('theme')
+    setThemeState(!error && data?.length ? 'saved' : 'error')
+  }
+
   async function save() {
     const v = validate()
     if (v) { setMsg({ ok: false, text: v }); return }
@@ -107,7 +117,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="page">
+    <div className="themed" style={themeStyle(themeById(info.theme))}><main className="page">
       <header className="row"><h1>Definições</h1><Link to="/painel">‹ Agenda</Link></header>
 
       <h2>Salão</h2>
@@ -124,7 +134,11 @@ export default function SettingsPage() {
       )}
 
       <h2>Estilo da página</h2>
-      <ThemePicker value={info.theme} type={salon!.type} showAll={allThemes} onChange={theme => setInfo({ ...info, theme })} />
+      <p className="muted">Guardado logo ao escolher. É o estilo do painel e da sua página de marcação.</p>
+      <ThemePicker value={info.theme} type={salon!.type} showAll={allThemes} onChange={chooseTheme} />
+      {themeState === 'saving' && <p className="muted small">A guardar o estilo…</p>}
+      {themeState === 'saved' && <p className="ok small">Estilo guardado: {themeById(info.theme).name}. <a href={`/s/${salon!.slug}`} target="_blank" rel="noreferrer">Ver a página de marcação</a></p>}
+      {themeState === 'error' && <p className="error small">Não foi possível guardar o estilo. Tente de novo.</p>}
       <button type="button" className="link" onClick={() => setAllThemes(!allThemes)}>{allThemes ? 'Ver só os do meu tipo de salão' : 'Ver todos os estilos'}</button>
 
       <h2>Serviços e preços</h2>
@@ -174,6 +188,6 @@ export default function SettingsPage() {
         </button>
       </div>
       <p className="muted small">Para apagar os dados de um cliente que o peça, abra-o em <Link to="/clientes">Clientes</Link>. Para apagar a conta do salão, escreva para o contacto indicado nos <Link to="/termos">termos</Link>.</p>
-    </main>
+    </main></div>
   )
 }

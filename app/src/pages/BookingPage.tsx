@@ -120,6 +120,9 @@ export default function BookingPage() {
 
   return (
     <div className="themed" style={themeStyle(theme)}><main className="page">
+      {myTheme && !picking && (
+        <p className="banner small">Está a ver esta página com um estilo escolhido por si neste telemóvel. <button className="link" onClick={() => chooseTheme(null)}>Usar o estilo do salão</button></p>
+      )}
       <h1>{salon.name}</h1>
 
       <h2>1. Serviço</h2>
