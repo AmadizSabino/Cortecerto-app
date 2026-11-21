@@ -1,10 +1,12 @@
 /**
- * The plan shown on the landing page. PROVISIONAL: the price is still to be
- * decided (see the build plan). Change it here only; every page reads it.
+ * The plan shown on the landing page and the salon's subscription page.
+ * Price agreed with Francisco on 2026-11-21: 19,90 € a month plus IVA.
+ * Change it here only; every page reads it.
  */
 export const PLAN = {
   name: 'CorteCerto',
-  priceCents: 2900,
+  priceCents: 1990, // before IVA
+  vatRate: 0.23,
   trialDays: 30,
-  provisional: true,
+  provisional: false,
 }
