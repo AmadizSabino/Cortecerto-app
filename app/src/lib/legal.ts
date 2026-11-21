@@ -122,7 +122,8 @@ export const PRIVACY: LegalDoc = {
     ] },
     { heading: '2. Que dados e para quê', paragraphs: [
       'Para marcar: nome, telemóvel, serviço, profissional, dia e hora. Servem para o salão gerir a marcação e contactá-lo sobre ela. Base legal: a execução do serviço que pediu.',
-      'Mensagens de lembrete e novidades do salão por WhatsApp: só se aceitar, na caixa de consentimento, que nunca vem marcada. Pode retirar o consentimento a qualquer momento, pedindo ao salão.',
+      'Lembretes da sua marcação: o salão pode enviar-lhe por WhatsApp um lembrete da visita que marcou, como parte do serviço. Base legal: a execução do serviço que pediu.',
+      'Novidades e promoções do salão por WhatsApp: só se aceitar, na caixa de consentimento, que nunca vem marcada. Pode retirar o consentimento a qualquer momento, pedindo ao salão.',
       'O salão pode guardar notas sobre os serviços que fez e o dia e mês do seu aniversário, para o atender melhor.',
     ] },
     { heading: '3. Com quem partilhamos', paragraphs: [
