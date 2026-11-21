@@ -10,6 +10,7 @@ import TermsGate from '../TermsGate'
 import RemindersCard from '../RemindersCard'
 import { pendingDocs } from '../lib/acceptance'
 import type { LegalDoc } from '../lib/legal'
+import { manageLink } from '../lib/clientChanges'
 
 const STATUS_LABEL: Record<Booking['status'], string> = {
   pendente: 'Pendente', confirmada: 'Confirmada', concluida: 'Concluída', faltou: 'Faltou', cancelada: 'Cancelada',
@@ -110,13 +111,15 @@ export default function AgendaPage() {
       {bookings.map(b => {
         const svc = services[b.service_id]
         const when = new Date(b.starts_at)
-        const msg = `Olá ${b.client_name}! A sua marcação de ${svc?.name ?? ''} no ${salon.name} está confirmada para ${when.toLocaleDateString('pt-PT', { timeZone: tz, day: 'numeric', month: 'long' })} às ${formatTime(when, tz)}. Até já!`
+        const msg = `Olá ${b.client_name}! A sua marcação de ${svc?.name ?? ''} no ${salon.name} está confirmada para ${when.toLocaleDateString('pt-PT', { timeZone: tz, day: 'numeric', month: 'long' })} às ${formatTime(when, tz)}.${salon.client_change_hours != null ? ` Se precisar de cancelar ou mudar: ${manageLink(location.origin, b.id)}` : ''} Até já!`
         return (
           <article key={b.id} className={`card booking st-${b.status}`}>
             <div className="row">
               <strong>{formatTime(when, tz)}</strong>
               <span>{svc?.name} · {pros[b.professional_id]?.name}</span>
               <span className="tag">{STATUS_LABEL[b.status]}</span>
+              {b.client_action === 'mudou' && <span className="tag warn">Cliente mudou a hora</span>}
+              {b.client_action === 'cancelou' && <span className="tag warn">Cancelada pelo cliente</span>}
             </div>
             <div>{b.client_name} · <a href={`tel:+${formatPhone(b.client_phone).replace(/\D/g, "")}`}>{formatPhone(b.client_phone)}</a>{svc && <> · {euros(svc.price_cents)}</>}</div>
             {b.deposit !== 'nenhum' && (

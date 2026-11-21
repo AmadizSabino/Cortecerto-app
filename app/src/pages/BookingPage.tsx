@@ -5,6 +5,7 @@ import { freeSlots, type OpeningHours } from '../lib/slots'
 import ThemePicker from '../ThemePicker'
 import { clientTheme, setClientTheme, themeById, themeStyle } from '../lib/themes'
 import { addDays, dateInTz, formatTime, zonedToUtc } from '../lib/time'
+import { manageLink } from '../lib/clientChanges'
 
 const ERRORS: Record<string, string> = {
   horario_ocupado: 'Esse horário acabou de ser ocupado. Escolha outro, por favor.',
@@ -27,7 +28,7 @@ export default function BookingPage() {
   const [phone, setPhone] = useState('')
   const [consent, setConsent] = useState(false)
   const [error, setError] = useState('')
-  const [done, setDone] = useState(false)
+  const [done, setDone] = useState<string | null>(null) // booking id once booked
   const [myTheme, setMyTheme] = useState<string | null>(() => clientTheme(slug!))
   const [picking, setPicking] = useState(false)
 
@@ -83,7 +84,7 @@ export default function BookingPage() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: bookingId }), keepalive: true,
     }).catch(() => {})
-    setDone(true)
+    setDone(String(bookingId))
   }
 
   const theme = themeById(myTheme ?? salon.theme)
@@ -99,6 +100,11 @@ export default function BookingPage() {
           <p>Envie para <b>{salon.mbway_number}</b>. O salão confirma a marcação quando receber.</p>
         </div>
       )}
+      <div className="card">
+        <strong>Precisa de cancelar ou mudar?</strong>
+        <p className="muted">Guarde este link. O salão também o envia no lembrete.</p>
+        <p className="link-box"><a href={manageLink(location.origin, done)}>{manageLink(location.origin, done)}</a></p>
+      </div>
     </main></div>
   )
 

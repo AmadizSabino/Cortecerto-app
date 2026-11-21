@@ -17,6 +17,8 @@ export interface ReminderInput {
   depositDue?: { cents: number; mbway: string } | null
   /** "amanhã" when the booking is tomorrow; otherwise the weekday is used. */
   isTomorrow: boolean
+  /** Link for the client to cancel or move, when the salon allows it. */
+  manageUrl?: string | null
 }
 
 /** The WhatsApp reminder text, in European Portuguese. */
@@ -26,7 +28,9 @@ export function reminderMessage(i: ReminderInput): string {
   const when = i.isTomorrow ? `amanhã, ${day},` : `${day},`
   let text = `Olá ${first}! Lembramos a sua marcação de ${i.serviceName} no ${i.salonName} ${when} às ${formatTime(i.startsAt, i.tz)}.`
   if (i.depositDue) text += ` Falta o sinal de ${euros(i.depositDue.cents)} por MB Way para o ${i.depositDue.mbway}.`
-  text += ' Se não puder vir, responda a esta mensagem para libertarmos a vaga. Até breve!'
+  text += i.manageUrl
+    ? ` Se não puder vir, cancele ou mude aqui: ${i.manageUrl} Até breve!`
+    : ' Se não puder vir, responda a esta mensagem para libertarmos a vaga. Até breve!'
   return text
 }
 

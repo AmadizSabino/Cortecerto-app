@@ -24,3 +24,7 @@ it('only reminds bookings that are still on', () => {
   expect(wantsReminder({ status: 'cancelada' })).toBe(false)
   expect(wantsReminder({ status: 'faltou' })).toBe(false)
 })
+
+it('points to the cancel or move link when the salon allows changes', () => {
+  expect(reminderMessage({ ...base, manageUrl: 'https://x.pt/m/abc' }).endsWith('Se não puder vir, cancele ou mude aqui: https://x.pt/m/abc Até breve!')).toBe(true)
+})

@@ -1,0 +1,174 @@
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import { euros, supabase } from '../lib/supabase'
+import { freeSlots, type OpeningHours } from '../lib/slots'
+import { changeState, limitText } from '../lib/clientChanges'
+import { clientTheme, themeById, themeStyle } from '../lib/themes'
+import { addDays, dateInTz, formatTime, zonedToUtc } from '../lib/time'
+import { waLink } from '../lib/whatsapp'
+
+/** Row returned by booking_for_client (migration 0007). */
+interface ClientBooking {
+  id: string; status: string; deposit: string; starts_at: string; ends_at: string; client_name: string
+  salon_id: string; salon_slug: string; salon_name: string; salon_theme: string; salon_timezone: string
+  salon_whatsapp: string | null; mbway_number: string | null; deposit_cents: number
+  client_change_hours: number | null; service_id: string; service_name: string; duration_min: number
+  price_cents: number; professional_id: string; professional_name: string
+}
+
+const ERRORS: Record<string, string> = {
+  horario_ocupado: 'Esse horário acabou de ser ocupado. Escolha outro, por favor.',
+  horario_passado: 'Esse horário já passou.',
+  fora_do_prazo: 'Já passou o prazo para alterar esta marcação. Fale com o salão.',
+  marcacao_fechada: 'Esta marcação já não pode ser alterada.',
+  alteracao_nao_permitida: 'Este salão não permite alterações online. Fale com o salão.',
+}
+const errorText = (m: string) => Object.entries(ERRORS).find(([k]) => m.includes(k))?.[1] ?? 'Não foi possível guardar. Tente de novo.'
+
+/** The client's private page for one booking: /m/<booking id>. */
+export default function ManagePage() {
+  const { id } = useParams()
+  const [b, setB] = useState<ClientBooking | null | 'indisponivel'>()
+  const [mode, setMode] = useState<'ver' | 'cancelar' | 'mudar'>('ver')
+  const [hours, setHours] = useState<OpeningHours[]>([])
+  const [date, setDate] = useState('')
+  const [busy, setBusy] = useState<{ start: Date; end: Date }[]>([])
+  const [slot, setSlot] = useState<Date>()
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [notice, setNotice] = useState('')
+
+  async function load() {
+    const { data, error } = await supabase.rpc('booking_for_client', { p_booking: id })
+    // Before migration 0007 the function doesn't exist.
+    if (error) { setB(error.message.includes('booking_for_client') ? 'indisponivel' : null); return }
+    const row = (data ?? [])[0] as ClientBooking | undefined
+    setB(row ?? null)
+    if (row) setDate(dateInTz(new Date(row.starts_at), row.salon_timezone))
+  }
+  useEffect(() => { load() }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const booking = b && b !== 'indisponivel' ? b : null
+
+  useEffect(() => {
+    if (mode !== 'mudar' || !booking) return
+    supabase.from('opening_hours').select('weekday,opens,closes').eq('salon_id', booking.salon_id).then(({ data }) => setHours(data ?? []))
+  }, [mode, booking?.salon_id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (mode !== 'mudar' || !booking || !date) return
+    const from = zonedToUtc(date, '00:00', booking.salon_timezone)
+    const to = zonedToUtc(addDays(date, 1), '00:00', booking.salon_timezone)
+    supabase.rpc('busy_slots', { p_salon: booking.salon_id, p_from: from.toISOString(), p_to: to.toISOString() })
+      .then(({ data }) => setBusy((data ?? [])
+        .filter((x: { professional_id: string; starts_at: string }) => x.professional_id === booking.professional_id
+          && new Date(x.starts_at).getTime() !== new Date(booking.starts_at).getTime()) // not the client's own booking
+        .map((x: { starts_at: string; ends_at: string }) => ({ start: new Date(x.starts_at), end: new Date(x.ends_at) }))))
+  }, [mode, booking, date])
+
+  const slots = useMemo(() => booking && mode === 'mudar'
+    ? freeSlots({ date, tz: booking.salon_timezone, hours, durationMin: booking.duration_min, busy, now: new Date() })
+    : [], [booking, mode, date, hours, busy])
+
+  if (b === undefined) return <main className="page">A carregar…</main>
+  if (b === 'indisponivel') return <main className="page"><h1>Marcação</h1><p>Esta página ainda não está disponível. Para alterar a marcação, fale com o salão.</p></main>
+  if (b === null) return <main className="page"><h1>Marcação não encontrada</h1><p className="muted">Confirme o link que recebeu ou fale com o salão.</p></main>
+
+  const tz = b.salon_timezone
+  const bookingId = b.id
+  const theme = themeById(clientTheme(b.salon_slug) ?? b.salon_theme)
+  const start = new Date(b.starts_at)
+  const dayText = (d: Date) => d.toLocaleDateString('pt-PT', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long' })
+  const state = changeState(b)
+  const days = Array.from({ length: 14 }, (_, i) => addDays(dateInTz(new Date(), tz), i))
+  const statusText: Record<string, string> = {
+    pendente: 'A aguardar confirmação do salão', confirmada: 'Confirmada', concluida: 'Concluída', faltou: 'Não compareceu', cancelada: 'Cancelada',
+  }
+
+  async function cancel() {
+    setSaving(true); setError('')
+    const { error } = await supabase.rpc('cancel_booking_by_client', { p_booking: bookingId })
+    setSaving(false)
+    if (error) { setError(errorText(error.message)); return }
+    setMode('ver'); setNotice('A sua marcação foi cancelada. O salão já pode ver a vaga livre.')
+    load()
+  }
+
+  async function move() {
+    if (!slot) return
+    setSaving(true); setError('')
+    const { error } = await supabase.rpc('move_booking_by_client', { p_booking: bookingId, p_starts_at: slot.toISOString() })
+    setSaving(false)
+    if (error) { setError(errorText(error.message)); if (error.message.includes('horario_ocupado')) setSlot(undefined); return }
+    setMode('ver'); setSlot(undefined); setNotice('Marcação alterada. O salão vai confirmar o novo horário.')
+    load()
+  }
+
+  return (
+    <div className="themed" style={themeStyle(theme)}><main className="page">
+      <p className="muted">{b.salon_name}</p>
+      <h1>A sua marcação</h1>
+      {notice && <p className="ok">{notice}</p>}
+
+      <div className="card">
+        <strong>{b.service_name} com {b.professional_name}</strong>
+        <p>{dayText(start)} às {formatTime(start, tz)} · {euros(b.price_cents)}</p>
+        <p className="muted">{statusText[b.status] ?? b.status}</p>
+        {b.deposit === 'pendente' && b.mbway_number && (
+          <p>Falta o sinal de {euros(b.deposit_cents)} por MB Way para <b>{b.mbway_number}</b>.</p>
+        )}
+      </div>
+
+      {mode === 'ver' && <>
+        {state === 'pode' && <>
+          <p className="muted">Pode cancelar ou mudar {limitText(b.client_change_hours!)}.</p>
+          <div className="actions">
+            <button onClick={() => { setMode('mudar'); setError(''); setNotice('') }}>Mudar dia ou hora</button>
+            <button onClick={() => { setMode('cancelar'); setError(''); setNotice('') }}>Cancelar marcação</button>
+          </div>
+        </>}
+        {(state === 'fora_do_prazo' || state === 'nao_permitido') && (
+          <p className="muted">
+            {state === 'fora_do_prazo' ? 'Já passou o prazo para alterar online.' : 'Este salão não permite alterações online.'}
+            {b.salon_whatsapp && <> <a href={waLink(b.salon_whatsapp, `Olá! Sou ${b.client_name} e tenho marcação de ${b.service_name} ${dayText(start)} às ${formatTime(start, tz)}.`)} target="_blank" rel="noreferrer">Falar com o salão por WhatsApp</a>.</>}
+          </p>
+        )}
+        {b.status === 'cancelada' && <p><Link to={`/s/${b.salon_slug}`}>Fazer nova marcação</Link></p>}
+      </>}
+
+      {mode === 'cancelar' && (
+        <div className="card">
+          <p>Quer mesmo cancelar a marcação de {dayText(start)} às {formatTime(start, tz)}?</p>
+          {b.deposit === 'pago' && <p className="muted">Já pagou o sinal. Fale com o salão sobre a devolução.</p>}
+          {error && <p className="error">{error}</p>}
+          <button className="btn" onClick={cancel} disabled={saving}>{saving ? 'A cancelar…' : 'Sim, cancelar'}</button>
+          <button className="link back" onClick={() => setMode('ver')}>Não, manter</button>
+        </div>
+      )}
+
+      {mode === 'mudar' && <>
+        <h2>Novo dia e hora</h2>
+        <div className="days">
+          {days.map(d => (
+            <button key={d} className={d === date ? 'day on' : 'day'} onClick={() => { setDate(d); setSlot(undefined) }}>
+              {new Date(d + 'T12:00:00Z').toLocaleDateString('pt-PT', { weekday: 'short', day: 'numeric' })}
+            </button>
+          ))}
+        </div>
+        <div className="slots">
+          {slots.length === 0 && <p className="muted">Sem horários livres neste dia.</p>}
+          {slots.map(t => (
+            <button key={t.getTime()} className={t.getTime() === slot?.getTime() ? 'slot on' : 'slot'} onClick={() => setSlot(t)}>{formatTime(t, tz)}</button>
+          ))}
+        </div>
+        {error && <p className="error">{error}</p>}
+        <button className="btn" onClick={move} disabled={!slot || saving}>
+          {saving ? 'A guardar…' : slot ? `Mudar para ${dayText(slot)} às ${formatTime(slot, tz)}` : 'Escolha um horário'}
+        </button>
+        <button className="link back" onClick={() => { setMode('ver'); setSlot(undefined) }}>Voltar</button>
+      </>}
+
+      <footer className="foot"><p className="muted">Feito com CorteCerto · <a href="/privacidade">Privacidade</a></p></footer>
+    </main></div>
+  )
+}
