@@ -114,7 +114,7 @@ export default function AgendaPage() {
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page wide">
       <header className="row">
         <h1>{salon.name}</h1>
-        <span className="row"><Link to="/semana">Semana</Link><Link to="/fila">Fila</Link><Link to="/lembretes">Lembretes</Link><Link to="/clientes">Clientes</Link><Link to="/definicoes">Definições</Link><button className="link" onClick={() => supabase.auth.signOut()}>Sair</button></span>
+        <span className="row"><Link to="/semana">Semana</Link><Link to="/fila">Fila</Link><Link to="/lembretes">Lembretes</Link><Link to="/clientes">Clientes</Link><Link to="/estatisticas">Estatísticas</Link><Link to="/definicoes">Definições</Link><button className="link" onClick={() => supabase.auth.signOut()}>Sair</button></span>
       </header>
       {pending && pending.length > 0 && <TermsGate docs={pending} salonId={salon.id} onAccepted={() => setPending([])} />}
       {!(pending && pending.length > 0) && <>
