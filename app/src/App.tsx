@@ -12,6 +12,7 @@ import QueuePage from './pages/QueuePage'
 import QueueJoinPage from './pages/QueueJoinPage'
 import SchedulePage from './pages/SchedulePage'
 import WeekPage from './pages/WeekPage'
+import PricesPage from './pages/PricesPage'
 import LegalPage from './pages/LegalPage'
 import { LEGAL_DOCS } from './lib/legal'
 
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="/fila" element={<QueuePage />} />
         <Route path="/horarios" element={<SchedulePage />} />
         <Route path="/semana" element={<WeekPage />} />
+        <Route path="/precos" element={<PricesPage />} />
         <Route path="/f/:slug" element={<QueueJoinPage />} />
         {LEGAL_DOCS.map(d => <Route key={d.id} path={d.path} element={<LegalPage doc={d} />} />)}
         <Route path="*" element={<main className="page"><h1>Página não encontrada</h1></main>} />

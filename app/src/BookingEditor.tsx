@@ -5,6 +5,8 @@ import { hoursFor, NO_HOURS, type SalonHours } from './lib/schedule'
 import { loadHours } from './lib/scheduleData'
 import { addDays, dateInTz, formatTime, zonedToUtc } from './lib/time'
 import { draftInterval, saveErrorText, validateDraft, type BookingDraft } from './lib/bookingForm'
+import { effective, type Overrides } from './lib/pricing'
+import { loadOverrides } from './lib/pricingData'
 
 /** New booking (phone or counter) or edit an existing one, from the salon's agenda. */
 export default function BookingEditor({ salon, booking, defaultDate, onSaved, onClose }: {
@@ -22,6 +24,7 @@ export default function BookingEditor({ salon, booking, defaultDate, onSaved, on
     date: dateInTz(new Date(booking.starts_at), tz), time: formatTime(new Date(booking.starts_at), tz),
   } : { clientName: '', clientPhone: '', serviceId: '', professionalId: '', date: defaultDate, time: '' })
   const [error, setError] = useState('')
+  const [pricing, setPricing] = useState<{ overrides: Overrides; ready: boolean }>({ overrides: {}, ready: false })
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -29,7 +32,9 @@ export default function BookingEditor({ salon, booking, defaultDate, onSaved, on
       supabase.from('services').select('id,name,duration_min,price_cents,active').eq('salon_id', salon.id).order('name'),
       supabase.from('professionals').select('id,name,active').eq('salon_id', salon.id).order('name'),
       loadHours(salon.id),
-    ]).then(([sv, pr, hr]) => {
+      loadOverrides(salon.id),
+    ]).then(([sv, pr, hr, ov]) => {
+      setPricing(ov)
       // Active ones, plus the booking's own service and professional even if switched off since.
       const svc = (sv.data ?? []).filter((x: Service & { active: boolean }) => x.active || x.id === booking?.service_id)
       const prs = (pr.data ?? []).filter((x: Professional & { active: boolean }) => x.active || x.id === booking?.professional_id)
@@ -54,9 +59,11 @@ export default function BookingEditor({ salon, booking, defaultDate, onSaved, on
   }, [d.professionalId, d.date, salon.id, tz, booking])
 
   const service = services.find(s => s.id === d.serviceId)
+  // The salon can book anyone for anything; a service the professional doesn't do falls back to its own values.
+  const eff = service ? effective(service, d.professionalId, pricing.overrides) ?? { price_cents: service.price_cents, duration_min: service.duration_min } : null
   const slots = useMemo(() => service && d.professionalId
-    ? freeSlots({ date: d.date, tz, hours: hoursFor(hours, d.professionalId), durationMin: service.duration_min, busy, now: new Date() })
-    : [], [service, d.professionalId, d.date, tz, hours, busy])
+    ? freeSlots({ date: d.date, tz, hours: hoursFor(hours, d.professionalId), durationMin: eff!.duration_min, busy, now: new Date() })
+    : [], [service, eff?.duration_min, d.professionalId, d.date, tz, hours, busy]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (patch: Partial<BookingDraft>) => { setD(cur => ({ ...cur, ...patch })); setError('') }
 
@@ -65,10 +72,15 @@ export default function BookingEditor({ salon, booking, defaultDate, onSaved, on
     const v = validateDraft(d)
     if (v) { setError(v); return }
     setSaving(true)
-    const interval = draftInterval(d, tz, service!.duration_min)
+    // Editing keeps the booking's length and price unless the service or professional changed.
+    const same = booking && booking.service_id === d.serviceId && booking.professional_id === d.professionalId
+    const minutes = same ? Math.round((new Date(booking.ends_at).getTime() - new Date(booking.starts_at).getTime()) / 60000) : eff!.duration_min
+    const interval = draftInterval(d, tz, minutes)
     const fields = {
       client_name: d.clientName.trim(), client_phone: d.clientPhone.trim(),
       service_id: d.serviceId, professional_id: d.professionalId, ...interval,
+      // Only once migration 0011 has added the column.
+      ...(pricing.ready && !same ? { price_cents: eff!.price_cents } : {}),
     }
     const res = booking
       ? await supabase.from('bookings').update(fields).eq('id', booking.id).select('*').single()

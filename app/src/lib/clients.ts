@@ -1,5 +1,6 @@
 import type { Booking, Service } from './supabase'
 import { waNumber } from './whatsapp'
+import { bookingPrice } from './pricing'
 
 /** A client as seen from the salon's bookings, grouped by phone number. */
 export interface Client {
@@ -59,7 +60,7 @@ export function buildClients(bookings: Booking[], services: Record<string, Pick<
       bookings: list,
       visits: done.length,
       noShows: list.filter(b => b.status === 'faltou').length,
-      spentCents: done.reduce((sum, b) => sum + (services[b.service_id]?.price_cents ?? 0), 0),
+      spentCents: done.reduce((sum, b) => sum + bookingPrice(b, services), 0),
       lastVisit: done[0]?.starts_at ?? null,
       nextBooking: upcoming[0]?.starts_at ?? null,
       consent: latest.consent_messages,

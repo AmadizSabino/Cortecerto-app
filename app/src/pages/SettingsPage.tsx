@@ -123,6 +123,7 @@ export default function SettingsPage() {
       <button type="button" className="link" onClick={() => setAllThemes(!allThemes)}>{allThemes ? 'Ver só os do meu tipo de salão' : 'Ver todos os estilos'}</button>
 
       <h2>Serviços e preços</h2>
+      <p className="muted"><Link to="/precos">Preços e durações diferentes por profissional</Link></p>
       {services.map((s, i) => (
         <div key={s.id ?? 'new' + i} className={s.active ? 'card svc-row' : 'card svc-row off'}>
           <input aria-label="Serviço" placeholder="Serviço" value={s.name} onChange={e => setSvc(i, { name: e.target.value })} />
