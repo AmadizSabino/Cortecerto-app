@@ -3,6 +3,13 @@
 {
   "name": "cortecerto-app",
   "compatibility_date": "2026-11-01",
+  // The Worker answers /api/* (booking emails) and serves the app for everything else.
+  "main": "worker/index.ts",
+  // Keep variables added in the Cloudflare dashboard (e.g. EMAIL_FROM) on each deploy.
+  "keep_vars": true,
+  "vars": {
+    "SUPABASE_URL": "https://ahevsnyhcyyaojdzfgse.supabase.co"
+  },
   // Required by `wrangler preview`, which Cloudflare runs for non-main branches. Empty is fine.
   "previews": {},
   "build": {
@@ -11,6 +18,9 @@
   "assets": {
     "directory": "./app/dist",
     // Serve index.html for app routes such as /s/salon-name and /painel.
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    "binding": "ASSETS",
+    // Send /api/* to the Worker before the single-page fallback catches it.
+    "run_worker_first": ["/api/*"]
   }
 }

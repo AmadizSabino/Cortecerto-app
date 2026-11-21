@@ -5,7 +5,7 @@ The production app, built from the [prototype](../prototype/index.html). React +
 ## Run locally
 
 1. Create a free Supabase project (an EU region, e.g. Frankfurt or Stockholm).
-2. In the Supabase SQL editor, run the files in `../supabase/migrations/` in order (0001 to 0004).
+2. In the Supabase SQL editor, run the files in `../supabase/migrations/` in order (0001 to 0005).
 3. Copy `.env.example` to `.env.local` and fill in the project URL and anon key (Project settings > API).
 4. `npm install && npm run dev`, open http://localhost:5173/painel and sign in with your email.
 5. The first sign-in goes to `/registar`, a 4-step setup: salon type and name, services and prices, team and hours, WhatsApp and MB Way deposit. Then open your booking link to book.
@@ -18,6 +18,17 @@ The production app, built from the [prototype](../prototype/index.html). React +
 The `cortecerto-app` Worker builds `main` with the default settings (root directory `/`, deploy command `npx wrangler deploy`). `../wrangler.jsonc` runs the app build first and serves `app/dist` as a single-page app. The Supabase URL and publishable key are in `.env.production`. They're public by design, so nothing has to be entered in Cloudflare.
 
 In Supabase > Authentication > URL configuration, set the site URL to the Worker's address and add `<address>/**` to the redirect URLs.
+
+## Booking emails
+
+`../worker/index.ts` serves the app and answers `POST /api/notify-booking`. After a client books, the booking page calls it, and the Worker emails the salon owner (the email they sign in with) through Resend. Migration 0005 adds `claim_booking_notification`, which only the service role can call and which hands out each booking once, within 10 minutes of it being made.
+
+To turn it on, add two secrets in Cloudflare > Workers > cortecerto-app > Settings > Variables and Secrets:
+
+- `RESEND_API_KEY`: from resend.com > API Keys.
+- `SUPABASE_SERVICE_ROLE_KEY`: the secret key from Supabase > Project settings > API Keys. Never put it in the code or in `.env.production`.
+
+Until a domain is verified in Resend, emails go from the test sender `onboarding@resend.dev`, which only delivers to the email the Resend account was opened with. After verifying the domain, add a variable `EMAIL_FROM` such as `CorteCerto <avisos@cortecerto.pt>`. Without the secrets nothing is sent and the app works as before.
 
 ## What's here
 
