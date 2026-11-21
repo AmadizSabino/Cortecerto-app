@@ -111,3 +111,5 @@ button:disabled { opacity: .5; cursor: default; }
 .reminders-card span:last-child { color: var(--accent); font-weight: 600; }
 .booking.reminded { opacity: .7; }
 .tag.ok-tag { background: #d4efdf; color: #1e5631; }
+.next-visit { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
+.next-visit .slots { margin-top: 0; }
