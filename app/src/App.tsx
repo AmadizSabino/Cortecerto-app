@@ -16,6 +16,7 @@ import PricesPage from './pages/PricesPage'
 import StatsPage from './pages/StatsPage'
 import LandingPage from './pages/LandingPage'
 import AccessPage from './pages/AccessPage'
+import BillingPage from './pages/BillingPage'
 import LegalPage from './pages/LegalPage'
 import { LEGAL_DOCS } from './lib/legal'
 
@@ -41,6 +42,7 @@ export default function App() {
         <Route path="/precos" element={<PricesPage />} />
         <Route path="/estatisticas" element={<StatsPage />} />
         <Route path="/acessos" element={<AccessPage />} />
+        <Route path="/assinatura" element={<BillingPage />} />
         <Route path="/f/:slug" element={<QueueJoinPage />} />
         {LEGAL_DOCS.map(d => <Route key={d.id} path={d.path} element={<LegalPage doc={d} />} />)}
         <Route path="*" element={<main className="page"><h1>Página não encontrada</h1></main>} />

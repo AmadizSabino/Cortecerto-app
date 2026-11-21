@@ -233,3 +233,4 @@ button:disabled { opacity: .5; cursor: default; }
   .lp-features { grid-template-columns: 1fr; }
   .lp-price { grid-template-columns: 1fr; }
 }
+.billing-notice { display: flex; justify-content: space-between; gap: 8px; text-decoration: none; color: var(--fg); border-color: #d68910; } .billing-notice span:last-child { color: var(--accent); font-weight: 600; white-space: nowrap; }

@@ -12,6 +12,8 @@ select create_salon('{"slug":"barb-teste","name":"Barb","type":"barbearia","them
   "hours":[{"weekday":0,"opens":"00:00","closes":"23:59"},{"weekday":1,"opens":"00:00","closes":"23:59"},{"weekday":2,"opens":"00:00","closes":"23:59"},{"weekday":3,"opens":"00:00","closes":"23:59"},{"weekday":4,"opens":"00:00","closes":"23:59"},{"weekday":5,"opens":"00:00","closes":"23:59"},{"weekday":6,"opens":"00:00","closes":"23:59"}]}'::jsonb) as salon \gset
 -- theme update as owner returns row
 with u as (update salons set theme='b5' where id=:'salon' returning theme) select pg_temp.check((select count(*) from u) = 1, 'owner can change the theme');
+select pg_temp.check(subscription = 'experimental' and trial_ends_at > now() + interval '29 days', 'new salon starts a 30-day trial') from salons where id=:'salon';
+do $$ begin update salons set trial_ends_at = now() + interval '5 years'; raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%campos_de_faturacao%' then raise; end if; end $$;
 select id as rui from professionals where name='Rui' \gset
 select id as ana from professionals where name='Ana' \gset
 select id as corte from services limit 1 \gset

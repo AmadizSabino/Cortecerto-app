@@ -181,6 +181,9 @@ export default function SettingsPage() {
 
       {msg && <p className={msg.ok ? 'ok' : 'error'}>{msg.text}</p>}
       <button className="btn" onClick={save} disabled={saving}>{saving ? 'A guardar…' : 'Guardar alterações'}</button>
+      <h2>Assinatura</h2>
+      <p className="muted"><Link to="/assinatura">Ver o período grátis e a assinatura</Link></p>
+
       <h2>Os seus dados</h2>
       <p className="muted">Descarregue uma cópia em CSV (abre no Excel). Os dados dos clientes são do salão: guarde os ficheiros em segurança.</p>
       <div className="actions">

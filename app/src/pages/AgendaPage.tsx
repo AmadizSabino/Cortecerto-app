@@ -12,6 +12,7 @@ import RemindersCard from '../RemindersCard'
 import NextVisit from '../NextVisit'
 import BookingEditor from '../BookingEditor'
 import InstallCard from '../InstallCard'
+import BillingNotice from '../BillingNotice'
 import { pendingDocs } from '../lib/acceptance'
 import type { LegalDoc } from '../lib/legal'
 import { manageLink } from '../lib/clientChanges'
@@ -144,6 +145,7 @@ export default function AgendaPage() {
       {pending && pending.length > 0 && <TermsGate docs={pending} salonId={salon.id} onAccepted={() => setPending([])} />}
       {!(pending && pending.length > 0) && <>
       <p className="muted">Link de marcação: <a href={bookingLink}>{bookingLink}</a> · <Link to="/poster">Poster com QR</Link></p>
+      {role === 'dono' && <BillingNotice salon={salon} />}
       <InstallCard />
       <RemindersCard salon={salon} />
       <SetupChecklist salon={salon} services={Object.keys(services).length} professionals={Object.keys(pros).length} />
