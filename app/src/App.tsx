@@ -8,6 +8,8 @@ import ClientsPage from './pages/ClientsPage'
 import PosterPage from './pages/PosterPage'
 import RemindersPage from './pages/RemindersPage'
 import ManagePage from './pages/ManagePage'
+import QueuePage from './pages/QueuePage'
+import QueueJoinPage from './pages/QueueJoinPage'
 import LegalPage from './pages/LegalPage'
 import { LEGAL_DOCS } from './lib/legal'
 
@@ -39,6 +41,8 @@ export default function App() {
         <Route path="/poster" element={<PosterPage />} />
         <Route path="/lembretes" element={<RemindersPage />} />
         <Route path="/m/:id" element={<ManagePage />} />
+        <Route path="/fila" element={<QueuePage />} />
+        <Route path="/f/:slug" element={<QueueJoinPage />} />
         {LEGAL_DOCS.map(d => <Route key={d.id} path={d.path} element={<LegalPage doc={d} />} />)}
         <Route path="*" element={<main className="page"><h1>Página não encontrada</h1></main>} />
       </Routes>
