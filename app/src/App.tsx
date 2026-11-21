@@ -6,6 +6,8 @@ import OnboardingPage from './pages/OnboardingPage'
 import SettingsPage from './pages/SettingsPage'
 import ClientsPage from './pages/ClientsPage'
 import PosterPage from './pages/PosterPage'
+import LegalPage from './pages/LegalPage'
+import { LEGAL_DOCS } from './lib/legal'
 
 function Home() {
   return (
@@ -14,6 +16,7 @@ function Home() {
       <p>Marcações simples para barbearias, cabeleireiros, unhas e depilação.</p>
       <p><Link className="btn" to="/painel">Entrar no painel do salão</Link></p>
       <p className="muted">Ainda não tem conta? Entre com o seu email e crie o salão a seguir.</p>
+      <nav className="foot">{LEGAL_DOCS.map(d => <p key={d.id}><Link to={d.path}>{d.title}</Link></p>)}</nav>
     </main>
   )
 }
@@ -32,6 +35,7 @@ export default function App() {
         <Route path="/definicoes" element={<SettingsPage />} />
         <Route path="/clientes" element={<ClientsPage />} />
         <Route path="/poster" element={<PosterPage />} />
+        {LEGAL_DOCS.map(d => <Route key={d.id} path={d.path} element={<LegalPage doc={d} />} />)}
         <Route path="*" element={<main className="page"><h1>Página não encontrada</h1></main>} />
       </Routes>
     </>

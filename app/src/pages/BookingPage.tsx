@@ -145,6 +145,7 @@ export default function BookingPage() {
             <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />
             Aceito receber lembretes e novidades do salão por WhatsApp (opcional).
           </label>
+          <p className="muted small">Os seus dados são usados pelo salão para gerir a marcação. <a href="/privacidade" target="_blank" rel="noreferrer">Política de privacidade</a></p>
           {salon.deposit_cents > 0 && <p className="muted">Esta marcação pede um sinal de {euros(salon.deposit_cents)} por MB Way.</p>}
           {error && <p className="error">{error}</p>}
           <button className="btn" type="submit">Confirmar marcação</button>
@@ -160,7 +161,7 @@ export default function BookingPage() {
             <button className="link" onClick={() => setPicking(false)}>Feito</button>
           </p>
         </> : <button className="link" onClick={() => setPicking(true)}>Mudar o estilo da página</button>}
-        <p className="muted">Feito com CorteCerto</p>
+        <p className="muted">Feito com CorteCerto · <a href="/privacidade">Privacidade</a></p>
       </footer>
     </main></div>
   )

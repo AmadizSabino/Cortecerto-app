@@ -5,13 +5,13 @@ The production app, built from the [prototype](../prototype/index.html). React +
 ## Run locally
 
 1. Create a free Supabase project (an EU region, e.g. Frankfurt or Stockholm).
-2. In the Supabase SQL editor, run the files in `../supabase/migrations/` in order.
+2. In the Supabase SQL editor, run the files in `../supabase/migrations/` in order (0001 to 0004).
 3. Copy `.env.example` to `.env.local` and fill in the project URL and anon key (Project settings > API).
 4. `npm install && npm run dev`, open http://localhost:5173/painel and sign in with your email.
 5. The first sign-in goes to `/registar`, a 4-step setup: salon type and name, services and prices, team and hours, WhatsApp and MB Way deposit. Then open your booking link to book.
    (`../supabase/seed.sql` creates a demo salon instead, if you prefer.)
 
-`npm test` runs the unit tests (slot calculation, WhatsApp links, client list, setup checklist).
+`npm test` runs the unit tests (slot calculation, WhatsApp links, client list, setup checklist, terms acceptance).
 
 ## Deploy (Cloudflare Workers, free)
 
@@ -28,6 +28,7 @@ In Supabase > Authentication > URL configuration, set the site URL to the Worker
 - `/poster`: printable A4 poster with the salon's booking QR code, in the salon's theme, plus the link to copy for the Instagram bio and Google profile. The QR code uses qrcode-generator 1.4.4 (MIT), vendored in `src/vendor/`.
 - `/painel`: salon agenda by day with confirm, done, no-show, cancel, deposit received, and a WhatsApp message link.
 - Setup checklist ("Primeiros passos") on the agenda: services, team and hours, WhatsApp, MB Way when a deposit is asked, poster, Instagram bio, Google profile and the first booking. Steps the app can't check are ticked by the owner and kept in the browser. It hides when done or when closed.
+- Terms: `/termos`, `/tratamento-dados` and `/privacidade` are drafts for legal review, in `src/lib/legal.ts`. The owner accepts the terms and the data processing agreement at sign-up, and each acceptance is stored in `legal_acceptances` (migration 0004) with the document version, time and browser. Changing a document's `version` asks every owner to accept again before the panel opens. The booking page links to the privacy policy.
 - Database rules: clients book through `create_booking`, which validates the slot and blocks double booking; only the salon owner can read client data.
 
 Themes: the 32 themes from the prototype live in `src/lib/themes.ts`. The owner picks one at sign-up or in settings, and a client can choose their own on the booking page (kept only in their browser).

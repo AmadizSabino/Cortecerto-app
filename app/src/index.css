@@ -103,3 +103,6 @@ button:disabled { opacity: .5; cursor: default; }
 .setup li.done > span:not(.check-mark) { color: var(--muted); text-decoration: line-through; }
 .progress { height: 6px; background: var(--line); border-radius: 99px; overflow: hidden; }
 .progress > span { display: block; height: 100%; background: var(--accent); }
+.small { font-size: .85rem; }
+.legal h2 { margin-top: 20px; }
+.legal p { line-height: 1.5; }
