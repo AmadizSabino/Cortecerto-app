@@ -93,7 +93,7 @@ export default function SettingsPage() {
         mbway_number: info.mbway.replace(/\D/g, '') || null, deposit_cents: parseEuros(info.deposit), theme: info.theme,
         // Only once migration 0007 has added the column, so saving still works before it.
         ...('client_change_hours' in s ? { client_change_hours: info.change === '' ? null : Number(info.change) } : {}),
-      }).eq('id', s.id),
+      }).eq('id', s.id).select('id'),
       // Services and team are switched off rather than deleted, so past bookings keep their history.
       ...services.filter(x => x.name.trim()).map(x => {
         const row = { salon_id: s.id, name: x.name.trim(), duration_min: Number(x.duration), price_cents: parseEuros(x.price), active: x.active }
@@ -104,12 +104,16 @@ export default function SettingsPage() {
         return x.id ? supabase.from('professionals').update(row).eq('id', x.id) : supabase.from('professionals').insert(row)
       }),
     ])
-    let failed = results.some(r => r.error)
+    // The salon row must actually change: an update the database refuses returns no row rather than an error.
+    let failed = results.some(r => r.error) || !(results[0] as { data: unknown[] | null }).data?.length
     if (!failed) {
+      // Replace the week's hours; if the new ones can't be written, put the old ones back so the salon is never left closed.
+      const old = await supabase.from('opening_hours').select('salon_id,weekday,opens,closes').eq('salon_id', s.id)
       const del = await supabase.from('opening_hours').delete().eq('salon_id', s.id)
       const rows = days.flatMap((d, i) => d.open ? [{ salon_id: s.id, weekday: i, opens: d.opens, closes: d.closes }] : [])
-      const ins = rows.length ? await supabase.from('opening_hours').insert(rows) : { error: null }
-      failed = Boolean(del.error || ins.error)
+      const ins = rows.length && !del.error ? await supabase.from('opening_hours').insert(rows) : { error: null }
+      if (ins.error && old.data?.length) await supabase.from('opening_hours').insert(old.data)
+      failed = Boolean(old.error || del.error || ins.error)
     }
     setSaving(false)
     setMsg(failed ? { ok: false, text: 'Algumas alterações não foram guardadas. Tente de novo.' } : { ok: true, text: 'Alterações guardadas.' })

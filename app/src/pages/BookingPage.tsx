@@ -35,6 +35,7 @@ export default function BookingPage() {
   const [done, setDone] = useState<string | null>(null) // booking id once booked
   const [myTheme, setMyTheme] = useState<string | null>(() => clientTheme(slug!))
   const [picking, setPicking] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [overrides, setOverrides] = useState<Overrides>({})
 
   useEffect(() => {
@@ -79,11 +80,14 @@ export default function BookingPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+    if (submitting) return // a second tap must not book twice
     setError('')
+    setSubmitting(true)
     const { data: bookingId, error } = await supabase.rpc('create_booking', {
       p_salon: salon!.id, p_service: service!.id, p_professional: pro!.id, p_starts_at: slot!.toISOString(),
       p_client_name: name, p_client_phone: phone, p_consent: consent,
     })
+    setSubmitting(false)
     if (error) {
       setError(Object.entries(ERRORS).find(([k]) => error.message.includes(k))?.[1] ?? 'Não foi possível marcar. Tente de novo.')
       if (error.message.includes('horario_ocupado')) setSlot(undefined)
@@ -182,7 +186,7 @@ export default function BookingPage() {
           <p className="muted small">O salão pode enviar-lhe um lembrete desta marcação por WhatsApp. Os seus dados são usados apenas para gerir a marcação. <a href="/privacidade" target="_blank" rel="noreferrer">Política de privacidade</a></p>
           {salon.deposit_cents > 0 && <p className="muted">Esta marcação pede um sinal de {euros(salon.deposit_cents)} por MB Way.</p>}
           {error && <p className="error">{error}</p>}
-          <button className="btn" type="submit">Confirmar marcação</button>
+          <button className="btn" type="submit" disabled={submitting}>{submitting ? 'A marcar…' : 'Confirmar marcação'}</button>
         </form>
       )}
 
