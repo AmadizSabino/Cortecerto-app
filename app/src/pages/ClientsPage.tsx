@@ -90,6 +90,8 @@ export default function ClientsPage() {
   const [open, setOpen] = useState<string | null>(null)
   const [notes, setNotes] = useState<Record<string, ClientNote>>({})
   const [notesReady, setNotesReady] = useState(true)
+  const [forgetting, setForgetting] = useState<string | null>(null) // client key awaiting confirmation
+  const [reload, setReload] = useState(0)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -112,7 +114,7 @@ export default function ClientsPage() {
       setNotes(Object.fromEntries((nt.data ?? []).map((n: ClientNote) => [n.phone_key, n])))
       setBookings(bk.data ?? [])
     })()
-  }, [session])
+  }, [session, reload])
 
   const [now] = useState(() => new Date())
   const today = dateInTz(now, salon?.timezone ?? 'Europe/Lisbon')
@@ -133,6 +135,20 @@ export default function ClientsPage() {
   function comeBackMsg(c: Client) {
     const first = c.name.split(' ')[0]
     return `Olá ${first}! Já temos saudades no ${salon!.name}. Quando quiser voltar, pode marcar aqui: ${bookingLink}`
+  }
+
+  /** RGPD erasure: the bookings stay for statistics, without the client's name, phone or notes. */
+  async function forget(c: Client) {
+    const { error } = await supabase.rpc('forget_client', { p_salon: salon!.id, p_key: c.key })
+    if (error) {
+      // Before migration 0010: do the same from here.
+      const ids = c.bookings.map(b => b.id)
+      const future = c.bookings.filter(b => (b.status === 'pendente' || b.status === 'confirmada') && new Date(b.starts_at) > now).map(b => b.id)
+      if (future.length) await supabase.from('bookings').update({ status: 'cancelada' }).in('id', future)
+      await supabase.from('bookings').update({ client_name: 'Cliente apagado', client_phone: '', consent_messages: false }).in('id', ids)
+      await supabase.from('client_notes').delete().eq('salon_id', salon!.id).eq('phone_key', c.key)
+    }
+    setForgetting(null); setOpen(null); setReload(r => r + 1)
   }
 
   function birthdayMsg(c: Client) {
@@ -217,6 +233,15 @@ export default function ClientsPage() {
                     </li>
                   ))}
                 </ul>
+                {forgetting === c.key ? (
+                  <div className="card danger">
+                    <p>Apagar o nome, o telemóvel e as notas de {c.name}? As marcações ficam nas estatísticas como "Cliente apagado" e as futuras são canceladas. Não dá para desfazer.</p>
+                    <div className="actions">
+                      <button className="btn-danger" onClick={() => forget(c)}>Sim, apagar</button>
+                      <button className="link" onClick={() => setForgetting(null)}>Cancelar</button>
+                    </div>
+                  </div>
+                ) : <button className="link danger-link" onClick={() => setForgetting(c.key)}>Apagar dados deste cliente (pedido RGPD)</button>}
               </div>}
             </article>
           )

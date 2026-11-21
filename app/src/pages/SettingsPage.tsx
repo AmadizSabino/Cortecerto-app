@@ -5,6 +5,7 @@ import { supabase, type Salon } from '../lib/supabase'
 import { parseEuros, WEEKDAYS } from '../lib/onboarding'
 import ThemePicker from '../ThemePicker'
 import { CHANGE_OPTIONS } from '../lib/clientChanges'
+import { exportBookings, exportClients } from '../lib/exportData'
 
 interface SvcRow { id?: string; name: string; duration: string; price: string; active: boolean }
 interface ProRow { id?: string; name: string; active: boolean }
@@ -22,6 +23,7 @@ export default function SettingsPage() {
   const [days, setDays] = useState<DayRow[]>([])
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>()
   const [saving, setSaving] = useState(false)
+  const [exporting, setExporting] = useState('')
 
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setSession(data.session)) }, [])
 
@@ -154,6 +156,17 @@ export default function SettingsPage() {
 
       {msg && <p className={msg.ok ? 'ok' : 'error'}>{msg.text}</p>}
       <button className="btn" onClick={save} disabled={saving}>{saving ? 'A guardar…' : 'Guardar alterações'}</button>
+      <h2>Os seus dados</h2>
+      <p className="muted">Descarregue uma cópia em CSV (abre no Excel). Os dados dos clientes são do salão: guarde os ficheiros em segurança.</p>
+      <div className="actions">
+        <button disabled={Boolean(exporting)} onClick={async () => { setExporting('clientes'); try { await exportClients(salon!) } finally { setExporting('') } }}>
+          {exporting === 'clientes' ? 'A preparar…' : 'Exportar clientes'}
+        </button>
+        <button disabled={Boolean(exporting)} onClick={async () => { setExporting('marcacoes'); try { await exportBookings(salon!) } finally { setExporting('') } }}>
+          {exporting === 'marcacoes' ? 'A preparar…' : 'Exportar marcações'}
+        </button>
+      </div>
+      <p className="muted small">Para apagar os dados de um cliente que o peça, abra-o em <Link to="/clientes">Clientes</Link>. Para apagar a conta do salão, escreva para o contacto indicado nos <Link to="/termos">termos</Link>.</p>
     </main>
   )
 }

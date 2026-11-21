@@ -131,7 +131,7 @@ export const PRIVACY: LegalDoc = {
       'As mensagens de WhatsApp são enviadas pelo próprio salão, a partir do seu telemóvel. O WhatsApp tem a sua própria política de privacidade.',
     ] },
     { heading: '4. Durante quanto tempo', paragraphs: [
-      'Os dados ficam guardados enquanto for cliente do salão. Se não marcar nenhuma visita durante 3 anos, o salão deve apagá-los. Os dados das contas dos salões ficam guardados enquanto a conta existir, e os de faturação pelo prazo exigido por lei.',
+      'Os dados ficam guardados enquanto for cliente do salão. Se não tiver nenhuma marcação durante 3 anos, o seu nome, telemóvel e notas são apagados automaticamente. Os dados das contas dos salões ficam guardados enquanto a conta existir, e os de faturação pelo prazo exigido por lei.',
     ] },
     { heading: '5. Os seus direitos', paragraphs: [
       'Pode pedir acesso, correção ou apagamento dos seus dados, ou opor-se a mensagens de promoção. Faça o pedido ao salão. Se preferir, escreva para [email de contacto] e reencaminhamos o pedido.',
