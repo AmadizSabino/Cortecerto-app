@@ -344,3 +344,4 @@ button:disabled { opacity: .5; cursor: default; }
 .reminders-card span:last-child { white-space: nowrap; }
 .tabbar { color: var(--fg); }
 .page > header.row { align-items: center; }
+.menu button > span { text-align: left; }

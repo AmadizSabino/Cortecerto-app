@@ -27,11 +27,13 @@ export default function MorePage() {
   const [session, setSession] = useState<Session | null>()
   const [salon, setSalon] = useState<Salon | null>()
   const [role, setRole] = useState<Role>('dono')
+  const [admin, setAdmin] = useState(false)
 
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setSession(data.session)) }, [])
   useEffect(() => {
     if (!session) return
     loadMySalon(session.user.id).then(m => { setSalon(m.salon); setRole(m.role) })
+    supabase.rpc('is_platform_admin').then(({ data }) => setAdmin(data === true))
   }, [session])
 
   if (session === null) return <Navigate to="/painel" replace />
@@ -71,6 +73,7 @@ export default function MorePage() {
           </section>
         )
       })}
+      {admin && <div className="card menu"><Link to="/admin"><Icon name="star" size={22} /><span>Administração CorteCerto<small>Assinaturas e faturas de todos os salões</small></span><span className="chev"><Icon name="chevronRight" size={18} /></span></Link></div>}
       <div className="card menu">
         <button onClick={() => supabase.auth.signOut().then(() => location.assign('/painel'))}><Icon name="logout" size={22} /><span>Sair da conta</span></button>
       </div>

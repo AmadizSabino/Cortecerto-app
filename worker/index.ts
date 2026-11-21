@@ -41,9 +41,32 @@ export default {
     if (url.pathname === '/api/notify-booking') return notifyOwner<Claimed>(request, env, url.origin, 'claim_booking_notification', bookingEmail)
     if (url.pathname === '/api/notify-change') return notifyOwner<ChangeClaimed>(request, env, url.origin, 'claim_client_change_notification', changeEmail)
     if (url.pathname === '/api/errors') return reportError(request, env)
+    if (url.pathname === '/api/manifest') return clientManifest(url)
     if (url.pathname.startsWith('/api/')) return new Response('Not found', { status: 404 })
     return env.ASSETS.fetch(request)
   },
+}
+
+/**
+ * The app the salon installs opens on its panel (public/manifest.webmanifest, start_url /painel).
+ * A client who adds a salon's booking page to the home screen gets this one instead,
+ * which opens that salon's booking page.
+ */
+function clientManifest(url: URL): Response {
+  const slug = (url.searchParams.get('s') ?? '').toLowerCase()
+  if (!/^[a-z0-9-]{1,60}$/.test(slug)) return new Response('Not found', { status: 404 })
+  const name = (url.searchParams.get('n') ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 60) || 'Marcações'
+  const manifest = {
+    name, short_name: name.slice(0, 20), description: `Marcar em ${name}`,
+    start_url: `/s/${slug}`, scope: `/s/${slug}`, display: 'standalone', lang: 'pt-PT',
+    background_color: '#faf7f2', theme_color: '#b5462f',
+    icons: [
+      { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+      { src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    ],
+  }
+  return new Response(JSON.stringify(manifest), { headers: { 'Content-Type': 'application/manifest+json', 'Cache-Control': 'public, max-age=3600' } })
 }
 
 type Email = { subject: string; html: string; text: string }

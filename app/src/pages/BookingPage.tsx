@@ -60,6 +60,9 @@ export default function BookingPage() {
       setServices(sv.data ?? []); setPros(pr.data ?? []); setHours(hr); setOverrides(ov.overrides)
       if (pr.data?.length === 1) setProId(pr.data[0].id)
       document.title = `${s.name} · Marcar`
+      // Added to a client's home screen, this page opens the salon's booking page, not the salon panel.
+      const link = document.querySelector<HTMLLinkElement>('link[rel=manifest]')
+      if (link) link.href = `/api/manifest?s=${encodeURIComponent(s.slug)}&n=${encodeURIComponent(s.name)}`
     })()
   }, [slug])
 

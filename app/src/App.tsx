@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router-dom'
 import TabBar from './TabBar'
 import { usePanelTabs } from './panelTabs'
 import MorePage from './pages/MorePage'
+import AdminPage from './pages/AdminPage'
 import { supabaseConfigured } from './lib/supabase'
 import BookingPage from './pages/BookingPage'
 import AgendaPage from './pages/AgendaPage'
@@ -47,6 +48,7 @@ export default function App() {
         <Route path="/horarios" element={<SchedulePage />} />
         <Route path="/semana" element={<WeekPage />} />
         <Route path="/mais" element={<MorePage />} />
+        <Route path="/admin" element={<AdminPage />} />
         <Route path="/precos" element={<PricesPage />} />
         <Route path="/estatisticas" element={<StatsPage />} />
         <Route path="/acessos" element={<AccessPage />} />

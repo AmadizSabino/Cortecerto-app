@@ -97,4 +97,22 @@ reset role;
 select pg_temp.check(client_name = 'Cliente apagado' and client_phone = '', 'forgotten booking anonymised') from bookings where id=:'b2';
 select pg_temp.check(phone_key('+351 912 345 678') = '351912345678' and phone_key('00351912345678') = '351912345678' and phone_key('912345678') = '351912345678', 'phone key');
 select pg_temp.check(forget_inactive_clients() = 0, 'recent clients are kept');
+
+-- Admin area: CorteCerto's admin (user c) sets plans and uploads invoices; owners read only their own.
+insert into platform_admins values ('00000000-0000-0000-0000-00000000000c');
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+do $$ begin perform admin_set_subscription((select id from salons), 'ativa', now() + interval '1 month', null); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+do $$ begin insert into invoices (salon_id, number, amount_cents, file_path) values ((select id from salons), 'FT 1', 2448, 'x.pdf'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%row-level security%' then raise; end if; end $$;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+select pg_temp.check(is_platform_admin(), 'admin is recognised');
+select admin_set_subscription(:'salon', 'ativa', now() + interval '1 month', null) \g /dev/null
+insert into invoices (salon_id, number, period, amount_cents, file_path) values (:'salon', 'FT 2026/1', 'dezembro 2026', 2448, :'salon' || '/ft-1.pdf');
+reset role;
+select pg_temp.check(subscription = 'ativa' and paid_until > now() + interval '27 days', 'admin sets the plan') from salons where id=:'salon';
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+select pg_temp.check(count(*) = 1, 'owner sees the invoice') from invoices;
+do $$ begin perform admin_set_subscription((select id from salons), 'experimental', null, null); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+select pg_temp.check(count(*) = 0 and not is_platform_admin(), 'others see no invoices and are not admin') from invoices;
+reset role;
 \echo All database checks passed

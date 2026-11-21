@@ -1,5 +1,6 @@
-import { Link } from 'react-router-dom'
-import { euros } from '../lib/supabase'
+import { useEffect, useState } from 'react'
+import { Link, Navigate } from 'react-router-dom'
+import { euros, supabase } from '../lib/supabase'
 import { LEGAL_DOCS } from '../lib/legal'
 import { PLAN } from '../lib/plan'
 
@@ -29,6 +30,10 @@ const FAQ = [
 /** Public home page: what CorteCerto does for a salon, the price, and how to start. */
 export default function LandingPage() {
   const price = euros(PLAN.priceCents).replace(/,00(?=\s?€)/, '')
+  // A salon that is signed in goes straight to its panel.
+  const [signedIn, setSignedIn] = useState(false)
+  useEffect(() => { supabase.auth.getSession().then(({ data }) => setSignedIn(Boolean(data.session))) }, [])
+  if (signedIn) return <Navigate to="/painel" replace />
   return (
     <div className="lp">
       <header className="lp-nav">
@@ -81,8 +86,8 @@ export default function LandingPage() {
           <p>Sem limites de marcações, clientes ou profissionais. {PLAN.trialDays} dias grátis para experimentar com os seus clientes, sem dar o cartão.</p>
         </div>
         <div className="lp-price-box">
-          <p className="lp-amount"><strong>{price}</strong> por mês</p>
-          <p className="lp-small">Paga por MB Way ou referência Multibanco, com fatura.{PLAN.provisional && ' Preço de lançamento.'}</p>
+          <p className="lp-amount"><strong>{price}</strong> + IVA por mês</p>
+          <p className="lp-small">Com fatura todos os meses, disponível no painel.{PLAN.provisional && ' Preço de lançamento.'}</p>
           <Link to="/painel" className="lp-cta">Criar o meu salão</Link>
         </div>
       </section>
