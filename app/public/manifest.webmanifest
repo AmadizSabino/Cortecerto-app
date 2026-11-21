@@ -1,2 +1,21 @@
-{ "name": "CorteCerto", "short_name": "CorteCerto", "start_url": "/painel", "display": "standalone",
-  "background_color": "#faf7f2", "theme_color": "#b5462f", "lang": "pt-PT", "icons": [] }
+{
+  "name": "CorteCerto",
+  "short_name": "CorteCerto",
+  "description": "Marcações, clientes e fila de espera para o seu salão.",
+  "start_url": "/painel",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#faf7f2",
+  "theme_color": "#b5462f",
+  "lang": "pt-PT",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Agenda", "url": "/painel" },
+    { "name": "Fila de espera", "url": "/fila" },
+    { "name": "Clientes", "url": "/clientes" }
+  ]
+}

@@ -11,7 +11,8 @@ export interface Salon {
   id: string; slug: string; name: string; type: string
   whatsapp: string | null; mbway_number: string | null
   deposit_cents: number; theme: string; timezone: string
-  address?: string | null; news?: string | null; google_review_url?: string | null
+  client_change_hours?: number | null // migration 0007
+  address?: string | null; news?: string | null; google_review_url?: string | null // migration 0016
 }
 export interface Service { id: string; name: string; duration_min: number; price_cents: number }
 export interface Professional { id: string; name: string }
@@ -21,11 +22,15 @@ export interface Booking {
   status: 'pendente' | 'confirmada' | 'concluida' | 'faltou' | 'cancelada'
   deposit: 'nenhum' | 'pendente' | 'pago'
   service_id: string; professional_id: string
-  reminded_at?: string | null; source?: 'online' | 'telefone' | 'presencial'
+  reminder_sent_at?: string | null // migration 0006
+  price_cents?: number | null // migration 0011: price when booked
+  client_action?: 'cancelou' | 'mudou' | null // migration 0007
+  client_action_at?: string | null
 }
 
 export const euros = (cents: number) =>
   new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(cents / 100)
 
+/** Two letters for an avatar: "Barba e Beer" -> "BB". */
 export const initials = (name: string) =>
   name.trim().split(/\s+/).filter(w => w.length > 2 || /^[A-ZÀ-Ú]/.test(w)).slice(0, 2).map(w => w[0]).join('').toUpperCase() || name.slice(0, 2).toUpperCase()

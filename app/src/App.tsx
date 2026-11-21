@@ -1,54 +1,61 @@
-import { Link, Route, Routes } from 'react-router-dom'
-import Icon from './components/Icon'
+import { useEffect } from 'react'
+import { Route, Routes } from 'react-router-dom'
+import TabBar from './TabBar'
+import { usePanelTabs } from './panelTabs'
+import MorePage from './pages/MorePage'
 import { supabaseConfigured } from './lib/supabase'
 import BookingPage from './pages/BookingPage'
+import AgendaPage from './pages/AgendaPage'
 import OnboardingPage from './pages/OnboardingPage'
 import SettingsPage from './pages/SettingsPage'
-import ClientsPage from './pages/panel/ClientsPage'
-import PanelLayout from './pages/panel/PanelLayout'
-import PosterPage from './pages/panel/PosterPage'
-import TodayPage from './pages/panel/TodayPage'
-
-function Home() {
-  return (
-    <div className="themed">
-      <div className="cover" style={{ height: 220 }} />
-      <main className="page" style={{ marginTop: -80 }}>
-        <span className="avatar" style={{ width: 72, height: 72, fontSize: '1.6rem', border: '4px solid var(--bg)', borderRadius: 20 }}><Icon name="scissors" size={32} /></span>
-        <h1 style={{ marginTop: 16, fontSize: '2.4rem' }}>CorteCerto</h1>
-        <p style={{ marginTop: 10, fontSize: '1.1rem' }}>A agenda online da sua barbearia ou salão. Os clientes marcam sozinhos, pagam o sinal por MB Way e recebem lembretes por WhatsApp.</p>
-        <div className="stack section">
-          <div className="card row"><Icon name="calendar" /><span>Marcações 24 horas por dia, num link para o Instagram</span></div>
-          <div className="card row"><Icon name="euro" /><span>Sinal por MB Way direto para o salão, menos faltas</span></div>
-          <div className="card row"><Icon name="bell" /><span>Lembretes por WhatsApp num toque</span></div>
-          <div className="card row"><Icon name="qr" /><span>Poster QR pronto a imprimir</span></div>
-        </div>
-        <div className="stack section">
-          <Link className="btn primary block" to="/painel">Entrar ou criar o meu salão</Link>
-        </div>
-        <p className="foot muted">Feito em Portugal · CorteCerto</p>
-      </main>
-    </div>
-  )
-}
+import ClientsPage from './pages/ClientsPage'
+import PosterPage from './pages/PosterPage'
+import RemindersPage from './pages/RemindersPage'
+import ManagePage from './pages/ManagePage'
+import QueuePage from './pages/QueuePage'
+import QueueJoinPage from './pages/QueueJoinPage'
+import SchedulePage from './pages/SchedulePage'
+import WeekPage from './pages/WeekPage'
+import PricesPage from './pages/PricesPage'
+import StatsPage from './pages/StatsPage'
+import LandingPage from './pages/LandingPage'
+import AccessPage from './pages/AccessPage'
+import BillingPage from './pages/BillingPage'
+import LegalPage from './pages/LegalPage'
+import { LEGAL_DOCS } from './lib/legal'
 
 export default function App() {
+  const tabs = usePanelTabs()
+  // Room at the bottom of every panel page for the tab bar.
+  useEffect(() => { document.body.classList.toggle('has-tabs', tabs) }, [tabs])
   return (
     <>
-      {!supabaseConfigured && <div className="banner">Falta configurar o Supabase: copie <code>.env.example</code> para <code>.env.local</code>.</div>}
+      {!supabaseConfigured && (
+        <div className="banner">Falta configurar o Supabase: copie <code>.env.example</code> para <code>.env.local</code>.</div>
+      )}
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/s/:slug" element={<BookingPage />} />
+        <Route path="/painel" element={<AgendaPage />} />
         <Route path="/registar" element={<OnboardingPage />} />
-        <Route path="/painel" element={<PanelLayout />}>
-          <Route index element={<TodayPage />} />
-          <Route path="clientes" element={<ClientsPage />} />
-          <Route path="poster" element={<PosterPage />} />
-          <Route path="definicoes" element={<SettingsPage />} />
-        </Route>
-        <Route path="/definicoes" element={<PanelLayout />}><Route index element={<SettingsPage />} /></Route>
-        <Route path="*" element={<main className="page"><h1>Página não encontrada</h1><p className="muted" style={{ marginTop: 8 }}><Link to="/">Voltar ao início</Link></p></main>} />
+        <Route path="/definicoes" element={<SettingsPage />} />
+        <Route path="/clientes" element={<ClientsPage />} />
+        <Route path="/poster" element={<PosterPage />} />
+        <Route path="/lembretes" element={<RemindersPage />} />
+        <Route path="/m/:id" element={<ManagePage />} />
+        <Route path="/fila" element={<QueuePage />} />
+        <Route path="/horarios" element={<SchedulePage />} />
+        <Route path="/semana" element={<WeekPage />} />
+        <Route path="/mais" element={<MorePage />} />
+        <Route path="/precos" element={<PricesPage />} />
+        <Route path="/estatisticas" element={<StatsPage />} />
+        <Route path="/acessos" element={<AccessPage />} />
+        <Route path="/assinatura" element={<BillingPage />} />
+        <Route path="/f/:slug" element={<QueueJoinPage />} />
+        {LEGAL_DOCS.map(d => <Route key={d.id} path={d.path} element={<LegalPage doc={d} />} />)}
+        <Route path="*" element={<main className="page"><h1>Página não encontrada</h1></main>} />
       </Routes>
+      {tabs && <TabBar />}
     </>
   )
 }

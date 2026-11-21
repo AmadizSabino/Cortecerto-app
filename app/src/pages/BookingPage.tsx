@@ -4,11 +4,16 @@ import Icon, { WhatsAppIcon } from '../components/Icon'
 import ThemePicker from '../ThemePicker'
 import { summarizeHours } from '../lib/hours'
 import { downloadIcs, icsEvent } from '../lib/ics'
-import { freeSlots, type OpeningHours } from '../lib/slots'
 import { euros, initials, supabase, type Professional, type Salon, type Service } from '../lib/supabase'
+import { freeSlots } from '../lib/slots'
+import { hoursFor, NO_HOURS, type SalonHours } from '../lib/schedule'
+import { loadHours } from '../lib/scheduleData'
 import { clientTheme, setClientTheme, themeById, themeStyle } from '../lib/themes'
 import { addDays, dateInTz, formatTime, weekdayOf, zonedToUtc } from '../lib/time'
 import { formatPhone, waLink } from '../lib/whatsapp'
+import { manageLink } from '../lib/clientChanges'
+import { effective, priceRange, type Overrides } from '../lib/pricing'
+import { loadOverrides } from '../lib/pricingData'
 
 const ERRORS: Record<string, string> = {
   horario_ocupado: 'Esse horário acabou de ser ocupado. Escolha outro, por favor.',
@@ -16,13 +21,15 @@ const ERRORS: Record<string, string> = {
   dados_cliente: 'Indique o seu nome e um telemóvel válido.',
 }
 const ANY = 'qualquer'
+const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
 
 export default function BookingPage() {
   const { slug } = useParams()
   const [salon, setSalon] = useState<Salon | null>()
   const [services, setServices] = useState<Service[]>([])
   const [pros, setPros] = useState<Professional[]>([])
-  const [hours, setHours] = useState<OpeningHours[]>([])
+  const [hours, setHours] = useState<SalonHours>(NO_HOURS)
+  const [overrides, setOverrides] = useState<Overrides>({})
   const [step, setStep] = useState(1)
   const [service, setService] = useState<Service>()
   const [proId, setProId] = useState<string>()
@@ -33,8 +40,8 @@ export default function BookingPage() {
   const [phone, setPhone] = useState('')
   const [consent, setConsent] = useState(false)
   const [error, setError] = useState('')
-  const [sending, setSending] = useState(false)
-  const [done, setDone] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [done, setDone] = useState<string | null>(null) // booking id once booked
   const [myTheme, setMyTheme] = useState<string | null>(() => clientTheme(slug!))
   const [picking, setPicking] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -44,24 +51,31 @@ export default function BookingPage() {
       const { data: s } = await supabase.from('salons').select('*').eq('slug', slug!).maybeSingle()
       setSalon(s)
       if (!s) return
-      const [sv, pr, hr] = await Promise.all([
+      const [sv, pr, hr, ov] = await Promise.all([
         supabase.from('services').select('id,name,duration_min,price_cents').eq('salon_id', s.id).eq('active', true).order('price_cents'),
         supabase.from('professionals').select('id,name').eq('salon_id', s.id).eq('active', true).order('name'),
-        supabase.from('opening_hours').select('weekday,opens,closes').eq('salon_id', s.id),
+        loadHours(s.id),
+        loadOverrides(s.id),
       ])
-      setServices(sv.data ?? []); setPros(pr.data ?? []); setHours(hr.data ?? [])
+      setServices(sv.data ?? []); setPros(pr.data ?? []); setHours(hr); setOverrides(ov.overrides)
+      if (pr.data?.length === 1) setProId(pr.data[0].id)
       document.title = `${s.name} · Marcar`
     })()
   }, [slug])
 
   const tz = salon?.timezone ?? 'Europe/Lisbon'
   const today = dateInTz(new Date(), tz)
-  const openDays = useMemo(() => {
-    const open = new Set(hours.map(h => h.weekday))
-    return Array.from({ length: 21 }, (_, i) => addDays(today, i)).filter(d => open.has(weekdayOf(d)))
-  }, [hours, today])
+  // Professionals who do the chosen service, and who could take this booking.
+  const prosFor = useMemo(() => service ? pros.filter(p => effective(service, p.id, overrides)) : pros, [service, pros, overrides])
+  const candidates = useMemo(() => proId === ANY ? prosFor : prosFor.filter(p => p.id === proId), [proId, prosFor])
 
-  useEffect(() => { if (!date && openDays.length) setDate(openDays[0]) }, [openDays, date])
+  const openDays = useMemo(() => {
+    const open = new Set<number>()
+    for (const p of candidates.length ? candidates : [undefined]) for (const h of hoursFor(hours, p?.id)) open.add(h.weekday)
+    return Array.from({ length: 21 }, (_, i) => addDays(today, i)).filter(d => open.has(weekdayOf(d)))
+  }, [candidates, hours, today])
+
+  useEffect(() => { if (openDays.length && (!date || !openDays.includes(date))) setDate(openDays[0]) }, [openDays, date])
 
   useEffect(() => {
     if (!salon || !date) return
@@ -73,16 +87,16 @@ export default function BookingPage() {
 
   // Free times for the chosen professional, or for anyone free when "Qualquer um" is picked.
   const slots = useMemo(() => {
-    if (!salon || !service || !proId || !date) return []
-    const candidates = proId === ANY ? pros : pros.filter(p => p.id === proId)
+    if (!service || !date) return []
     const byTime = new Map<number, string>()
     for (const p of candidates) {
-      for (const t of freeSlots({ date, tz, hours, durationMin: service.duration_min, busy: busy.filter(b => b.professional_id === p.id), now: new Date() })) {
-        if (!byTime.has(t.getTime())) byTime.set(t.getTime(), p.id)
-      }
+      const eff = effective(service, p.id, overrides)
+      if (!eff) continue
+      const free = freeSlots({ date, tz, hours: hoursFor(hours, p.id), durationMin: eff.duration_min, busy: busy.filter(b => b.professional_id === p.id), now: new Date() })
+      for (const t of free) if (!byTime.has(t.getTime())) byTime.set(t.getTime(), p.id)
     }
     return [...byTime.entries()].sort((a, b) => a[0] - b[0]).map(([t, id]) => ({ start: new Date(t), proId: id }))
-  }, [salon, service, proId, date, pros, hours, busy, tz])
+  }, [service, date, candidates, overrides, tz, hours, busy])
 
   if (salon === undefined) return <main className="page"><p className="muted">A carregar…</p></main>
   if (salon === null) return <main className="page"><h1>Salão não encontrado</h1><p className="muted">Confirme o link com o salão.</p></main>
@@ -91,30 +105,44 @@ export default function BookingPage() {
   const chooseTheme = (id: string | null) => { setClientTheme(salon.slug, id); setMyTheme(id) }
   const proName = (id?: string) => pros.find(p => p.id === id)?.name ?? ''
   const longDate = (d: Date) => d.toLocaleDateString('pt-PT', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long' })
-  const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
+  // Price and length with the professional who will do it (or the chosen one before a time is picked).
+  const eff = service ? effective(service, slot?.proId ?? (proId !== ANY ? proId : undefined), overrides) : null
+  const range = (s: Service) => {
+    const r = priceRange(s, pros.map(p => p.id), overrides)
+    return !r || r.min === r.max ? euros(r?.min ?? s.price_cents) : `${euros(r.min)}–${euros(r.max)}`
+  }
+  const priceText = eff ? euros(eff.price_cents) : service ? range(service) : ''
+  const skipPro = pros.length === 1
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    setError(''); setSending(true)
-    const { error } = await supabase.rpc('create_booking', {
+    if (submitting) return // a second tap must not book twice
+    setError(''); setSubmitting(true)
+    const { data: bookingId, error } = await supabase.rpc('create_booking', {
       p_salon: salon!.id, p_service: service!.id, p_professional: slot!.proId, p_starts_at: slot!.start.toISOString(),
       p_client_name: name, p_client_phone: phone, p_consent: consent,
     })
-    setSending(false)
+    setSubmitting(false)
     if (error) {
       setError(Object.entries(ERRORS).find(([k]) => error.message.includes(k))?.[1] ?? 'Não foi possível marcar. Tente de novo.')
       if (error.message.includes('horario_ocupado')) { setSlot(undefined); setStep(3) }
       return
     }
-    setDone(true)
+    // Emails the salon about the new booking. Best effort: the booking is already saved.
+    fetch('/api/notify-booking', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: bookingId }), keepalive: true,
+    }).catch(() => {})
+    setDone(String(bookingId))
     window.scrollTo(0, 0)
   }
 
   function addToCalendar() {
-    const end = new Date(slot!.start.getTime() + service!.duration_min * 60000)
+    const end = new Date(slot!.start.getTime() + (eff?.duration_min ?? service!.duration_min) * 60000)
     downloadIcs('marcacao.ics', icsEvent({
       title: `${service!.name} · ${salon!.name}`, start: slot!.start, end,
-      location: salon!.address ?? undefined, description: `Com ${proName(slot!.proId)}`,
+      location: salon!.address ?? undefined,
+      description: `Com ${proName(slot!.proId)}${done ? `. Cancelar ou mudar: ${manageLink(location.origin, done)}` : ''}`,
     }))
   }
 
@@ -122,54 +150,74 @@ export default function BookingPage() {
     <>
       <div className="cover" />
       <div className="hero">
-        <div className="row" style={{ alignItems: 'flex-end', gap: 14 }}>
+        <div className="row" style={{ alignItems: 'flex-end', justifyContent: 'flex-start', flexWrap: 'nowrap', gap: 14 }}>
           <span className="avatar">{initials(salon.name)}</span>
-          <h1 className="grow" style={{ paddingBottom: 6 }}>{salon.name}</h1>
+          <h1 className="grow">{salon.name}</h1>
         </div>
         <div className="meta">
           {salon.address && <span><Icon name="pin" size={16} />{salon.address}</span>}
-          {hours.length > 0 && <span><Icon name="clock" size={16} />{summarizeHours(hours)}</span>}
+          {hours.salon.length > 0 && <span><Icon name="clock" size={16} />{summarizeHours(hours.salon)}</span>}
         </div>
-        {salon.news && <div className="card soft" style={{ marginTop: 16 }}><b>Novidades:</b> {salon.news}</div>}
+        {salon.news && <div className="card soft"><b>Novidades:</b> {salon.news}</div>}
       </div>
     </>
   )
 
+  const footer = (
+    <footer className="foot">
+      {picking ? <div className="stack" style={{ textAlign: 'left' }}>
+        <p className="muted">Escolha um estilo só para si. O salão não vê esta escolha.</p>
+        <ThemePicker value={theme.id} type={salon.type} showAll onChange={id => chooseTheme(id)} />
+        <div className="row" style={{ justifyContent: 'flex-start' }}>
+          {myTheme && <button className="link" onClick={() => chooseTheme(null)}>Usar o estilo do salão</button>}
+          <button className="link" onClick={() => setPicking(false)}>Feito</button>
+        </div>
+      </div> : <button className="link" onClick={() => setPicking(true)}>Mudar o estilo da página</button>}
+      <p className="muted" style={{ marginTop: 10 }}>Feito com CorteCerto · <a href="/privacidade">Privacidade</a></p>
+    </footer>
+  )
+
   if (done) {
     const msg = `Olá! Acabei de marcar ${service!.name} com ${proName(slot!.proId)} para ${longDate(slot!.start)} às ${formatTime(slot!.start, tz)}. Nome: ${name}.`
+    const manage = manageLink(location.origin, done)
     return (
       <div className="themed" style={themeStyle(theme)}>
         {header}
         <main className="page">
-          <div className="card raised" style={{ textAlign: 'center' }}>
+          <div className="card raised" style={{ textAlign: 'center', marginTop: 20 }}>
             <div className="done-mark"><Icon name="check" size={36} /></div>
-            <h2>Marcação feita!</h2>
-            <p className="muted">{salon.deposit_cents > 0 ? 'Falta só o sinal para a confirmar.' : 'Até breve!'}</p>
-            <dl className="kv" style={{ textAlign: 'left', margin: '20px 0 0' }}>
+            <h2 style={{ margin: 0 }}>Marcação feita!</h2>
+            <p className="muted" style={{ margin: '6px 0 0' }}>{salon.deposit_cents > 0 && salon.mbway_number ? 'Falta só o sinal para a confirmar.' : 'Até breve!'}</p>
+            <dl className="kv" style={{ textAlign: 'left', marginTop: 20 }}>
               <dt>Serviço</dt><dd>{service!.name}</dd>
               <dt>Com</dt><dd>{proName(slot!.proId)}</dd>
               <dt>Quando</dt><dd>{cap(longDate(slot!.start))}, {formatTime(slot!.start, tz)}</dd>
-              <dt>Preço</dt><dd>{euros(service!.price_cents)}</dd>
+              {eff && <><dt>Preço</dt><dd>{euros(eff.price_cents)}</dd></>}
             </dl>
           </div>
           {salon.deposit_cents > 0 && salon.mbway_number && (
-            <div className="card warn" style={{ marginTop: 12 }}>
+            <div className="card warn">
               <h3>Sinal de {euros(salon.deposit_cents)} por MB Way</h3>
               <p style={{ margin: '6px 0 12px' }}>Envie para o número do salão. A marcação fica confirmada quando o salão receber.</p>
               <div className="between">
                 <b style={{ fontSize: '1.3rem', letterSpacing: '.04em' }}>{formatPhone(salon.mbway_number).replace('+351 ', '')}</b>
-                <button className="btn sm" onClick={() => { navigator.clipboard?.writeText(salon.mbway_number!); setCopied(true) }}>
+                <button className="sm" onClick={() => { navigator.clipboard?.writeText(salon.mbway_number!); setCopied(true) }}>
                   <Icon name={copied ? 'check' : 'copy'} size={16} />{copied ? 'Copiado' : 'Copiar'}
                 </button>
               </div>
             </div>
           )}
           <div className="stack" style={{ marginTop: 16 }}>
-            <button className="btn block" onClick={addToCalendar}><Icon name="calendar" size={18} />Adicionar ao calendário</button>
-            {salon.whatsapp && <a className="btn wa block" href={waLink(salon.whatsapp, msg)} target="_blank" rel="noreferrer"><WhatsAppIcon />Avisar o salão por WhatsApp</a>}
-            <button className="link" onClick={() => { setDone(false); setStep(1); setService(undefined); setSlot(undefined) }}>Fazer outra marcação</button>
+            <button className="btn ghost" onClick={addToCalendar}><Icon name="calendar" size={18} />Adicionar ao calendário</button>
+            {salon.whatsapp && <a className="btn wa" href={waLink(salon.whatsapp, msg)} target="_blank" rel="noreferrer"><WhatsAppIcon />Avisar o salão por WhatsApp</a>}
           </div>
-          <p className="foot muted">Feito com CorteCerto</p>
+          <div className="card">
+            <h3>Precisa de cancelar ou mudar?</h3>
+            <p className="muted small" style={{ margin: '4px 0 8px' }}>Guarde este link. O salão também o envia no lembrete.</p>
+            <p style={{ wordBreak: 'break-all', margin: 0 }}><a href={manage}>{manage.replace(/^https?:\/\//, '')}</a></p>
+          </div>
+          <p style={{ textAlign: 'center' }}><button className="link" onClick={() => { setDone(null); setStep(1); setService(undefined); setSlot(undefined); if (!skipPro) setProId(undefined) }}>Fazer outra marcação</button></p>
+          {footer}
         </main>
       </div>
     )
@@ -177,83 +225,100 @@ export default function BookingPage() {
 
   const canNext = (step === 1 && service) || (step === 2 && proId) || (step === 3 && slot)
   const toSteps = () => requestAnimationFrame(() => document.getElementById('steps')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
-  const next = () => { setStep(step + 1); toSteps() }
+  const go = (s: number) => { setStep(s); toSteps() }
+  const next = () => go(step === 1 && skipPro ? 3 : step + 1)
+  const back = (from: number) => go(from === 3 && skipPro ? 1 : from - 1)
 
   return (
     <div className="themed" style={themeStyle(theme)}>
       {header}
       <main className="page">
-        <div className="progress" id="steps" style={{ scrollMarginTop: 16 }}>{[1, 2, 3, 4].map(i => <i key={i} className={i <= step ? 'done' : ''} />)}</div>
+        {myTheme && !picking && (
+          <p className="banner small" style={{ borderRadius: 12 }}>Está a ver esta página com um estilo escolhido por si. <button className="link" onClick={() => chooseTheme(null)}>Usar o estilo do salão</button></p>
+        )}
+        <div className="steps" id="steps">{[1, 2, 3, 4].map(i => <i key={i} className={i <= step ? 'done' : ''} />)}</div>
 
         {step === 1 && <>
           <div className="step-title"><h2>O que vai fazer?</h2></div>
+          {services.length === 0 && <p className="muted">Este salão ainda não tem serviços para marcar online.</p>}
           <div className="choices">
             {services.map(s => (
-              <button key={s.id} className={s.id === service?.id ? 'choice on' : 'choice'} onClick={() => { setService(s); setSlot(undefined) }}>
+              <button key={s.id} className={s.id === service?.id ? 'choice on' : 'choice'} onClick={() => {
+                setService(s); setSlot(undefined)
+                if (proId && proId !== ANY && !effective(s, proId, overrides) && !skipPro) setProId(undefined)
+              }}>
                 <span><span className="t">{s.name}</span><small>{s.duration_min} min</small></span>
-                <span className="price">{euros(s.price_cents)}</span>
+                <span className="price">{range(s)}</span>
               </button>
             ))}
           </div>
         </>}
 
-        {step === 2 && <>
-          <div className="step-title"><h2>Com quem?</h2><button className="link" onClick={() => setStep(1)}>Voltar</button></div>
+        {step === 2 && service && <>
+          <div className="step-title"><h2>Com quem?</h2><button className="link" onClick={() => back(2)}>Voltar</button></div>
+          {prosFor.length === 0 && <p className="muted">De momento ninguém faz este serviço. Escolha outro.</p>}
           <div className="choices">
-            {pros.length > 1 && (
+            {prosFor.length > 1 && (
               <button className={proId === ANY ? 'choice on' : 'choice'} onClick={() => { setProId(ANY); setSlot(undefined) }}>
-                <span className="pro"><span className="avatar" style={{ width: 44, height: 44 }}><Icon name="users" /></span><span><span className="t">Qualquer um</span><small>Mais horários livres</small></span></span>
+                <span className="pro"><span className="avatar"><Icon name="users" /></span><span><span className="t">Qualquer um</span><small>Mais horários livres</small></span></span>
               </button>
             )}
-            {pros.map(p => (
-              <button key={p.id} className={p.id === proId ? 'choice on' : 'choice'} onClick={() => { setProId(p.id); setSlot(undefined) }}>
-                <span className="pro"><span className="avatar" style={{ width: 44, height: 44 }}>{initials(p.name)}</span><span className="t">{p.name}</span></span>
-              </button>
-            ))}
+            {prosFor.map(p => {
+              const e = effective(service, p.id, overrides)!
+              const differs = e.price_cents !== service.price_cents || e.duration_min !== service.duration_min
+              return (
+                <button key={p.id} className={p.id === proId ? 'choice on' : 'choice'} onClick={() => { setProId(p.id); setSlot(undefined) }}>
+                  <span className="pro"><span className="avatar">{initials(p.name)}</span><span><span className="t">{p.name}</span>{differs && <small>{e.duration_min} min</small>}</span></span>
+                  {differs && <span className="price">{euros(e.price_cents)}</span>}
+                </button>
+              )
+            })}
           </div>
         </>}
 
         {step === 3 && <>
-          <div className="step-title"><h2>Quando?</h2><button className="link" onClick={() => setStep(2)}>Voltar</button></div>
+          <div className="step-title"><h2>Quando?</h2><button className="link" onClick={() => back(3)}>Voltar</button></div>
+          {openDays.length === 0 && <p className="muted">Sem dias disponíveis nas próximas semanas.</p>}
           <div className="chips">
             {openDays.map(d => {
               const dt = new Date(d + 'T12:00:00Z')
               return (
                 <button key={d} className={d === date ? 'chip on' : 'chip'} onClick={() => { setDate(d); setSlot(undefined) }}>
-                  <span className="d1">{d === today ? 'Hoje' : dt.toLocaleDateString('pt-PT', { weekday: 'short', timeZone: 'UTC' }).replace('.', '')}</span>
+                  <span className="d1">{d === today ? 'Hoje' : cap(dt.toLocaleDateString('pt-PT', { weekday: 'short', timeZone: 'UTC' }).replace('.', ''))}</span>
                   <span className="d2">{dt.getUTCDate()}</span>
                   <span className="d1">{dt.toLocaleDateString('pt-PT', { month: 'short', timeZone: 'UTC' }).replace('.', '')}</span>
                 </button>
               )
             })}
           </div>
-          <div className="slots" style={{ marginTop: 14 }}>
-            {slots.length === 0 && <p className="muted" style={{ gridColumn: '1 / -1' }}>Sem horários livres neste dia. Experimente outro dia.</p>}
+          <div className="slots">
+            {slots.length === 0 && date && <p className="muted" style={{ gridColumn: '1 / -1' }}>Sem horários livres neste dia. Experimente outro dia.</p>}
             {slots.map(t => (
               <button key={t.start.getTime()} className={t.start.getTime() === slot?.start.getTime() ? 'slot on' : 'slot'} onClick={() => setSlot(t)}>{formatTime(t.start, tz)}</button>
             ))}
           </div>
         </>}
 
-        {step === 4 && (
+        {step === 4 && slot && (
           <form onSubmit={submit}>
-            <div className="step-title"><h2>Os seus dados</h2><button type="button" className="link" onClick={() => setStep(3)}>Voltar</button></div>
-            <div className="card">
+            <div className="step-title"><h2>Os seus dados</h2><button type="button" className="link" onClick={() => back(4)}>Voltar</button></div>
+            <div className="card" style={{ marginTop: 0 }}>
               <dl className="kv">
-                <dt>Serviço</dt><dd>{service!.name} · {euros(service!.price_cents)}</dd>
-                <dt>Com</dt><dd>{proName(slot!.proId)}</dd>
-                <dt>Quando</dt><dd>{cap(longDate(slot!.start))}, {formatTime(slot!.start, tz)}</dd>
+                <dt>Serviço</dt><dd>{service!.name} · {priceText}</dd>
+                <dt>Com</dt><dd>{proName(slot.proId)}</dd>
+                <dt>Quando</dt><dd>{cap(longDate(slot.start))}, {formatTime(slot.start, tz)}</dd>
               </dl>
             </div>
             <label>Nome<input value={name} onChange={e => setName(e.target.value)} required autoComplete="name" /></label>
             <label>Telemóvel<input value={phone} onChange={e => setPhone(e.target.value)} required inputMode="tel" autoComplete="tel" placeholder="912 345 678" /></label>
             <label className="check">
               <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />
-              <span>Aceito receber lembretes e novidades do salão por WhatsApp. <span className="muted">(opcional)</span></span>
+              <span>Aceito receber novidades e promoções do salão por WhatsApp. <span className="muted">(opcional)</span></span>
             </label>
-            {salon.deposit_cents > 0 && <p className="muted small">Esta marcação pede um sinal de {euros(salon.deposit_cents)} por MB Way, a enviar a seguir.</p>}
-            {error && <p className="error">{error}</p>}
-            <div className="sticky-cta"><button className="btn primary block" disabled={sending}>{sending ? 'A marcar…' : 'Confirmar marcação'}</button></div>
+            <p className="muted small">O salão pode enviar-lhe um lembrete desta marcação por WhatsApp. Os seus dados são usados apenas para gerir a marcação. <a href="/privacidade" target="_blank" rel="noreferrer">Política de privacidade</a></p>
+            {salon.deposit_cents > 0 && salon.mbway_number && <p className="muted small">Esta marcação pede um sinal de {euros(salon.deposit_cents)} por MB Way, a enviar a seguir.</p>}
+            {error && <p className="error" role="alert">{error}</p>}
+            <div className="sticky-cta"><button className="btn" style={{ marginTop: 0 }} disabled={submitting}>{submitting ? 'A marcar…' : 'Confirmar marcação'}</button></div>
           </form>
         )}
 
@@ -261,24 +326,13 @@ export default function BookingPage() {
           <div className="sticky-cta">
             <div className="summary">
               <span className="small grow" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                <b>{service?.name}</b>{step >= 3 && slot && <> · {formatTime(slot.start, tz)}</>} · {euros(service!.price_cents)}
+                <b>{service?.name}</b>{step >= 3 && slot && <> · {formatTime(slot.start, tz)}</>} · {priceText}
               </span>
-              <button className="btn" onClick={next}>Continuar</button>
+              <button onClick={next}>Continuar</button>
             </div>
           </div>
         )}
-
-        <footer className="foot">
-          {picking ? <div className="stack" style={{ textAlign: 'left' }}>
-            <p className="muted">Escolha um estilo só para si. O salão não vê esta escolha.</p>
-            <ThemePicker value={theme.id} type={salon.type} showAll onChange={id => chooseTheme(id)} />
-            <div className="row">
-              {myTheme && <button className="link" onClick={() => chooseTheme(null)}>Usar o estilo do salão</button>}
-              <button className="link" onClick={() => setPicking(false)}>Feito</button>
-            </div>
-          </div> : <button className="link" onClick={() => setPicking(true)}>Mudar o estilo da página</button>}
-          <p className="muted" style={{ marginTop: 10 }}>Feito com CorteCerto</p>
-        </footer>
+        {footer}
       </main>
     </div>
   )
