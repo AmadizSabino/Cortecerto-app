@@ -7,6 +7,8 @@ import { addDays, dateInTz, formatTime, zonedToUtc } from './lib/time'
 import { closestSlot, DEFAULT_WEEKS, suggestNextDate, WEEK_OPTIONS } from './lib/nextVisit'
 import { manageLink } from './lib/clientChanges'
 import { waLink } from './lib/whatsapp'
+import { effective } from './lib/pricing'
+import { loadOverrides } from './lib/pricingData'
 
 const ERRORS: Record<string, string> = {
   horario_ocupado: 'Esse horário acabou de ser ocupado. Escolha outro.',
@@ -34,10 +36,12 @@ export default function NextVisit({ salon, booking, service, pro, onBooked, onCl
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [booked, setBooked] = useState<Booking | null>(null)
+  const [duration, setDuration] = useState(service.duration_min)
 
   useEffect(() => {
     loadHours(salon.id).then(setAllHours)
-  }, [salon.id])
+    loadOverrides(salon.id).then(ov => setDuration((effective(service, pro.id, ov.overrides) ?? service).duration_min))
+  }, [salon.id, service, pro.id])
 
   useEffect(() => { if (hours) setDate(suggestNextDate(visitDate, weeks, hours)) }, [hours, weeks, visitDate])
 
@@ -53,8 +57,8 @@ export default function NextVisit({ salon, booking, service, pro, onBooked, onCl
   }, [date, salon.id, pro.id, tz])
 
   const slots = useMemo(() => hours && busy && date
-    ? freeSlots({ date, tz, hours, durationMin: service.duration_min, busy, now: new Date() })
-    : [], [hours, busy, date, tz, service.duration_min])
+    ? freeSlots({ date, tz, hours, durationMin: duration, busy, now: new Date() })
+    : [], [hours, busy, date, tz, duration])
 
   // Preselect the time closest to today's visit.
   useEffect(() => { setSlot(closestSlot(slots, minutesIn(tz)(new Date(booking.starts_at)), minutesIn(tz))) }, [slots, tz, booking.starts_at])

@@ -2,6 +2,7 @@ import { supabase, type Booking, type Salon, type Service } from './supabase'
 import { buildClients, type ClientNote } from './clients'
 import { toCsv, download } from './csv'
 import { formatPhone } from './whatsapp'
+import { bookingPrice } from './pricing'
 
 const STATUS: Record<string, string> = { pendente: 'Pendente', confirmada: 'Confirmada', concluida: 'Concluída', faltou: 'Faltou', cancelada: 'Cancelada' }
 
@@ -50,7 +51,7 @@ export async function exportBookings(salon: Salon) {
     bookings.map(b => [
       local(b.starts_at, salon.timezone), b.client_name, b.client_phone ? formatPhone(b.client_phone) : '',
       services[b.service_id]?.name ?? '', pros[b.professional_id] ?? '',
-      services[b.service_id] ? (services[b.service_id].price_cents / 100).toFixed(2).replace('.', ',') : '',
+      (bookingPrice(b, services) / 100).toFixed(2).replace('.', ','),
       STATUS[b.status] ?? b.status, b.deposit === 'nenhum' ? '' : b.deposit, b.consent_messages,
       local((b as Booking & { created_at: string }).created_at, salon.timezone),
     ]),

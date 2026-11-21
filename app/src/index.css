@@ -143,3 +143,9 @@ button:disabled { opacity: .5; cursor: default; }
 .week-row.st-pendente .week-time::after { content: ' •'; color: var(--accent); }
 .week-time { font-variant-numeric: tabular-nums; font-weight: 600; }
 .page > header.row { align-items: flex-start; } .page > header.row > .row { flex-wrap: wrap; justify-content: flex-end; gap: 6px 12px; }
+.price-row { display: grid; grid-template-columns: 1fr 6.5em 5.5em; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line); }
+.price-row:first-of-type { margin-top: 8px; }
+.price-row label:not(.check) { display: flex; align-items: center; gap: 4px; margin: 0; }
+.price-row input:not([type=checkbox]) { width: 100%; padding: 6px; }
+.price-row.off { grid-template-columns: 1fr auto; }
+.price-row.off label.check { color: var(--muted); }

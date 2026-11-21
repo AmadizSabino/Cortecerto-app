@@ -22,6 +22,7 @@ export interface Booking {
   deposit: 'nenhum' | 'pendente' | 'pago'
   service_id: string; professional_id: string
   reminder_sent_at?: string | null // migration 0006
+  price_cents?: number | null // migration 0011: price when booked
   client_action?: 'cancelou' | 'mudou' | null // migration 0007
   client_action_at?: string | null
 }

@@ -13,6 +13,7 @@ import BookingEditor from '../BookingEditor'
 import { pendingDocs } from '../lib/acceptance'
 import type { LegalDoc } from '../lib/legal'
 import { manageLink } from '../lib/clientChanges'
+import { bookingPrice } from '../lib/pricing'
 
 const STATUS_LABEL: Record<Booking['status'], string> = {
   pendente: 'Pendente', confirmada: 'Confirmada', concluida: 'Concluída', faltou: 'Faltou', cancelada: 'Cancelada',
@@ -159,7 +160,7 @@ export default function AgendaPage() {
               {b.client_action === 'mudou' && <span className="tag warn">Cliente mudou a hora</span>}
               {b.client_action === 'cancelou' && <span className="tag warn">Cancelada pelo cliente</span>}
             </div>
-            <div>{b.client_name} · <a href={`tel:+${formatPhone(b.client_phone).replace(/\D/g, "")}`}>{formatPhone(b.client_phone)}</a>{svc && <> · {euros(svc.price_cents)}</>}</div>
+            <div>{b.client_name} · <a href={`tel:+${formatPhone(b.client_phone).replace(/\D/g, "")}`}>{formatPhone(b.client_phone)}</a>{svc && <> · {euros(bookingPrice(b, services))}</>}</div>
             {b.deposit !== 'nenhum' && (
               <div>Sinal: {b.deposit === 'pago' ? 'pago ✓' : <button className="link" onClick={() => update(b, { deposit: 'pago' })}>marcar como recebido</button>}</div>
             )}

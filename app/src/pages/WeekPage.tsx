@@ -5,6 +5,7 @@ import { euros, supabase, type Booking, type Professional, type Salon, type Serv
 import { addDays, dateInTz, formatTime, zonedToUtc } from '../lib/time'
 import { groupByDay, weekDays, weekStart } from '../lib/week'
 import { themeById, themeStyle } from '../lib/themes'
+import { bookingPrice } from '../lib/pricing'
 
 interface Off { id: string; professional_id: string | null; starts_at: string; ends_at: string; reason: string | null }
 
@@ -58,7 +59,7 @@ export default function WeekPage() {
   const byDay = groupByDay(shown, tz)
   const days = weekDays(monday)
   const fmtDay = (d: string, opts: Intl.DateTimeFormatOptions) => new Date(d + 'T12:00:00Z').toLocaleDateString('pt-PT', opts)
-  const price = (b: Booking) => services[b.service_id]?.price_cents ?? 0
+  const price = (b: Booking) => bookingPrice(b, services)
   const weekTotal = shown.filter(b => b.status !== 'faltou').reduce((s, b) => s + price(b), 0)
   const proList = Object.values(pros)
 
