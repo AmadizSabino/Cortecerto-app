@@ -76,6 +76,7 @@ export default function NextVisit({ salon, booking, service, pro, onBooked, onCl
       return
     }
     // Booked at the counter with the client, so it's confirmed straight away.
+    // If this fails the booking still exists, as pending; the agenda shows it either way.
     await supabase.from('bookings').update({ status: 'confirmada' }).eq('id', id)
     const { data: row } = await supabase.from('bookings').select('*').eq('id', id).maybeSingle()
     setSaving(false)

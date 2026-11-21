@@ -94,6 +94,7 @@ export default function ClientsPage() {
   const [notesReady, setNotesReady] = useState(true)
   const [forgetting, setForgetting] = useState<string | null>(null) // client key awaiting confirmation
   const [reload, setReload] = useState(0)
+  const [forgetError, setForgetError] = useState('')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -143,14 +144,18 @@ export default function ClientsPage() {
 
   /** RGPD erasure: the bookings stay for statistics, without the client's name, phone or notes. */
   async function forget(c: Client) {
+    setForgetError('')
     const { error } = await supabase.rpc('forget_client', { p_salon: salon!.id, p_key: c.key })
+    // Anything but "function not there yet" (migration 0010) is a real failure: say so, change nothing.
+    if (error && !error.message.includes('forget_client')) { setForgetError('Não foi possível apagar os dados. Tente de novo.'); return }
     if (error) {
       // Before migration 0010: do the same from here.
       const ids = c.bookings.map(b => b.id)
       const future = c.bookings.filter(b => (b.status === 'pendente' || b.status === 'confirmada') && new Date(b.starts_at) > now).map(b => b.id)
-      if (future.length) await supabase.from('bookings').update({ status: 'cancelada' }).in('id', future)
-      await supabase.from('bookings').update({ client_name: 'Cliente apagado', client_phone: '', consent_messages: false }).in('id', ids)
+      const a = future.length ? await supabase.from('bookings').update({ status: 'cancelada' }).in('id', future) : { error: null }
+      const b = await supabase.from('bookings').update({ client_name: 'Cliente apagado', client_phone: '', consent_messages: false }).in('id', ids)
       await supabase.from('client_notes').delete().eq('salon_id', salon!.id).eq('phone_key', c.key)
+      if (a.error || b.error) { setForgetError('Não foi possível apagar todos os dados. Tente de novo.'); setReload(r => r + 1); return }
     }
     setForgetting(null); setOpen(null); setReload(r => r + 1)
   }
@@ -242,6 +247,7 @@ export default function ClientsPage() {
                     <p>Apagar o nome, o telemóvel e as notas de {c.name}? As marcações ficam nas estatísticas como "Cliente apagado" e as futuras são canceladas. Não dá para desfazer.</p>
                     <div className="actions">
                       <button className="btn-danger" onClick={() => forget(c)}>Sim, apagar</button>
+                      {forgetError && <span className="error">{forgetError}</span>}
                       <button className="link" onClick={() => setForgetting(null)}>Cancelar</button>
                     </div>
                   </div>

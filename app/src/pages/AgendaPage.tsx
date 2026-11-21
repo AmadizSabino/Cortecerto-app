@@ -56,6 +56,8 @@ export default function AgendaPage() {
   const [pending, setPending] = useState<LegalDoc[] | null>(null)
   const [nextFor, setNextFor] = useState<string | null>(null) // booking id with the next-visit panel open
   const [editing, setEditing] = useState<'nova' | string | null>(null) // 'nova' or the id of the booking being edited
+  const [actionError, setActionError] = useState('')
+  const [refresh, setRefresh] = useState(0)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -87,17 +89,34 @@ export default function AgendaPage() {
     const from = zonedToUtc(date, '00:00', salon.timezone).toISOString()
     const to = zonedToUtc(addDays(date, 1), '00:00', salon.timezone).toISOString()
     supabase.from('bookings').select('*').eq('salon_id', salon.id).gte('starts_at', from).lt('starts_at', to).order('starts_at')
-      .then(({ data }) => setBookings(data ?? []))
+      .then(({ data, error }) => { if (!error) setBookings(data ?? []) })
     // Time off on this day (migration 0009); ignored if the table isn't there yet.
     supabase.from('time_off').select('id,professional_id,starts_at,ends_at,reason').eq('salon_id', salon.id).lt('starts_at', to).gt('ends_at', from).order('starts_at')
       .then(({ data, error }) => setOffs(error ? [] : data ?? []))
-  }, [salon, date])
+  }, [salon, date, refresh])
+
+  // New online bookings appear without reloading: when the app comes back to the screen, and every minute.
+  useEffect(() => {
+    const again = () => { if (document.visibilityState === 'visible') setRefresh(r => r + 1) }
+    const t = setInterval(again, 60_000)
+    document.addEventListener('visibilitychange', again)
+    window.addEventListener('focus', again)
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', again); window.removeEventListener('focus', again) }
+  }, [])
 
   async function update(b: Booking, patch: Partial<Booking>) {
-    const { error } = await supabase.from('bookings').update(patch).eq('id', b.id)
-    if (!error) setBookings(bs => bs.map(x => x.id === b.id ? { ...x, ...patch } : x))
+    setActionError('')
+    // select() so a write the database refused (no row changed) shows as a failure, not as done.
+    const { data, error } = await supabase.from('bookings').update(patch).eq('id', b.id).select('id')
+    if (error || !data?.length) {
+      setActionError(error?.message.includes('no_overlap')
+        ? 'Não foi possível: esse profissional já tem outra marcação a essa hora.'
+        : 'Não foi possível guardar a alteração. Verifique a ligação e tente de novo.')
+      return
+    }
+    setBookings(bs => bs.map(x => x.id === b.id ? { ...x, ...patch } : x))
     // Right after a visit is the moment to book the next one.
-    if (!error && patch.status === 'concluida') setNextFor(b.id)
+    if (patch.status === 'concluida') setNextFor(b.id)
   }
 
   /** After creating or editing: show it if it's on the day being viewed, otherwise go to its day. */
@@ -150,6 +169,7 @@ export default function AgendaPage() {
           </div>
         )
       })}
+      {actionError && <p className="error" role="alert">{actionError}</p>}
       {bookings.length === 0 && <p className="muted">Sem marcações neste dia.</p>}
       {bookings.map(b => {
         const svc = services[b.service_id]

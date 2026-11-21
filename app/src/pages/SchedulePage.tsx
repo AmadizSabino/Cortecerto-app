@@ -69,10 +69,13 @@ export default function SchedulePage() {
     const rows = editing.own ? weekToRows(editing.week) : []
     if (typeof rows === 'string') { setMsg({ ok: false, text: rows }); return }
     if (editing.own && rows.length === 0) { setMsg({ ok: false, text: 'Escolha pelo menos um dia de trabalho.' }); return }
+    // If the new hours can't be written, put the old ones back.
+    const old = hours?.byPro[editing.proId] ?? []
     const del = await supabase.from('professional_hours').delete().eq('professional_id', editing.proId)
-    const ins = rows.length
+    const ins = rows.length && !del.error
       ? await supabase.from('professional_hours').insert(rows.map(r => ({ ...r, professional_id: editing.proId, salon_id: salon!.id })))
       : { error: null }
+    if (ins.error && old.length) await supabase.from('professional_hours').insert(old.map(r => ({ ...r, professional_id: editing.proId, salon_id: salon!.id })))
     if (del.error || ins.error) { setMsg({ ok: false, text: 'Não foi possível guardar. Tente de novo.' }); return }
     setEditing(null); setMsg({ ok: true, text: 'Horário guardado.' }); load()
   }
