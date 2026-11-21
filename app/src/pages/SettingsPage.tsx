@@ -141,6 +141,7 @@ export default function SettingsPage() {
       <button type="button" onClick={() => setPros(r => [...r, { name: '', active: true }])} style={{ marginTop: 8 }}>+ Adicionar profissional</button>
 
       <h2>Horário</h2>
+      <p className="muted">Horário de abertura do salão. <Link to="/horarios">Horários por profissional, pausas, folgas e férias</Link></p>
       {days.map((d, i) => (
         <div key={i} className="row day-row">
           <label className="check"><input type="checkbox" checked={d.open} onChange={e => setDay(i, { open: e.target.checked })} />{WEEKDAYS[i]}</label>

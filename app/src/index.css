@@ -122,3 +122,10 @@ button:disabled { opacity: .5; cursor: default; }
 .btn-inline { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .editor select, .editor input { width: 100%; }
 .editor .row > label { flex: 1; margin: 6px 0; }
+/* Schedules and time off */
+.sched-day { display: grid; gap: 4px; margin: 6px 0; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.sched-day label.check { margin: 0; }
+.sched-times { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sched-times input { width: 7.2em; padding: 6px; }
+.off-row { grid-template-columns: 1fr 1fr auto !important; }
+.off-card { background: repeating-linear-gradient(-45deg, var(--card), var(--card) 8px, var(--line) 8px, var(--line) 10px); }
