@@ -6,6 +6,7 @@ import { addDays, dateInTz, formatTime, zonedToUtc } from '../lib/time'
 import { formatPhone, waLink } from '../lib/whatsapp'
 import { localSent, reminderMessage, saveLocalSent, wantsReminder } from '../lib/reminders'
 import { themeById, themeStyle } from '../lib/themes'
+import { loadMySalon } from '../lib/mySalon'
 import { manageLink } from '../lib/clientChanges'
 
 /** WhatsApp reminders for a day's bookings, tomorrow by default. */
@@ -23,7 +24,8 @@ export default function RemindersPage() {
   useEffect(() => {
     if (!session) return
     (async () => {
-      const { data: s } = await supabase.from('salons').select('*').eq('owner_id', session.user.id).maybeSingle()
+      const mine = await loadMySalon(session.user.id)
+      const s = mine.salon
       setSalon(s)
       if (!s) return
       setDate(addDays(dateInTz(new Date(), s.timezone), 1))

@@ -6,6 +6,7 @@ import type { Walkin } from '../lib/queue'
 import { formatTime } from '../lib/time'
 import { formatPhone, waLink } from '../lib/whatsapp'
 import { themeById, themeStyle } from '../lib/themes'
+import { loadMySalon } from '../lib/mySalon'
 
 /** The salon's walk-in queue: open or close it, call people by WhatsApp, add people at the counter. */
 export default function QueuePage() {
@@ -20,7 +21,7 @@ export default function QueuePage() {
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setSession(data.session)) }, [])
   useEffect(() => {
     if (!session) return
-    supabase.from('salons').select('*').eq('owner_id', session.user.id).maybeSingle().then(({ data }) => setSalon(data))
+    loadMySalon(session.user.id).then(r => { setSalon(r.salon) })
   }, [session])
 
   const refresh = useCallback(async () => {
@@ -49,7 +50,9 @@ export default function QueuePage() {
 
   async function toggle() {
     const open = !salon!.queue_open
-    const { error } = await supabase.from('salons').update({ queue_open: open }).eq('id', salon!.id)
+    // Through set_queue_open so the team can do it too (migration 0013); the owner can also update directly.
+    let { error } = await supabase.rpc('set_queue_open', { p_salon: salon!.id, p_open: open })
+    if (error) ({ error } = await supabase.from('salons').update({ queue_open: open }).eq('id', salon!.id))
     if (!error) setSalon({ ...salon!, queue_open: open })
   }
 

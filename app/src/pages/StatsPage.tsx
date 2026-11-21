@@ -5,6 +5,7 @@ import { euros, supabase, type Booking, type Salon, type Service } from '../lib/
 import { dateInTz } from '../lib/time'
 import { computeStats, monthlyRevenue, PERIODS, periodRange, type Period, type Ranked } from '../lib/stats'
 import { themeById, themeStyle } from '../lib/themes'
+import { loadMySalon, type Role } from '../lib/mySalon'
 
 const WEEKDAY_SHORT = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
 
@@ -30,6 +31,7 @@ function BarList({ items, value, label, format }: {
 /** The salon's numbers: revenue, visits, no-shows, clients, top services and team. */
 export default function StatsPage() {
   const [session, setSession] = useState<Session | null>()
+  const [role, setRole] = useState<Role>('dono')
   const [salon, setSalon] = useState<Salon | null>()
   const [services, setServices] = useState<Record<string, Service>>({})
   const [pros, setPros] = useState<Record<string, string>>({})
@@ -40,7 +42,9 @@ export default function StatsPage() {
   useEffect(() => {
     if (!session) return
     (async () => {
-      const { data: s } = await supabase.from('salons').select('*').eq('owner_id', session.user.id).maybeSingle()
+      const mine = await loadMySalon(session.user.id)
+      const s = mine.salon
+      setRole(mine.role)
       setSalon(s)
       if (!s) return
       const [sv, pr, bk] = await Promise.all([
@@ -64,6 +68,8 @@ export default function StatsPage() {
   if (!session) return <Navigate to="/painel" replace />
   if (salon === undefined) return <main className="page">A carregar…</main>
   if (salon === null) return <Navigate to="/registar" replace />
+  // Team members don't see the salon's settings, prices, hours or revenue.
+  if (role !== 'dono') return <Navigate to="/painel" replace />
 
   const pct = (x: number) => `${Math.round(x * 100)}%`
   const maxMonth = Math.max(1, ...months.map(m => m.revenue))

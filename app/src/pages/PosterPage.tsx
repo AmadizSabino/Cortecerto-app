@@ -5,6 +5,7 @@ import { supabase, type Salon } from '../lib/supabase'
 import { qrPath } from '../lib/qr'
 import { loadMarks, saveMarks } from '../lib/setup'
 import { themeById, themeStyle } from '../lib/themes'
+import { loadMySalon } from '../lib/mySalon'
 
 /** A printable A4 poster with the salon's booking QR code, in the salon's theme. */
 export default function PosterPage() {
@@ -17,7 +18,7 @@ export default function PosterPage() {
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setSession(data.session)) }, [])
   useEffect(() => {
     if (!session) return
-    supabase.from('salons').select('*').eq('owner_id', session.user.id).maybeSingle().then(({ data }) => setSalon(data))
+    loadMySalon(session.user.id).then(r => { setSalon(r.salon) })
   }, [session])
 
   const link = salon ? `${location.origin}/${queue ? 'f' : 's'}/${salon.slug}` : ''
