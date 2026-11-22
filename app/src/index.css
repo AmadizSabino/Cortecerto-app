@@ -400,3 +400,13 @@ button:disabled { opacity: .5; cursor: default; }
 .plan-item { padding: 10px 0; border-top: 1px solid var(--line); }
 .plan-item p { margin: 4px 0 6px 28px; }
 .plan-item.done b { text-decoration: line-through; opacity: .6; }
+
+/* 0022: business profile, home visits, packages */
+.seg { display: flex; gap: 4px; margin: 8px 0 12px; overflow-x: auto; }
+.seg button { flex: 1 0 auto; white-space: nowrap; }
+.seg button.on { background: var(--accent); color: var(--accentInk, #fff); border-color: var(--accent); }
+.where { margin-bottom: 8px; }
+.kv.quote { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; }
+.home-visit b { display: inline-flex; align-items: center; gap: 4px; }
+.price-big { font-size: 1.25rem; margin: 0 0 8px; }
+.business-profile .chips-set { margin-top: 10px; }

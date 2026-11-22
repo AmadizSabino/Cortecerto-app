@@ -273,4 +273,84 @@ set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-000
 do $$ begin insert into promotions (salon_id, code, title, kind, gift) values ((select id from salons), 'hack', 'x', 'oferta', 'y'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%row-level security%' then raise; end if; end $$;
 reset role;
 do $$ begin insert into promotions (salon_id, code, title, kind) values ((select id from salons), 'semvalor', 'x', 'percentagem'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%check%' then raise; end if; end $$;
+-- 0022: business profile ----------------------------------------------------------
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+update salons set areas = array['barbearia', 'estetica'], booking_mode = 'ambos', work_place = 'ambos' where id = :'salon';
+do $$ begin update salons set areas = array['tatuagem']; raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%check%' then raise; end if; end $$;
+reset role;
+
+-- 0022: home visits ----------------------------------------------------------------
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+insert into home_settings (salon_id, active, min_order_cents, deposit_required) values (:'salon', true, 500, false);
+insert into home_zones (salon_id, name, postcodes, fee_cents, travel_min) values (:'salon', 'Setúbal', array['2900', '2910'], 800, 20) returning id as z1 \gset
+insert into home_fees (salon_id, label, rule, at, amount_cents) values (:'salon', 'Antes das 9h', 'antes_das', '09:00', 500);
+insert into home_fees (salon_id, label, rule, amount_cents) values (:'salon', 'Fim de semana', 'fim_de_semana', 300);
+update services set at_home = true where id = :'corte';
+update professionals set at_home = true where id = :'ana';
+reset role;
+-- a weekday 15 days ahead at 08:30 Lisbon
+select (d + time '08:30') at time zone 'Europe/Lisbon' as h1 from (select (current_date + 15 + case extract(dow from current_date + 15)::int when 0 then 1 when 6 then 2 else 0 end)::timestamp as d) x \gset
+select set_config('t.h1', :'h1', false) \g /dev/null
+set role anon; reset request.jwt.claim.sub;
+select create_home_booking(:'salon', :'corte', :'ana', :'h1', 'Casa', '937100000', false, :'z1', 'Rua das Flores 1', '2900-123', 'Cão simpático') as hb1 \gset
+select pg_temp.check(count(*) = 0, 'anon reads no addresses') from booking_addresses;
+select pg_temp.check(count(*) = 1, 'travel is busy') from busy_slots(:'salon', :'h1'::timestamptz - interval '19 minutes', :'h1'::timestamptz - interval '18 minutes');
+do $$ begin perform create_booking((select id from salons), (select id from services where name = 'Corte'), (select id from professionals where name like 'Ana%'), current_setting('t.h1')::timestamptz - interval '15 minutes', 'X', '937200000', false); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%horario_ocupado%' and sqlerrm not like '%t.h1%' then raise; end if; end $$;
+reset role;
+select pg_temp.check(location = 'domicilio' and travel_min = 20 and home_fee_cents = 1300, 'home visit priced: zone + early fee') from bookings where id = :'hb1';
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+select pg_temp.check(count(*) = 1 and max(notes) = 'Cão simpático', 'front desk and up read the address') from booking_addresses;
+reset role;
+set role anon; reset request.jwt.claim.sub;
+do $$ begin perform create_home_booking((select id from salons), (select id from services where name = 'Corte'), (select id from professionals where name = 'Rui'), now() + interval '16 days', 'Y', '937300000', false, (select id from home_zones limit 1), 'Rua 2', null, null); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%profissional_invalido%' then raise; end if; end $$;
+reset role;
+
+-- 0022: packages: combo --------------------------------------------------------------
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+insert into packages (salon_id, mode, name, price_cents) values (:'salon', 'combo', 'Dia do noivo', 3000) returning id as k1 \gset
+insert into package_items (package_id, service_id) values (:'k1', :'corte');
+insert into package_items (package_id, service_id, optional, extra_price_cents) values (:'k1', :'corte', true, 700) returning id as x1 \gset
+reset role;
+set role anon; reset request.jwt.claim.sub;
+select create_package_booking(:'salon', :'k1', :'rui', date_trunc('hour', now()) + interval '17 days 11 hours', 'Noivo', '938100000', false, array[:'x1'::uuid]) as kb1 \gset
+reset role;
+select pg_temp.check(price_cents = 3700 and package_summary = 'Dia do noivo: Corte + Corte' and ends_at - starts_at = interval '90 minutes', 'combo booked with an extra: price and time add up') from bookings where id = :'kb1';
+
+-- 0022: packages: evento ------------------------------------------------------------
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+insert into packages (salon_id, mode, name, price_cents, per_guest_cents, max_guests, includes_trial, deposit_pct) values (:'salon', 'evento', 'Noiva', 18000, 4500, 6, true, 30) returning id as k2 \gset
+insert into package_items (package_id, service_id) values (:'k2', :'corte');
+reset role;
+set role anon; reset request.jwt.claim.sub;
+select request_package(:'k2', 'Joana', '939100000', true, current_date + 60, '09:00', 'local', 'Quinta do Lago', 3, null, 'Casamento') as r1 \gset
+select pg_temp.check(status = 'pedido' and estimate_cents = 18000 + 3 * 4500, 'event request estimate per person') from package_request_for_client(:'r1');
+do $$ begin perform request_package((select id from packages where name = 'Noiva'), 'J', '939100000', true, current_date + 60, null, 'salao', null, 9, null, null); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%convidados_invalidos%' then raise; end if; end $$;
+select set_config('t.r1', :'r1', false) \g /dev/null
+do $$ begin perform accept_package_proposal(current_setting('t.r1')::uuid); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_proposta%' then raise; end if; end $$;
+reset role;
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+select propose_package(:'r1', 30000, 9000, 'Inclui prova', :'ana', date_trunc('hour', now()) + interval '30 days 10 hours', 90, date_trunc('hour', now()) + interval '60 days 8 hours', 240, current_date + 14) \g /dev/null
+reset role;
+set role anon; reset request.jwt.claim.sub;
+select accept_package_proposal(:'r1') \g /dev/null
+reset role;
+select pg_temp.check(count(*) = 2 and sum(price_cents) = 30000 and bool_or(location = 'domicilio'), 'accepting puts the trial and the day in the agenda') from bookings where package_request_id = :'r1';
+select pg_temp.check(status = 'aceite', 'request accepted') from package_requests where id = :'r1';
+
+-- 0022: packages: pack ----------------------------------------------------------------
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+insert into packages (salon_id, mode, name, price_cents, sessions) values (:'salon', 'pack', '5 cortes', 5000, 2) returning id as k3 \gset
+reset role;
+set role anon; reset request.jwt.claim.sub;
+select buy_pack(:'k3', 'Pack', '930100000') as cp1 \gset
+select create_booking(:'salon', :'corte', :'rui', date_trunc('hour', now()) + interval '18 days 15 hours', 'Pack', '930100000', false) as pb \gset
+reset role;
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+select set_config('t.cp1', :'cp1', false) \g /dev/null
+select set_config('t.pb', :'pb', false) \g /dev/null
+do $$ begin perform use_pack_session(current_setting('t.cp1')::uuid, current_setting('t.pb')::uuid); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%pack_inativo%' then raise; end if; end $$;
+update client_packs set status = 'ativo', paid_at = now() where id = :'cp1';
+select pg_temp.check(use_pack_session(:'cp1', :'pb') = 1, 'one session left');
+reset role;
+select pg_temp.check(price_cents = 0 and client_pack_id = :'cp1', 'visit paid with the pack') from bookings where id = :'pb';
 \echo All database checks passed

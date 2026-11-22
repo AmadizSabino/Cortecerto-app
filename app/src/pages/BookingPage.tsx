@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import Icon, { WhatsAppIcon } from '../components/Icon'
 import ThemePicker from '../ThemePicker'
 import { summarizeHours } from '../lib/hours'
@@ -18,11 +18,20 @@ import AiTryOn from '../components/AiTryOn'
 import { benefitList, type Club } from '../lib/club'
 import { mediaUrl, type Photo } from '../lib/brand'
 import { applies, offerText, promoPrice, whenText, type Promo } from '../lib/promos'
+import { homeQuote, widen, zoneFor, type HomeFee, type HomeSettings, type Zone } from '../lib/home'
+import { comboTotals, priceLabel, type Package, type PackageItem } from '../lib/packages'
 
 const ERRORS: Record<string, string> = {
   horario_ocupado: 'Esse horário acabou de ser ocupado. Escolha outro, por favor.',
   horario_passado: 'Esse horário já passou.',
   dados_cliente: 'Indique o seu nome e um telemóvel válido.',
+  domicilio_fechado: 'O salão não está a aceitar visitas ao domicílio agora.',
+  zona_invalida: 'Escolha a sua zona.',
+  morada_invalida: 'Indique a morada.',
+  pedido_minimo: 'Ao domicílio há um valor mínimo de serviços. Escolha outro serviço.',
+  pacote_invalido: 'Este pacote já não está disponível.',
+  servico_invalido: 'Este serviço já não está disponível.',
+  profissional_invalido: 'Este profissional já não está disponível.',
 }
 const ANY = 'qualquer'
 /** Days ahead a client can book. */
@@ -88,6 +97,17 @@ export default function BookingPage() {
   // ?promo=<code>: the promotion whose link the client followed (migration 0020).
   const [promo, setPromo] = useState<Promo | null>(null)
   const [viewing, setViewing] = useState<Photo | null>(null)
+  // Home visits (migration 0022): where the service happens, the zone and the address.
+  const [home, setHome] = useState<{ settings: HomeSettings; zones: Zone[]; fees: HomeFee[] } | null>(null)
+  const [where, setWhere] = useState<'salao' | 'domicilio'>('salao')
+  const [postcode, setPostcode] = useState('')
+  const [zoneId, setZoneId] = useState('')
+  const [address, setAddress] = useState('')
+  const [addressNotes, setAddressNotes] = useState('')
+  // Packages (migration 0022); a combo chosen on its page arrives as ?combo=<id>&extras=<ids>.
+  const [packages, setPackages] = useState<Package[]>([])
+  const [items, setItems] = useState<PackageItem[]>([])
+  const [combo, setCombo] = useState<{ pkg: Package; extras: string[] } | null>(null)
   const [joining, setJoining] = useState(() => new URLSearchParams(location.search).has('clube'))
   const [joinForm, setJoinForm] = useState({ name: '', phone: '' })
   const [joinState, setJoinState] = useState<{ ok: boolean; text: string }>()
@@ -103,14 +123,33 @@ export default function BookingPage() {
       supabase.from('salon_photos').select('id,path,caption,position').eq('salon_id', s.id).order('position').order('created_at')
         .then(({ data, error }) => { if (!error) setPhotos((data ?? []) as Photo[]) }) // migration 0019
       const [sv, pr, hr, ov, cl] = await Promise.all([
-        supabase.from('services').select('id,name,duration_min,price_cents').eq('salon_id', s.id).eq('active', true).order('price_cents'),
-        supabase.from('professionals').select('id,name').eq('salon_id', s.id).eq('active', true).order('name'),
+        supabase.from('services').select('*').eq('salon_id', s.id).eq('active', true).order('price_cents'),
+        supabase.from('professionals').select('*').eq('salon_id', s.id).eq('active', true).order('name'),
         loadHours(s.id),
         loadOverrides(s.id),
         supabase.from('salon_club').select('*').eq('salon_id', s.id).eq('active', true).maybeSingle(), // migration 0018
       ])
       setServices(sv.data ?? []); setPros(pr.data ?? []); setHours(hr); setOverrides(ov.overrides)
       setClub(cl.error ? null : (cl.data as Club | null))
+      const [hs, hz, hf, pk] = await Promise.all([
+        supabase.from('home_settings').select('*').eq('salon_id', s.id).eq('active', true).maybeSingle(),
+        supabase.from('home_zones').select('*').eq('salon_id', s.id).eq('active', true).order('position'),
+        supabase.from('home_fees').select('*').eq('salon_id', s.id).eq('active', true),
+        supabase.from('packages').select('*').eq('salon_id', s.id).eq('active', true).order('position'),
+      ])
+      if (!hs.error && hs.data && s.work_place !== 'salao') {
+        setHome({ settings: hs.data as HomeSettings, zones: (hz.data ?? []) as Zone[], fees: (hf.data ?? []) as HomeFee[] })
+        if (s.work_place === 'domicilio') setWhere('domicilio')
+      }
+      if (!pk.error && pk.data?.length) {
+        const list = pk.data as Package[]
+        setPackages(list)
+        const { data: it } = await supabase.from('package_items').select('*').in('package_id', list.map(x => x.id))
+        setItems((it ?? []) as PackageItem[])
+        const q = new URLSearchParams(location.search)
+        const c = list.find(x => x.id === q.get('combo') && x.mode === 'combo')
+        if (c) setCombo({ pkg: c, extras: (q.get('extras') ?? '').split(',').filter(Boolean) })
+      }
       if (pr.data?.length === 1) setProId(pr.data[0].id)
       document.title = `${s.name} · Marcar`
       // Added to a client's home screen, this page opens the salon's booking page, not the salon panel.
@@ -131,8 +170,19 @@ export default function BookingPage() {
 
   const tz = salon?.timezone ?? 'Europe/Lisbon'
   const today = dateInTz(new Date(), tz)
-  // Professionals who do the chosen service, and who could take this booking.
-  const prosFor = useMemo(() => service ? pros.filter(p => effective(service, p.id, overrides)) : pros, [service, pros, overrides])
+  // A combo chosen on its page books as one visit: its total time and price (the database checks it again).
+  const svcById = useMemo(() => Object.fromEntries(services.map(x => [x.id, x])), [services])
+  useEffect(() => {
+    if (!combo) return
+    const t = comboTotals(combo.pkg, items.filter(i => i.package_id === combo.pkg.id), svcById, combo.extras)
+    if (t.minutes > 0) { setService({ id: `pacote-${combo.pkg.id}`, name: `${combo.pkg.name}: ${t.names.join(' + ')}`, duration_min: t.minutes, price_cents: t.price }); setWhere('salao') }
+  }, [combo, items, svcById])
+  const atHome = where === 'domicilio' && home !== null
+  const zone = atHome ? (home!.zones.find(z => z.id === zoneId) ?? null) : null
+  const travel = zone?.travel_min ?? 0
+  // Professionals who do the chosen service (and go out, for a home visit), and who could take this booking.
+  const prosFor = useMemo(() => (atHome ? pros.filter(p => p.at_home) : pros)
+    .filter(p => !service || effective(service, p.id, overrides)), [service, pros, overrides, atHome])
   const candidates = useMemo(() => proId === ANY ? prosFor : prosFor.filter(p => p.id === proId), [proId, prosFor])
 
   const openDays = useMemo(() => {
@@ -158,11 +208,13 @@ export default function BookingPage() {
     for (const p of candidates) {
       const eff = effective(service, p.id, overrides)
       if (!eff) continue
-      const free = freeSlots({ date: day, tz, hours: hoursFor(hours, p.id), durationMin: eff.duration_min, busy: busy.filter(b => b.professional_id === p.id), now })
+      // A home visit also needs the trip there and back free, around other bookings.
+      const mine = busy.filter(b => b.professional_id === p.id)
+      const free = freeSlots({ date: day, tz, hours: hoursFor(hours, p.id), durationMin: eff.duration_min, busy: travel ? widen(mine, travel) : mine, now })
       for (const t of free) if (!byTime.has(t.getTime())) byTime.set(t.getTime(), p.id)
     }
     return [...byTime.entries()].sort((a, b) => a[0] - b[0]).map(([t, id]) => ({ start: new Date(t), proId: id }))
-  }, [service, candidates, overrides, tz, hours, busy, tick]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [service, candidates, overrides, tz, hours, busy, tick, travel]) // eslint-disable-line react-hooks/exhaustive-deps
   const fullDays = useMemo(() => new Set(service ? openDays.filter(d => slotsOn(d).length === 0) : []), [service, openDays, slotsOn])
   const slots = useMemo(() => date ? slotsOn(date) : [], [date, slotsOn])
 
@@ -204,9 +256,13 @@ export default function BookingPage() {
       p_salon: salon!.id, p_service: service!.id, p_professional: slot!.proId, p_starts_at: slot!.start.toISOString(),
       p_client_name: name, p_client_phone: phone, p_consent: consent,
     }
-    const { data: bookingId, error } = promo
-      ? await supabase.rpc('create_booking_with_promo', { ...args, p_promo: promo.id })
-      : await supabase.rpc('create_booking', args)
+    const { data: bookingId, error } = combo
+      ? await supabase.rpc('create_package_booking', { ...args, p_service: undefined, p_package: combo.pkg.id, p_extras: combo.extras })
+      : atHome
+        ? await supabase.rpc('create_home_booking', { ...args, p_zone: zoneId, p_address: address, p_postcode: postcode || null, p_notes: addressNotes || null })
+        : promo
+          ? await supabase.rpc('create_booking_with_promo', { ...args, p_promo: promo.id })
+          : await supabase.rpc('create_booking', args)
     setSubmitting(false)
     if (error) {
       setError(Object.entries(ERRORS).find(([k]) => error.message.includes(k))?.[1] ?? 'Não foi possível marcar. Tente de novo.')
@@ -326,7 +382,7 @@ export default function BookingPage() {
     )
   }
 
-  const canNext = (step === 1 && service) || (step === 2 && proId) || (step === 3 && slot)
+  const canNext = (step === 1 && service && (!atHome || zone)) || (step === 2 && proId) || (step === 3 && slot)
   const toSteps = () => requestAnimationFrame(() => document.getElementById('steps')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   const go = (s: number) => { setStep(s); toSteps() }
   const next = () => go(step === 1 && skipPro ? 3 : step + 1)
@@ -358,10 +414,37 @@ export default function BookingPage() {
         <div className="steps" id="steps">{[1, 2, 3, 4].map(i => <i key={i} className={i <= step ? 'done' : ''} />)}</div>
 
         {step === 1 && <>
+          {home && salon.work_place === 'ambos' && !combo && (
+            <div className="choices two where">
+              <button className={where === 'salao' ? 'choice on' : 'choice'} onClick={() => { setWhere('salao'); setService(undefined); setSlot(undefined) }}><span className="t">No salão</span></button>
+              <button className={where === 'domicilio' ? 'choice on' : 'choice'} onClick={() => { setWhere('domicilio'); setService(undefined); setSlot(undefined); if (!skipPro) setProId(undefined) }}><span className="t"><Icon name="home" size={16} /> Em sua casa</span></button>
+            </div>
+          )}
+          {atHome && (
+            <div className="card">
+              <label>Código postal<input inputMode="numeric" value={postcode} placeholder="2900-123" autoComplete="postal-code"
+                onChange={e => { setPostcode(e.target.value); const z = zoneFor(e.target.value, home!.zones); if (z) setZoneId(z.id) }} /></label>
+              <label>Zona
+                <select value={zoneId} onChange={e => { setZoneId(e.target.value); setSlot(undefined) }}>
+                  <option value="">Escolha a sua zona</option>
+                  {home!.zones.map(z => <option key={z.id} value={z.id}>{z.name} · deslocação {euros(z.fee_cents)}</option>)}
+                </select>
+              </label>
+              {zone && <p className="muted small" style={{ margin: 0 }}>Deslocação {euros(zone.fee_cents)}{home!.settings.min_order_cents > 0 ? ` · serviços a partir de ${euros(home!.settings.min_order_cents)}` : ''}. O preço total aparece antes de confirmar.</p>}
+            </div>
+          )}
+          {combo && service && (
+            <div className="card promo-banner">
+              <b>Pacote {combo.pkg.name} · {euros(service.price_cents)}</b>
+              <small className="muted">{service.name.replace(`${combo.pkg.name}: `, '')} · {service.duration_min} min</small>
+              <button className="link" onClick={() => { setCombo(null); setService(undefined); history.replaceState(null, '', location.pathname) }}>Escolher outra coisa</button>
+            </div>
+          )}
+          {!combo && <>
           <div className="step-title"><h2>O que vai fazer?</h2></div>
           {services.length === 0 && <p className="muted">Este salão ainda não tem serviços para marcar online.</p>}
           <div className="choices">
-            {services.map(s => (
+            {(atHome ? services.filter(x => x.at_home) : services).map(s => (
               <button key={s.id} className={s.id === service?.id ? 'choice on' : 'choice'} onClick={() => {
                 setService(s); setSlot(undefined)
                 if (proId && proId !== ANY && !effective(s, proId, overrides) && !skipPro) setProId(undefined)
@@ -371,8 +454,20 @@ export default function BookingPage() {
               </button>
             ))}
           </div>
+          {packages.length > 0 && !atHome && <>
+            <div className="step-title"><h2>Pacotes</h2></div>
+            <div className="choices">
+              {packages.map(k => (
+                <Link key={k.id} className="choice" to={`/s/${salon.slug}/pacote/${k.id}`}>
+                  <span><span className="t">{k.name}</span><small>{k.mode === 'evento' ? 'Pedido de orçamento' : k.mode === 'pack' ? 'Pack pago à cabeça' : 'Vários serviços numa visita'}</small></span>
+                  <span className="price">{priceLabel(k, euros)}</span>
+                </Link>
+              ))}
+            </div>
+          </>}
           {services.length > 0 && <AiTryOn feature="try-on" salonId={salon.id} title="Experimente antes de marcar"
             intro="Tire uma selfie e veja como fica, antes e depois." styles={services.map(x => x.name)} />}
+          </>}
         </>}
 
         {step === 2 && service && <>
@@ -429,8 +524,18 @@ export default function BookingPage() {
                 <dt>Serviço</dt><dd>{service!.name} · {priceText}</dd>
                 <dt>Com</dt><dd>{proName(slot.proId)}</dd>
                 <dt>Quando</dt><dd>{cap(longDate(slot.start))}, {formatTime(slot.start, tz)}</dd>
+                {atHome && zone && <><dt>Onde</dt><dd>Em sua casa · {zone.name}</dd></>}
               </dl>
+              {atHome && zone && eff && (() => {
+                const q = homeQuote({ servicesCents: eff.price_cents, zone, fees: home!.fees, start: slot.start, tz })
+                return <dl className="kv quote">{q.lines.map(l => <Fragment key={l.label}><dt>{l.label}</dt><dd>{euros(l.cents)}</dd></Fragment>)}<dt><b>Total</b></dt><dd><b>{euros(q.total)}</b></dd></dl>
+              })()}
             </div>
+            {atHome && <>
+              <label>Morada<input value={address} onChange={e => setAddress(e.target.value)} required autoComplete="street-address" placeholder="Rua, número, andar" /></label>
+              <label><span>Notas para quem vai <span className="muted">(opcional)</span></span><input value={addressNotes} maxLength={300} onChange={e => setAddressNotes(e.target.value)} placeholder="Estacionamento, campainha, elevador, animais…" /></label>
+              <p className="muted small">A morada só é vista por quem faz a visita e pela receção do salão.</p>
+            </>}
             <label>Nome<input value={name} onChange={e => setName(e.target.value)} required autoComplete="name" /></label>
             <label>Telemóvel<input value={phone} onChange={e => setPhone(e.target.value)} required inputMode="tel" autoComplete="tel" placeholder="912 345 678" /></label>
             <label className="check">

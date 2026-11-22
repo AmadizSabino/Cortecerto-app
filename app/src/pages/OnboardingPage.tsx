@@ -6,7 +6,8 @@ import ThemePicker from '../ThemePicker'
 import { TYPE_DEFAULT } from '../lib/themes'
 import { REQUIRED } from '../lib/legal'
 import { recordAcceptance } from '../lib/acceptance'
-import { parseEuros, SALON_TYPES, slugify, SUGGESTED_SERVICES, WEEKDAYS, type SalonType } from '../lib/onboarding'
+import { parseEuros, slugify, SUGGESTED_SERVICES, WEEKDAYS, type SalonType } from '../lib/onboarding'
+import BusinessProfile, { type Profile } from '../components/BusinessProfile'
 
 interface ServiceRow { name: string; duration: string; price: string }
 interface DayRow { open: boolean; opens: string; closes: string }
@@ -23,7 +24,8 @@ export default function OnboardingPage() {
   const nav = useNavigate()
   const [session, setSession] = useState<Session | null>()
   const [step, setStep] = useState(1)
-  const [type, setType] = useState<SalonType>('barbearia')
+  const [profile, setProfile] = useState<Profile>({ type: 'barbearia', areas: [], booking_mode: 'ambos', work_place: 'salao' })
+  const type = profile.type
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [slugTouched, setSlugTouched] = useState(false)
@@ -43,7 +45,13 @@ export default function OnboardingPage() {
   if (session === undefined) return <main className="page">A carregar…</main>
   if (!session) return <Navigate to="/painel" replace />
 
-  function pickType(t: SalonType) { setType(t); setServices(toRows(t)); setTheme(TYPE_DEFAULT[t]) }
+  function pickType(t: SalonType) { setServices(toRows(t)); setTheme(TYPE_DEFAULT[t]) }
+  /** Other areas bring their suggested services too (the salon edits or removes them). */
+  function changeProfile(p: Profile) {
+    const added = p.areas.filter(a => a !== p.type && !profile.areas.includes(a)) as SalonType[]
+    if (added.length) setServices(r => [...r, ...added.flatMap(a => toRows(a))])
+    setProfile(p)
+  }
   const setSvc = (i: number, patch: Partial<ServiceRow>) => setServices(s => s.map((r, j) => j === i ? { ...r, ...patch } : r))
   const setDay = (i: number, patch: Partial<DayRow>) => setDays(d => d.map((r, j) => j === i ? { ...r, ...patch } : r))
 
@@ -87,6 +95,8 @@ export default function OnboardingPage() {
       if (error.message.includes('slug_ocupado')) setStep(1)
       return
     }
+    // The rest of the business profile (migration 0022). Best effort: the salon can change it in Definições.
+    if (salonId) await supabase.from('salons').update({ areas: [...new Set([profile.type, ...profile.areas])], booking_mode: profile.booking_mode, work_place: profile.work_place }).eq('id', salonId)
     // Before migration 0004 this fails quietly; the panel then asks again once it can record it.
     await recordAcceptance(REQUIRED, salonId ?? null)
     nav('/painel', { replace: true })
@@ -98,11 +108,7 @@ export default function OnboardingPage() {
       <form onSubmit={next}>
         {step === 1 && <>
           <h1>O seu salão</h1>
-          <div className="choices two">
-            {SALON_TYPES.map(t => (
-              <button type="button" key={t.id} className={t.id === type ? 'choice on' : 'choice'} onClick={() => pickType(t.id)}>{t.label}</button>
-            ))}
-          </div>
+          <BusinessProfile value={profile} onChange={changeProfile} onMainChange={pickType} />
           <label>Nome do salão
             <input value={name} required onChange={e => { setName(e.target.value); if (!slugTouched) setSlug(slugify(e.target.value)) }} />
           </label>
