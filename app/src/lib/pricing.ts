@@ -32,6 +32,7 @@ export function priceRange(
 }
 
 /** The booking's own price when stored, otherwise the service's. */
-export function bookingPrice(b: { price_cents?: number | null; service_id: string }, services: Record<string, { price_cents: number }>): number {
-  return b.price_cents ?? services[b.service_id]?.price_cents ?? 0
+export function bookingPrice(b: { price_cents?: number | null; service_id: string; home_fee_cents?: number }, services: Record<string, { price_cents: number }>): number {
+  // A home visit's travel fee and extra fees are income too (migration 0022).
+  return (b.price_cents ?? services[b.service_id]?.price_cents ?? 0) + (b.home_fee_cents ?? 0)
 }

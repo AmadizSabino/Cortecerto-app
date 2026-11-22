@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { supabase, type Salon } from '../lib/supabase'
+import BusinessProfile, { type Profile } from '../components/BusinessProfile'
+import type { SalonType } from '../lib/onboarding'
 import { parseEuros, WEEKDAYS } from '../lib/onboarding'
 import ThemePicker from '../ThemePicker'
 import { themeById, themeStyle } from '../lib/themes'
@@ -17,6 +19,7 @@ const centsToText = (c: number) => (c / 100).toFixed(2).replace('.', ',')
 export default function SettingsPage() {
   const [session, setSession] = useState<Session | null>()
   const [salon, setSalon] = useState<Salon | null>()
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [info, setInfo] = useState({ name: '', whatsapp: '', mbway: '', deposit: '0', theme: '', change: '2', address: '', news: '', review: '' })
   const [allThemes, setAllThemes] = useState(false)
   const [services, setServices] = useState<SvcRow[]>([])
@@ -35,6 +38,7 @@ export default function SettingsPage() {
     const s = mine.salon
     setSalon(s)
     if (!s || mine.role !== 'dono') return
+    setProfile(s.areas ? { type: s.type as SalonType, areas: s.areas, booking_mode: s.booking_mode ?? 'ambos', work_place: s.work_place ?? 'salao' } : null)
     setInfo({ name: s.name, whatsapp: s.whatsapp ?? '', mbway: s.mbway_number ?? '', deposit: centsToText(s.deposit_cents), theme: s.theme, change: s.client_change_hours == null ? '' : String(s.client_change_hours), address: s.address ?? '', news: s.news ?? '', review: s.google_review_url ?? '' })
     const [sv, hr] = await Promise.all([
       supabase.from('services').select('id,name,duration_min,price_cents,active').eq('salon_id', s.id).order('name'),
@@ -89,6 +93,8 @@ export default function SettingsPage() {
         ...('client_change_hours' in s ? { client_change_hours: info.change === '' ? null : Number(info.change) } : {}),
         // Profile shown on the booking page (migration 0016); skipped if the columns aren't there yet.
         ...('address' in s ? { address: info.address.trim() || null, news: info.news.trim() || null, google_review_url: info.review.trim() || null } : {}),
+        // Business profile (migration 0022).
+        ...(profile ? { type: profile.type, areas: [...new Set([profile.type, ...profile.areas])], booking_mode: profile.booking_mode, work_place: profile.work_place } : {}),
       }).eq('id', s.id).select('id'),
       // Services are switched off rather than deleted, so past bookings keep their history.
       ...services.filter(x => x.name.trim()).map(x => {
@@ -133,6 +139,12 @@ export default function SettingsPage() {
           </select>
         </label>
       )}
+
+      {profile && <>
+        <h2>Perfil do negócio</h2>
+        <p className="muted small">Define o que a app lhe mostra: estilos, serviços sugeridos, fila de espera, visitas ao domicílio e ideias de posts.</p>
+        <BusinessProfile value={profile} onChange={setProfile} />
+      </>}
 
       <h2>Estilo da página</h2>
       <p className="muted">Guardado logo ao escolher. É o estilo do painel e da sua página de marcação.</p>

@@ -48,7 +48,14 @@ export const DEFAULT_THEME: Theme = {
 }
 
 /** The starting theme for each salon type (the owner can pick any other). */
-export const TYPE_DEFAULT: Record<string, string> = { barbearia: 'b3', cabeleireiro: 'h2', unhas: 'n6', depilacao: 'd2' }
+export const TYPE_DEFAULT: Record<string, string> = {
+  barbearia: 'b3', cabeleireiro: 'h2', unhas: 'n6', depilacao: 'd2',
+  estetica: 'd7', sobrancelhas: 'h2', maquilhagem: 'd5', massagem: 'd3',
+}
+
+/** The theme family for a salon type: the newer types (migration 0022) use the closest set of themes. */
+export const themeFamily = (type: string): string =>
+  ({ estetica: 'depilacao', massagem: 'depilacao', sobrancelhas: 'cabeleireiro', maquilhagem: 'cabeleireiro' } as Record<string, string>)[type] ?? type
 
 export const themeById = (id: string | null | undefined): Theme => THEMES.find(t => t.id === id) ?? DEFAULT_THEME
 
