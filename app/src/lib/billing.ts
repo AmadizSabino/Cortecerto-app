@@ -33,3 +33,28 @@ export function billingState(s: BillingFields, now = new Date()): BillingState {
 export function needsNotice(b: BillingState): boolean {
   return (b.kind === 'experimental' && b.daysLeft <= 7) || b.kind === 'terminou' || b.kind === 'em_atraso' || b.kind === 'cancelada'
 }
+
+/** Days after the money was due before the account becomes read-only (migration 0023). */
+export const GRACE_DAYS = 14
+
+export type LockState = { locked: true } | { locked: false; daysToLock: number | null }
+
+/**
+ * Mirrors salon_locked() in the database: read-only 14 days after the trial or
+ * the paid period ends; a cancelled salon when its paid period ends.
+ * daysToLock is set while the salon is in those 14 days.
+ */
+export function lockState(s: BillingFields, now = new Date()): LockState {
+  if (!s.subscription || !s.trial_ends_at) return { locked: false, daysToLock: null }
+  const due = s.subscription === 'experimental' ? s.trial_ends_at
+    : s.subscription === 'ativa' ? s.paid_until ?? null
+    : s.paid_until ?? s.trial_ends_at
+  if (!due) return { locked: false, daysToLock: null }
+  const lockAt = new Date(due).getTime() + (s.subscription === 'cancelada' ? 0 : GRACE_DAYS * DAY)
+  if (now.getTime() > lockAt) return { locked: true }
+  return { locked: false, daysToLock: now.getTime() > new Date(due).getTime() ? Math.ceil((lockAt - now.getTime()) / DAY) : null }
+}
+
+/** What the panel says when the database refuses a change because the account is read-only. */
+export const LOCKED_MESSAGE = 'A conta está só de leitura até a assinatura ser paga. Veja em Mais › Assinatura.'
+export const isLockedError = (e: { message?: string } | null | undefined) => !!e?.message?.includes('salao_bloqueado')

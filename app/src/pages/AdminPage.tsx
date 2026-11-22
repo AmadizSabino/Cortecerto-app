@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { euros, supabase } from '../lib/supabase'
-import { billingState, type BillingFields } from '../lib/billing'
+import { billingState, lockState, type BillingFields } from '../lib/billing'
 import { BUCKET, invoicePath, listInvoices, openInvoice, parseAmount, type Invoice } from '../lib/invoices'
 import { PLAN } from '../lib/plan'
 
@@ -50,20 +50,22 @@ export default function AdminPage() {
   return (
     <main className="page wide">
       <header className="row"><h1>Administração</h1><button className="link" onClick={() => supabase.auth.signOut().then(() => location.assign('/painel'))}>Sair</button></header>
-      <div className="stats">
+      <div className="stats" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
         <div className="stat"><b>{salons.length}</b><span>Salões</span></div>
         <div className="stat"><b>{counts.ativa ?? 0}</b><span>Ativos</span></div>
         <div className="stat"><b>{(counts.terminou ?? 0) + (counts.em_atraso ?? 0)}</b><span>Por pagar</span></div>
+        <div className="stat"><b>{salons.filter(s => lockState(s).locked).length}</b><span>Bloqueadas</span></div>
       </div>
       <label>Procurar<input type="search" value={q} placeholder="Nome ou link do salão" onChange={e => setQ(e.target.value)} /></label>
       {shown.map(s => {
         const b = billingState(s)
+        const locked = lockState(s).locked
         return (
           <section key={s.id} className="card">
             <button className="client-head" onClick={() => setOpen(open === s.id ? null : s.id)} aria-expanded={open === s.id}>
               <span><b>{s.name}</b><small className="muted">/s/{s.slug} · {s.created_at && `desde ${new Date(s.created_at).toLocaleDateString('pt-PT')}`}</small></span>
               <span className={`tag ${b.kind === 'ativa' ? 'concluida' : b.kind === 'em_atraso' || b.kind === 'terminou' ? 'faltou' : 'pendente'}`}>
-                {KIND_LABEL[b.kind]}{b.kind === 'experimental' && ` · ${b.daysLeft} d`}
+                {locked ? 'Bloqueada' : KIND_LABEL[b.kind]}{!locked && b.kind === 'experimental' && ` · ${b.daysLeft} d`}
               </span>
             </button>
             {open === s.id && <SalonAdmin salon={s} onChanged={load} />}
@@ -138,6 +140,9 @@ function SalonAdmin({ salon, onChanged }: { salon: AdminSalon; onChanged: () => 
         <label className="grow">Pago até<input type="date" value={plan.paid} onChange={e => setPlan({ ...plan, paid: e.target.value })} /></label>
         <label className="grow">Grátis até<input type="date" value={plan.trial} onChange={e => setPlan({ ...plan, trial: e.target.value })} /></label>
       </div>
+      <p className="muted small">{lockState(salon).locked
+        ? 'Conta só de leitura e marcações online em pausa. Para desbloquear: Estado "Ativa" e "Pago até" numa data futura.'
+        : 'Sem pagamento, a conta fica só de leitura 14 dias depois do fim do período grátis ou do "Pago até".'}</p>
       <button className="btn" onClick={savePlan}>Guardar assinatura</button>
       {planMsg && <p className={planMsg.ok ? 'ok' : 'error'}>{planMsg.text}</p>}
 

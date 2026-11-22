@@ -3,7 +3,7 @@
  * before the paid launch. To publish a new version of the terms or the data
  * processing agreement, change its text and its `version` (the date): every
  * salon owner is then asked to accept again.
- * Text in [brackets] is company data still to fill in.
+ * The registered office address is still to add (see COMPANY).
  */
 
 export type LegalId = 'termos' | 'tratamento_dados' | 'privacidade'
@@ -20,7 +20,8 @@ export interface LegalDoc {
   sections: LegalSection[]
 }
 
-const COMPANY = '[Nome da empresa], Lda., NIPC [número], com sede em [morada], email [email de contacto]'
+// Registered office address still to add (DL 7/2004, art. 10): Francisco is choosing a domiciliação address.
+const COMPANY = 'Amadiz Sabino Consulting, Lda., NIPC 510900801, com sede em Setúbal, email amadiz.sabino@gmail.com'
 
 export const TERMS: LegalDoc = {
   id: 'termos',
@@ -64,7 +65,7 @@ export const TERMS: LegalDoc = {
     ] },
     { heading: '9. Alterações e lei aplicável', paragraphs: [
       'Se alterarmos estes termos, o salão é avisado na aplicação e tem de aceitar a nova versão para continuar a usá-la.',
-      'Estes termos regem-se pela lei portuguesa. Para qualquer litígio é competente o foro da comarca de [comarca], sem prejuízo das regras legais imperativas.',
+      'Estes termos regem-se pela lei portuguesa. Para qualquer litígio é competente o foro da comarca de Setúbal, sem prejuízo das regras legais imperativas.',
     ] },
   ],
 }
@@ -134,7 +135,7 @@ export const PRIVACY: LegalDoc = {
       'Os dados ficam guardados enquanto for cliente do salão. Se não tiver nenhuma marcação durante 3 anos, o seu nome, telemóvel e notas são apagados automaticamente. Os dados das contas dos salões ficam guardados enquanto a conta existir, e os de faturação pelo prazo exigido por lei.',
     ] },
     { heading: '5. Os seus direitos', paragraphs: [
-      'Pode pedir acesso, correção ou apagamento dos seus dados, ou opor-se a mensagens de promoção. Faça o pedido ao salão. Se preferir, escreva para [email de contacto] e reencaminhamos o pedido.',
+      'Pode pedir acesso, correção ou apagamento dos seus dados, ou opor-se a mensagens de promoção. Faça o pedido ao salão. Se preferir, escreva para amadiz.sabino@gmail.com e reencaminhamos o pedido.',
       'Tem também o direito de apresentar queixa à Comissão Nacional de Proteção de Dados (CNPD), em www.cnpd.pt.',
     ] },
     { heading: '6. Armazenamento no seu browser', paragraphs: [
