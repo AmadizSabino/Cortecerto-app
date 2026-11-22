@@ -24,8 +24,10 @@ export interface Booking {
   service_id: string; professional_id: string
   reminder_sent_at?: string | null // migration 0006
   price_cents?: number | null // migration 0011: price when booked
-  client_action?: 'cancelou' | 'mudou' | null // migration 0007
+  client_action?: 'cancelou' | 'mudou' | 'aceitou' | 'recusou' | null // migration 0007; aceitou/recusou: 0018
   client_action_at?: string | null
+  proposed_starts_at?: string | null // migration 0018: a different time the salon suggested
+  proposal_note?: string | null
 }
 
 export const euros = (cents: number) =>

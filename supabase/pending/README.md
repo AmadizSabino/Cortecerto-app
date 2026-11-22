@@ -1,6 +1,6 @@
 # Migrations still to run
 
-`0003_to_0017.sql` holds every migration after 0002 in one file, for the live
+`0003_to_0018.sql` holds every migration after 0002 in one file, for the live
 project, which has run 0001 and 0002. In Supabase, open SQL Editor, paste the
 whole file and press Run. It runs as one transaction: if anything fails,
 nothing is applied, and you can send the error message to fix it.

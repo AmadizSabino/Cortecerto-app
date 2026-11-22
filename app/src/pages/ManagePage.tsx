@@ -16,6 +16,7 @@ interface ClientBooking {
   salon_whatsapp: string | null; mbway_number: string | null; deposit_cents: number
   client_change_hours: number | null; service_id: string; service_name: string; duration_min: number
   price_cents: number; professional_id: string; professional_name: string
+  proposed_starts_at?: string | null; proposal_note?: string | null // migration 0018
 }
 
 const ERRORS: Record<string, string> = {
@@ -24,6 +25,7 @@ const ERRORS: Record<string, string> = {
   fora_do_prazo: 'Já passou o prazo para alterar esta marcação. Fale com o salão.',
   marcacao_fechada: 'Esta marcação já não pode ser alterada.',
   alteracao_nao_permitida: 'Este salão não permite alterações online. Fale com o salão.',
+  sem_proposta: 'O salão já retirou esta sugestão.',
 }
 const errorText = (m: string) => Object.entries(ERRORS).find(([k]) => m.includes(k))?.[1] ?? 'Não foi possível guardar. Tente de novo.'
 
@@ -92,6 +94,17 @@ export default function ManagePage() {
     pendente: 'A aguardar confirmação do salão', confirmada: 'Confirmada', concluida: 'Concluída', faltou: 'Não compareceu', cancelada: 'Cancelada',
   }
 
+  /** The client's answer to a time the salon suggested (migration 0018). */
+  async function answer(accept: boolean) {
+    setSaving(true); setError('')
+    const { error } = await supabase.rpc('respond_to_proposal', { p_booking: bookingId, p_accept: accept })
+    setSaving(false)
+    if (error) { setError(errorText(error.message)); load(); return }
+    notifyChange(bookingId)
+    setNotice(accept ? 'Combinado! A sua marcação passou para o novo horário.' : 'Obrigado. O salão vai falar consigo para combinar.')
+    load()
+  }
+
   async function cancel() {
     setSaving(true); setError('')
     const { error } = await supabase.rpc('cancel_booking_by_client', { p_booking: bookingId })
@@ -127,6 +140,22 @@ export default function ManagePage() {
           <p>Falta o sinal de {euros(b.deposit_cents)} por MB Way para <b>{b.mbway_number}</b>.</p>
         )}
       </div>
+
+      {b.proposed_starts_at && (b.status === 'pendente' || b.status === 'confirmada') && (() => {
+        const p = new Date(b.proposed_starts_at)
+        return (
+          <div className="card warn">
+            <h3 style={{ marginTop: 0 }}>O salão sugere outro horário</h3>
+            <p style={{ margin: '6px 0' }}><b>{dayText(p)} às {formatTime(p, tz)}</b>, em vez de {dayText(start)} às {formatTime(start, tz)}.</p>
+            {b.proposal_note && <p className="muted" style={{ margin: '6px 0' }}>"{b.proposal_note}"</p>}
+            {error && <p className="error">{error}</p>}
+            <div className="actions">
+              <button className="btn-inline" disabled={saving} onClick={() => answer(true)}>Aceitar</button>
+              <button disabled={saving} onClick={() => answer(false)}>Não me dá jeito</button>
+            </div>
+          </div>
+        )
+      })()}
 
       {mode === 'ver' && <>
         {state === 'pode' && <>

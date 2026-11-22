@@ -78,7 +78,7 @@ set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-000
 insert into salon_invites (salon_id, email, professional_id) values (:'salon', 'RUI@x.pt', :'rui');
 set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b'; set request.jwt.claim.email='rui@x.pt';
 select pg_temp.check(accept_invites() = 1, 'invite accepted, email case-insensitive');
-select pg_temp.check(role = 'equipa' and professional_id = :'rui', 'team member salon') from my_salon();
+select pg_temp.check(role = 'rececao' and professional_id = :'rui', 'team member salon, default level Receção') from my_salon();
 select pg_temp.check(count(*) = 2, 'team reads bookings') from bookings;
 with u as (update bookings set status='confirmada' where id=:'b2' returning id) select pg_temp.check((select count(*) from u) = 1, 'team updates bookings');
 with d as (delete from bookings where id=:'b2' returning id) select pg_temp.check((select count(*) from d) = 0, 'team cannot delete bookings');
@@ -114,5 +114,94 @@ select pg_temp.check(count(*) = 1, 'owner sees the invoice') from invoices;
 do $$ begin perform admin_set_subscription((select id from salons), 'experimental', null, null); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
 set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
 select pg_temp.check(count(*) = 0 and not is_platform_admin(), 'others see no invoices and are not admin') from invoices;
+reset role;
+-- 0018: access levels ---------------------------------------------------------
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+insert into client_notes (salon_id, phone_key, notes) values (:'salon', '351911111111', 'nota');
+update salon_members set access = 'agenda' where user_id = '00000000-0000-0000-0000-00000000000b';
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+select pg_temp.check(role = 'agenda', 'owner changed the level to Agenda') from my_salon();
+select pg_temp.check(count(*) = 0, 'agenda level reads no client notes') from client_notes;
+select pg_temp.check(count(*) > 0, 'agenda level still reads bookings') from bookings;
+do $$ begin insert into professional_pay (professional_id, salon_id) select id, salon_id from professionals limit 1; raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%row-level security%' then raise; end if; end $$;
+reset role; set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+update salon_members set access = 'gestor' where user_id = '00000000-0000-0000-0000-00000000000b';
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+select pg_temp.check(count(*) = 1, 'gestor reads client notes') from client_notes;
+insert into professional_pay (professional_id, salon_id, commission_type, commission_percent) values (:'rui', :'salon', 'percentagem', 40);
+insert into professional_pay (professional_id, salon_id, commission_type, commission_cents) values (:'ana', :'salon', 'montante', 500);
+with u as (update professionals set name = 'Ana Maria' where id = :'ana' returning id) select pg_temp.check((select count(*) from u) = 1, 'gestor edits the team');
+with u as (update salons set name='Hack' where id=:'salon' returning id) select pg_temp.check((select count(*) from u) = 0, 'gestor cannot change the salon');
+with d as (delete from salon_members returning user_id) select pg_temp.check((select count(*) from d) = 0, 'gestor cannot remove access');
+do $$ begin update professional_pay set commission_percent = 140 where commission_type = 'percentagem'; raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%check%' then raise; end if; end $$;
+set role anon; reset request.jwt.claim.sub;
+select pg_temp.check(count(*) = 0, 'commissions are private') from professional_pay;
+reset role;
+
+-- 0018: client list, invitations and new-client check -----------------------
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+insert into salon_clients (salon_id, phone_key, name, phone, source, invited_at) values (:'salon', '351922222222', 'Convidado', '922222222', 'convite', now());
+select pg_temp.check(array_agg(k) = array['351922222222'], 'known clients by phone') from known_clients(:'salon', array['351922222222', '351933333333']) k;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+select pg_temp.check(count(*) = 0, 'outsider sees no client list') from salon_clients;
+select pg_temp.check(count(*) = 0, 'outsider learns nothing from known_clients') from known_clients(:'salon', array['351922222222']);
+reset role;
+
+-- 0018: the salon suggests another time --------------------------------------
+set role anon; reset request.jwt.claim.sub;
+select create_booking(:'salon', :'corte', :'ana', now() + interval '5 days', 'Marta', '966666666', false) as b5 \gset
+reset role;
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+select propose_booking_time(:'b5', now() + interval '6 days', 'Pode ser um dia depois?') \g /dev/null
+reset role;
+set role anon; reset request.jwt.claim.sub;
+select pg_temp.check(proposed_starts_at is not null and proposal_note = 'Pode ser um dia depois?', 'client sees the suggestion') from booking_for_client(:'b5');
+select pg_temp.check(count(*) = 1, 'suggested time is held as busy') from busy_slots(:'salon', now() + interval '6 days' - interval '1 minute', now() + interval '6 days' + interval '1 minute');
+do $$ begin perform create_booking((select id from salons), (select id from services), (select id from professionals where name like 'Ana%'), now() + interval '6 days' + interval '5 minutes', 'X', '913000000', false); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%horario_ocupado%' then raise; end if; end $$;
+select respond_to_proposal(:'b5', true) \g /dev/null
+reset role;
+select pg_temp.check(status = 'confirmada' and client_action = 'aceitou' and proposed_starts_at is null and starts_at > now() + interval '5 days 23 hours', 'accepting moves and confirms') from bookings where id = :'b5';
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+select propose_booking_time(:'b5', now() + interval '7 days') \g /dev/null
+reset role; set role anon; reset request.jwt.claim.sub;
+select respond_to_proposal(:'b5', false) \g /dev/null
+select set_config('t.b5', :'b5', false) \g /dev/null
+do $$ begin perform respond_to_proposal(current_setting('t.b5')::uuid, true); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_proposta%' then raise; end if; end $$;
+reset role;
+select pg_temp.check(client_action = 'recusou' and proposed_starts_at is null, 'declining keeps the booking') from bookings where id = :'b5';
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+do $$ begin perform propose_booking_time(current_setting('t.b5')::uuid, now() + interval '8 days'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+reset role;
+
+-- 0018: the Club ----------------------------------------------------------------
+update salons set deposit_cents = 500 where id = :'salon';
+set role anon; reset request.jwt.claim.sub;
+do $$ begin perform join_club((select id from salons), 'Zé', '934000000'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%clube_fechado%' then raise; end if; end $$;
+reset role;
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+insert into salon_club (salon_id, active, name, price_cents, benefits) values (:'salon', true, 'Clube Barb', 3500, 'Cortes ilimitados');
+reset role;
+set role anon; reset request.jwt.claim.sub;
+select join_club(:'salon', 'Zé', '934 000 000') as m1 \gset
+select pg_temp.check(join_club(:'salon', 'Zé', '934000000') = :'m1', 'one open membership per phone');
+select pg_temp.check(count(*) = 0, 'anon reads no members') from club_members;
+select create_booking(:'salon', :'corte', :'rui', now() + interval '9 days', 'Zé', '934000000', false) as b6 \gset
+reset role;
+select pg_temp.check(deposit = 'pendente', 'a club request still pays the deposit') from bookings where id = :'b6';
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+update club_members set status = 'ativo', started_at = now(), paid_until = current_date + 30 where id = :'m1';
+reset role; set role anon; reset request.jwt.claim.sub;
+select create_booking(:'salon', :'corte', :'rui', now() + interval '10 days', 'Zé', '934000000', false) as b7 \gset
+reset role;
+select pg_temp.check(deposit = 'nenhum', 'active members book without a deposit') from bookings where id = :'b7';
+update salons set deposit_cents = 0 where id = :'salon';
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+select forget_client(:'salon', '351934000000') \g /dev/null
+reset role;
+select pg_temp.check(status = 'cancelado' and phone = '', 'forgetting a client ends the membership') from club_members where id = :'m1';
+
+-- 0018: AI log is written by the Worker only
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+do $$ begin insert into ai_requests (salon_id, feature, status) values ((select id from salons), 'try-on', 'feito'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%row-level security%' then raise; end if; end $$;
 reset role;
 \echo All database checks passed

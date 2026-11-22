@@ -114,7 +114,7 @@ input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); f
 .has-tabs .page { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
 .has-tabs .page.with-fab { padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
 @media print { .has-tabs .page { padding-bottom: 0; } }
-.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: var(--card); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px 0 calc(6px + env(safe-area-inset-bottom)); }
+.tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: var(--card); border-top: 1px solid var(--line); display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding: 6px 0 calc(6px + env(safe-area-inset-bottom)); }
 .tabbar a { display: grid; justify-items: center; gap: 2px; padding: 6px 0; font-size: .75rem; font-weight: 600; text-decoration: none; color: var(--muted) !important; }
 .tabbar a.active { color: var(--accent) !important; }
 .greet { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 8px 0 16px; }
@@ -345,3 +345,27 @@ button:disabled { opacity: .5; cursor: default; }
 .tabbar { color: var(--fg); }
 .page > header.row { align-items: center; }
 .menu button > span { text-align: left; }
+
+/* 0018: team levels, commissions, club, invitations, suggested times, AI */
+.levels { display: grid; gap: 8px; }
+.level ul { margin: 6px 0; padding-left: 18px; }
+.team-pro.off { opacity: .6; }
+.team-pro .row + .row { margin-top: 8px; }
+.invite-row { padding: 8px 0; border-top: 1px solid var(--line); }
+.comm-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.comm-table th, .comm-table td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.comm-table th:not(:first-child), .comm-table td:not(:first-child) { text-align: right; white-space: nowrap; }
+.comm-table tfoot td { border-bottom: 0; font-weight: 600; }
+.ai-card .tag { margin-left: auto; }
+.ai-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+.ai-compare figure { margin: 0; text-align: center; }
+.ai-compare img, .ai-empty { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 12px; background: var(--line); }
+.ai-empty { display: grid; place-items: center; color: var(--muted); font-weight: 600; }
+.ai-compare figcaption { font-size: .8rem; color: var(--muted); margin-top: 4px; }
+.ai-answer p { margin: 0 0 6px; }
+.ai-tool { margin-top: 10px; }
+.newclient { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; padding: 8px 10px; border-radius: 10px; background: var(--soft, rgba(0,0,0,.04)); font-size: .85rem; }
+.proposal { margin-top: 6px; padding: 8px 10px; border-radius: 10px; border: 1px dashed var(--line); font-size: .85rem; }
+.slot.full { opacity: .45; text-decoration: line-through; }
+.chip.full { opacity: .45; }
+.club-offer ul { margin: 6px 0 10px; padding-left: 18px; }

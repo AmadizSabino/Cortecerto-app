@@ -4,6 +4,7 @@
  * POST /api/notify-booking { id } — emails the salon owner about a new booking.
  * POST /api/notify-change { id } — emails the owner when a client cancels or moves it.
  * POST /api/errors — error reports from the app (see errors.ts).
+ * POST /api/ai/<feature> — the AI features (see ai.ts): ANTHROPIC_API_KEY, AI_MODEL, IMAGE_API_URL, IMAGE_API_KEY.
  * Secrets, set in Cloudflare > Workers > cortecerto-app > Settings > Variables:
  *   RESEND_API_KEY             Resend API key
  *   SUPABASE_SERVICE_ROLE_KEY  Supabase secret key (Project settings > API keys)
@@ -15,6 +16,7 @@
 
 import { bookingEmail, changeEmail, type ChangeClaimed } from './email'
 import { reportError } from './errors'
+import { handleAi } from './ai'
 
 interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> }
@@ -23,6 +25,10 @@ interface Env {
   RESEND_API_KEY?: string
   EMAIL_FROM?: string
   APP_URL?: string
+  ANTHROPIC_API_KEY?: string
+  AI_MODEL?: string
+  IMAGE_API_URL?: string
+  IMAGE_API_KEY?: string
 }
 
 export interface Claimed {
@@ -42,6 +48,7 @@ export default {
     if (url.pathname === '/api/notify-change') return notifyOwner<ChangeClaimed>(request, env, url.origin, 'claim_client_change_notification', changeEmail)
     if (url.pathname === '/api/errors') return reportError(request, env)
     if (url.pathname === '/api/manifest') return clientManifest(url)
+    if (url.pathname.startsWith('/api/ai/')) return handleAi(request, env, url.pathname.slice('/api/ai/'.length))
     if (url.pathname.startsWith('/api/')) return new Response('Not found', { status: 404 })
     return env.ASSETS.fetch(request)
   },

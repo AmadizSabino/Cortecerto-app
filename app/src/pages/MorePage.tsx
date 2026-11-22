@@ -4,22 +4,29 @@ import type { Session } from '@supabase/supabase-js'
 import Icon from '../components/Icon'
 import { initials, supabase, type Salon } from '../lib/supabase'
 import { loadMySalon, type Role } from '../lib/mySalon'
+import { can, levelLabel, NEED } from '../lib/access'
+import InstallCard from '../InstallCard'
 import { themeById, themeStyle } from '../lib/themes'
 
-interface Item { to: string; icon: string; label: string; hint: string; owner?: boolean }
+interface Item { to: string; icon: string; label: string; hint: string; need: keyof typeof NEED }
 const GROUPS: { title: string; items: Item[] }[] = [
   { title: 'No salão', items: [
-    { to: '/fila', icon: 'queue', label: 'Fila de espera', hint: 'Clientes sem marcação, por ordem de chegada' },
-    { to: '/lembretes', icon: 'bell', label: 'Lembretes', hint: 'Avisar os clientes de amanhã por WhatsApp' },
-    { to: '/poster', icon: 'qr', label: 'Poster com QR', hint: 'Para o espelho ou a porta' },
+    { to: '/fila', icon: 'queue', label: 'Fila de espera', hint: 'Clientes sem marcação, por ordem de chegada', need: 'fila' },
+    { to: '/lembretes', icon: 'bell', label: 'Lembretes', hint: 'Avisar os clientes de amanhã por WhatsApp', need: 'lembretes' },
+    { to: '/poster', icon: 'qr', label: 'Poster com QR', hint: 'Para o espelho ou a porta', need: 'poster' },
+  ] },
+  { title: 'Clientes', items: [
+    { to: '/convidar', icon: 'userPlus', label: 'Convidar clientes', hint: 'Pelo número ou dos contactos do telemóvel', need: 'convidar' },
+    { to: '/clube', icon: 'crown', label: 'Clube', hint: 'Mensalidade com benefícios e receita fixa', need: 'clube' },
   ] },
   { title: 'Gestão', items: [
-    { to: '/estatisticas', icon: 'chart', label: 'Estatísticas', hint: 'Faturação, serviços e clientes', owner: true },
-    { to: '/horarios', icon: 'clock', label: 'Horários e folgas', hint: 'Por profissional, pausas e férias', owner: true },
-    { to: '/precos', icon: 'tag', label: 'Preços por profissional', hint: 'Preços e durações diferentes', owner: true },
-    { to: '/acessos', icon: 'users', label: 'Equipa', hint: 'Dar acesso ao painel', owner: true },
-    { to: '/assinatura', icon: 'card', label: 'Assinatura', hint: 'Período grátis e pagamento', owner: true },
-    { to: '/definicoes', icon: 'settings', label: 'Definições', hint: 'Salão, serviços, sinal e estilo', owner: true },
+    { to: '/estatisticas', icon: 'chart', label: 'Estatísticas', hint: 'Faturação, serviços, clientes e comissões', need: 'estatisticas' },
+    { to: '/horarios', icon: 'clock', label: 'Horários e folgas', hint: 'Por profissional, pausas e férias', need: 'horarios' },
+    { to: '/precos', icon: 'tag', label: 'Preços por profissional', hint: 'Preços e durações diferentes', need: 'precos' },
+    { to: '/equipa', icon: 'users', label: 'Equipa', hint: 'Profissionais, comissões e acessos ao painel', need: 'equipa' },
+    { to: '/ia', icon: 'spark', label: 'Assistente IA', hint: 'Antes e depois, relatórios, respostas e mais', need: 'ia' },
+    { to: '/assinatura', icon: 'card', label: 'Assinatura', hint: 'Período grátis e pagamento', need: 'assinatura' },
+    { to: '/definicoes', icon: 'settings', label: 'Definições', hint: 'Salão, serviços, sinal e estilo', need: 'definicoes' },
   ] },
 ]
 
@@ -44,7 +51,7 @@ export default function MorePage() {
   return (
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page">
       <div className="greet">
-        <div><p className="eyebrow">Painel</p><h1>{salon.name}</h1></div>
+        <div><p className="eyebrow">Painel · acesso {levelLabel(role)}</p><h1>{salon.name}</h1></div>
         <span className="avatar">{initials(salon.name)}</span>
       </div>
       <div className="card soft">
@@ -56,7 +63,7 @@ export default function MorePage() {
         </div>
       </div>
       {GROUPS.map(g => {
-        const items = g.items.filter(i => !i.owner || role === 'dono')
+        const items = g.items.filter(i => can(role, i.need))
         if (!items.length) return null
         return (
           <section key={g.title}>
@@ -73,6 +80,8 @@ export default function MorePage() {
           </section>
         )
       })}
+      <h2>App no telemóvel</h2>
+      <InstallCard always />
       {admin && <div className="card menu"><Link to="/admin"><Icon name="star" size={22} /><span>Administração CorteCerto<small>Assinaturas e faturas de todos os salões</small></span><span className="chev"><Icon name="chevronRight" size={18} /></span></Link></div>}
       <div className="card menu">
         <button onClick={() => supabase.auth.signOut().then(() => location.assign('/painel'))}><Icon name="logout" size={22} /><span>Sair da conta</span></button>
