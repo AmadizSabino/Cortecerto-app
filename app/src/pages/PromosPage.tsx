@@ -147,8 +147,10 @@ export default function PromosPage() {
         theme, salonName: salon!.name, title: p.title, offer: offerText(p), when: whenText(p, today),
         link: promoLink(location.origin, salon!.slug, p.code), photo: mediaUrl(p.image_path ?? photos[0] ?? salon!.cover_path ?? null), logo: mediaUrl(salon!.logo_path),
       })
+      // Instagram usually drops the text that comes with a shared picture: the caption is copied first, ready to paste.
+      await navigator.clipboard?.writeText(caption(p)).catch(() => {})
       const how = await sharePost(img, caption(p), p.code)
-      if (how === 'descarregado') { navigator.clipboard?.writeText(caption(p)); setNote('Imagem descarregada e legenda copiada: cole-a no Instagram ou no Facebook.') }
+      setNote(how === 'descarregado' ? 'Imagem descarregada e legenda copiada: cole-a no Instagram ou no Facebook.' : how === 'partilhado' ? 'Legenda copiada: se a app não a mostrar, cole-a no post.' : '')
     } catch { setNote('Não foi possível criar a imagem.') }
     setBusy('')
   }
