@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 
 /** Pages of the salon panel that show the bottom tabs. */
-export const PANEL = ['/painel', '/semana', '/clientes', '/mais', '/fila', '/lembretes', '/poster', '/estatisticas', '/definicoes', '/horarios', '/precos', '/acessos', '/assinatura', '/equipa', '/convidar', '/clube', '/ia']
+export const PANEL = ['/painel', '/semana', '/clientes', '/mais', '/fila', '/lembretes', '/poster', '/estatisticas', '/definicoes', '/horarios', '/precos', '/acessos', '/assinatura', '/equipa', '/convidar', '/clube', '/ia', '/marca']
 export const TABS = [
   { to: '/painel', label: 'Hoje', icon: 'calendar' },
   { to: '/semana', label: 'Semana', icon: 'week' },

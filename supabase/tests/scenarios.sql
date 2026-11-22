@@ -204,4 +204,56 @@ select pg_temp.check(status = 'cancelado' and phone = '', 'forgetting a client e
 set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
 do $$ begin insert into ai_requests (salon_id, feature, status) values ((select id from salons), 'try-on', 'feito'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%row-level security%' then raise; end if; end $$;
 reset role;
+-- 0019: filling a freed slot ------------------------------------------------------
+set role anon; reset request.jwt.claim.sub;
+select create_booking(:'salon', :'corte', :'ana', date_trunc('hour', now()) + interval '12 days 10 hours', 'Livre', '935100000', false) as f1 \gset
+select create_booking(:'salon', :'corte', :'ana', date_trunc('hour', now()) + interval '12 days 16 hours', 'Tarde', '935200000', false) as f2 \gset
+select set_wants_earlier(:'f2', true) \g /dev/null
+select pg_temp.check(wants_earlier, 'client asks for an earlier time') from booking_for_client(:'f2');
+reset role;
+update bookings set status = 'cancelada' where id = :'f1';
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+select offer_free_slot(:'salon', :'ana', date_trunc('hour', now()) + interval '12 days 10 hours', date_trunc('hour', now()) + interval '12 days 11 hours') as o1 \gset
+select pg_temp.check(offer_free_slot(:'salon', :'ana', date_trunc('hour', now()) + interval '12 days 10 hours', date_trunc('hour', now()) + interval '12 days 11 hours') = :'o1', 'one open offer per time');
+do $$ begin perform offer_free_slot((select id from salons), (select id from professionals where name like 'Ana%'), date_trunc('hour', now()) + interval '12 days 16 hours', date_trunc('hour', now()) + interval '12 days 17 hours'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%horario_ocupado%' then raise; end if; end $$;
+reset role;
+set role anon; reset request.jwt.claim.sub;
+select pg_temp.check(state = 'aberta' and professional_name like 'Ana%', 'offer page shows the open slot') from slot_offer_for_client(:'o1');
+select take_slot_offer_move(:'o1', :'f2') \g /dev/null
+select pg_temp.check(state = 'ocupada', 'taken offer shows as taken') from slot_offer_for_client(:'o1');
+select set_config('t.o1', :'o1', false) \g /dev/null
+do $$ begin perform take_slot_offer_new(current_setting('t.o1')::uuid, (select id from services limit 1), 'Outro', '935300000', false); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%vaga_ocupada%' then raise; end if; end $$;
+reset role;
+select pg_temp.check(starts_at = date_trunc('hour', now()) + interval '12 days 10 hours' and client_action = 'mudou' and not wants_earlier, 'later client moved into the freed slot') from bookings where id = :'f2';
+-- the afternoon slot is now free: offer it to someone new
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+select offer_free_slot(:'salon', :'ana', date_trunc('hour', now()) + interval '12 days 16 hours', date_trunc('hour', now()) + interval '12 days 16 hours 20 minutes') as o2 \gset
+reset role;
+set role anon; reset request.jwt.claim.sub;
+select set_config('t.o2', :'o2', false) \g /dev/null
+do $$ begin perform take_slot_offer_new(current_setting('t.o2')::uuid, (select id from services where name = 'Corte'), 'Novo', '935400000', true); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%nao_cabe%' then raise; end if; end $$;
+reset role;
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+update slot_offers set closed_at = now() where id = :'o2';
+select offer_free_slot(:'salon', :'ana', date_trunc('hour', now()) + interval '12 days 16 hours', date_trunc('hour', now()) + interval '12 days 17 hours') as o3 \gset
+reset role;
+set role anon; reset request.jwt.claim.sub;
+select pg_temp.check(state = 'expirada', 'withdrawn offer is closed') from slot_offer_for_client(:'o2');
+select take_slot_offer_new(:'o3', :'corte', 'Novo', '935400000', true) as f3 \gset
+select pg_temp.check(count(*) = 0, 'anon reads no offers') from slot_offers;
+reset role;
+select pg_temp.check(client_name = 'Novo' and starts_at = date_trunc('hour', now()) + interval '12 days 16 hours', 'new client booked the freed slot') from bookings where id = :'f3';
+
+-- 0019: brand ----------------------------------------------------------------------
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+select set_salon_brand(:'salon', :'salon' || '/logo.png', null, '  Barbearia de bairro desde 1990  ') \g /dev/null
+do $$ begin perform set_salon_brand((select id from salons), 'outro/logo.png', null, null); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%ficheiro_invalido%' then raise; end if; end $$;
+insert into salon_photos (salon_id, path, caption) values (:'salon', :'salon' || '/g1.jpg', 'Fade');
+reset role; set role anon; reset request.jwt.claim.sub;
+select pg_temp.check(count(*) = 1, 'gallery is public') from salon_photos;
+select pg_temp.check(about = 'Barbearia de bairro desde 1990' and logo_path like '%/logo.png', 'brand saved and public') from salons;
+reset role;
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+do $$ begin perform set_salon_brand((select id from salons), null, null, 'hack'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+reset role;
 \echo All database checks passed

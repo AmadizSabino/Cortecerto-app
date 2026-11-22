@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import Icon, { WhatsAppIcon } from '../components/Icon'
@@ -9,6 +9,8 @@ import { themeById, themeStyle } from '../lib/themes'
 import { loadMySalon, type Role } from '../lib/mySalon'
 import { can } from '../lib/access'
 import ProposeTime from '../ProposeTime'
+import FreeSlot from '../FreeSlot'
+import { usableWindow } from '../lib/freeSlot'
 import { proposalMessage } from '../lib/proposal'
 import SetupChecklist from '../SetupChecklist'
 import TermsGate from '../TermsGate'
@@ -65,6 +67,8 @@ export default function AgendaPage() {
   const [editing, setEditing] = useState<'nova' | string | null>(null) // 'nova' or the id of the booking being edited
   const [actionError, setActionError] = useState('')
   const [refresh, setRefresh] = useState(0)
+  const [freeing, setFreeing] = useState<string | null>(null) // booking id whose freed time is being offered
+  const reload = useCallback(() => setRefresh(r => r + 1), [])
   const [proposing, setProposing] = useState<string | null>(null) // booking id with "Sugerir outro horário" open
   // Phone keys already on the salon's client list (migration 0018); null before it, so nothing is asked.
   const [known, setKnown] = useState<Set<string> | null>(null)
@@ -147,6 +151,8 @@ export default function AgendaPage() {
     setBookings(bs => bs.map(x => x.id === b.id ? { ...x, ...patch } : x))
     // Right after a visit is the moment to book the next one.
     if (patch.status === 'concluida') setNextFor(b.id)
+    // A cancellation or a no-show frees time: offer it straight away, while it can still be filled.
+    if ((patch.status === 'cancelada' || patch.status === 'faltou') && usableWindow(new Date(b.starts_at), new Date(b.ends_at), new Date())) setFreeing(b.id)
   }
 
   async function withdraw(b: Booking) {
@@ -284,10 +290,14 @@ export default function AgendaPage() {
                 </>}
                 {hasPhone && <a className="wa" href={waLink(b.client_phone, msg)} target="_blank" rel="noreferrer"><WhatsAppIcon size={16} />WhatsApp</a>}
                 {b.status === 'concluida' && nextFor !== b.id && <button onClick={() => setNextFor(b.id)}>Próxima visita</button>}
+                {(b.status === 'cancelada' || b.status === 'faltou') && freeing !== b.id && usableWindow(new Date(b.starts_at), new Date(b.ends_at), new Date()) && <button className="btn-inline" onClick={() => setFreeing(b.id)}>Oferecer a vaga</button>}
                 {(b.status === 'pendente' || b.status === 'confirmada') && !b.proposed_starts_at && proposing !== b.id && <button onClick={() => setProposing(b.id)}>Sugerir outro horário</button>}
                 {(b.status === 'pendente' || b.status === 'confirmada') && <button className="link" onClick={() => setEditing(b.id)}>Editar</button>}
               </div>
             </div>
+            {freeing === b.id && (
+              <FreeSlot salon={salon} freed={b} proName={pros[b.professional_id]?.name ?? ''} onClose={() => setFreeing(null)} onFilled={reload} />
+            )}
             {proposing === b.id && (
               <ProposeTime salon={salon} booking={b} serviceName={svc?.name ?? ''} onClose={() => setProposing(null)}
                 onDone={nb => setBookings(bs => bs.map(x => x.id === nb.id ? nb : x))} />

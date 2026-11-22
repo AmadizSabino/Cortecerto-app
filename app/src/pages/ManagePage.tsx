@@ -8,6 +8,7 @@ import { changeState, limitText } from '../lib/clientChanges'
 import { clientTheme, themeById, themeStyle } from '../lib/themes'
 import { addDays, dateInTz, formatTime, zonedToUtc } from '../lib/time'
 import { waLink } from '../lib/whatsapp'
+import { mediaUrl } from '../lib/brand'
 
 /** Row returned by booking_for_client (migration 0007). */
 interface ClientBooking {
@@ -17,6 +18,7 @@ interface ClientBooking {
   client_change_hours: number | null; service_id: string; service_name: string; duration_min: number
   price_cents: number; professional_id: string; professional_name: string
   proposed_starts_at?: string | null; proposal_note?: string | null // migration 0018
+  wants_earlier?: boolean; salon_logo?: string | null // migration 0019
 }
 
 const ERRORS: Record<string, string> = {
@@ -128,7 +130,10 @@ export default function ManagePage() {
 
   return (
     <div className="themed" style={themeStyle(theme)}><main className="page">
-      <p className="muted">{b.salon_name}</p>
+      <header className="brand-head">
+        {b.salon_logo && <img className="brand-logo" src={mediaUrl(b.salon_logo)!} alt="" />}
+        <p className="muted" style={{ margin: 0 }}>{b.salon_name}</p>
+      </header>
       <h1>A sua marcação</h1>
       {notice && <p className="ok">{notice}</p>}
 
@@ -156,6 +161,18 @@ export default function ManagePage() {
           </div>
         )
       })()}
+
+      {b.wants_earlier !== undefined && (b.status === 'pendente' || b.status === 'confirmada') && new Date(b.starts_at) > new Date() && (
+        <label className="check card soft">
+          <input type="checkbox" checked={b.wants_earlier} onChange={async e => {
+            const on = e.target.checked
+            setB({ ...b, wants_earlier: on })
+            const { error } = await supabase.rpc('set_wants_earlier', { p_booking: bookingId, p_on: on })
+            if (error) setB({ ...b, wants_earlier: !on })
+          }} />
+          <span>Avise-me por WhatsApp se abrir uma vaga mais cedo</span>
+        </label>
+      )}
 
       {mode === 'ver' && <>
         {state === 'pode' && <>

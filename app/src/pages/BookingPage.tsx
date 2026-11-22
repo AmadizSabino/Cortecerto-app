@@ -16,6 +16,7 @@ import { effective, priceRange, type Overrides } from '../lib/pricing'
 import { loadOverrides } from '../lib/pricingData'
 import AiTryOn from '../components/AiTryOn'
 import { benefitList, type Club } from '../lib/club'
+import { mediaUrl, type Photo } from '../lib/brand'
 
 const ERRORS: Record<string, string> = {
   horario_ocupado: 'Esse horário acabou de ser ocupado. Escolha outro, por favor.',
@@ -82,6 +83,8 @@ export default function BookingPage() {
   const [tick, setTick] = useState(0)
   const [doneDeposit, setDoneDeposit] = useState<string | null>(null)
   const [club, setClub] = useState<Club | null>(null)
+  const [photos, setPhotos] = useState<Photo[]>([])
+  const [viewing, setViewing] = useState<Photo | null>(null)
   const [joining, setJoining] = useState(() => new URLSearchParams(location.search).has('clube'))
   const [joinForm, setJoinForm] = useState({ name: '', phone: '' })
   const [joinState, setJoinState] = useState<{ ok: boolean; text: string }>()
@@ -91,6 +94,8 @@ export default function BookingPage() {
       const { data: s } = await supabase.from('salons').select('*').eq('slug', slug!).maybeSingle()
       setSalon(s)
       if (!s) return
+      supabase.from('salon_photos').select('id,path,caption,position').eq('salon_id', s.id).order('position').order('created_at')
+        .then(({ data, error }) => { if (!error) setPhotos((data ?? []) as Photo[]) }) // migration 0019
       const [sv, pr, hr, ov, cl] = await Promise.all([
         supabase.from('services').select('id,name,duration_min,price_cents').eq('salon_id', s.id).eq('active', true).order('price_cents'),
         supabase.from('professionals').select('id,name').eq('salon_id', s.id).eq('active', true).order('name'),
@@ -219,17 +224,31 @@ export default function BookingPage() {
 
   const header = (
     <>
-      <div className="cover" />
+      <div className="cover" style={salon.cover_path ? { backgroundImage: `url(${mediaUrl(salon.cover_path)})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined} />
       <div className="hero">
         <div className="row" style={{ alignItems: 'flex-end', justifyContent: 'flex-start', flexWrap: 'nowrap', gap: 14 }}>
-          <span className="avatar">{initials(salon.name)}</span>
+          {salon.logo_path
+            ? <img className="avatar logo" src={mediaUrl(salon.logo_path)!} alt={`Logótipo ${salon.name}`} />
+            : <span className="avatar">{initials(salon.name)}</span>}
           <h1 className="grow">{salon.name}</h1>
         </div>
         <div className="meta">
           {salon.address && <span><Icon name="pin" size={16} />{salon.address}</span>}
           {hours.salon.length > 0 && <span><Icon name="clock" size={16} />{summarizeHours(hours.salon)}</span>}
         </div>
+        {salon.about && <p className="about">{salon.about}</p>}
         {salon.news && <div className="card soft"><b>Novidades:</b> {salon.news}</div>}
+        {photos.length > 0 && (
+          <div className="gallery-strip" aria-label="Trabalhos do salão">
+            {photos.map(p => <button key={p.id} onClick={() => setViewing(p)} aria-label={p.caption ?? 'Ver foto'}><img src={mediaUrl(p.path)!} alt={p.caption ?? ''} loading="lazy" /></button>)}
+          </div>
+        )}
+        {viewing && (
+          <div className="lightbox" role="dialog" aria-modal="true" onClick={() => setViewing(null)}>
+            <img src={mediaUrl(viewing.path)!} alt={viewing.caption ?? ''} />
+            {viewing.caption && <p>{viewing.caption}</p>}
+          </div>
+        )}
       </div>
     </>
   )
