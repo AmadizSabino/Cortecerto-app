@@ -272,7 +272,7 @@ export default function BookingPage() {
               <h3>Sinal de {euros(salon.deposit_cents)} por MB Way</h3>
               <p style={{ margin: '6px 0 12px' }}>Envie para o número do salão. A marcação fica confirmada quando o salão receber.</p>
               <div className="between">
-                <b style={{ fontSize: '1.3rem', letterSpacing: '.04em' }}>{formatPhone(salon.mbway_number).replace('+351 ', '')}</b>
+                <b style={{ fontSize: '1.3rem', letterSpacing: '.04em' }}>{formatPhone(salon.mbway_number!).replace('+351 ', '')}</b>
                 <button className="sm" onClick={() => { navigator.clipboard?.writeText(salon.mbway_number!); setCopied(true) }}>
                   <Icon name={copied ? 'check' : 'copy'} size={16} />{copied ? 'Copiado' : 'Copiar'}
                 </button>
