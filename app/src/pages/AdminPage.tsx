@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { euros, supabase } from '../lib/supabase'
 import { billingState, lockState, type BillingFields } from '../lib/billing'
@@ -49,7 +49,8 @@ export default function AdminPage() {
 
   return (
     <main className="page wide">
-      <header className="row"><h1>Administração</h1><button className="link" onClick={() => supabase.auth.signOut().then(() => location.assign('/painel'))}>Sair</button></header>
+      <header className="row"><Link to="/painel">‹ O meu salão</Link><button className="link" onClick={() => supabase.auth.signOut().then(() => location.assign('/painel'))}>Sair</button></header>
+      <h1>Administração</h1>
       <div className="stats" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
         <div className="stat"><b>{salons.length}</b><span>Salões</span></div>
         <div className="stat"><b>{counts.ativa ?? 0}</b><span>Ativos</span></div>
