@@ -11,6 +11,7 @@ import { can } from '../lib/access'
 import ProposeTime from '../ProposeTime'
 import FreeSlot from '../FreeSlot'
 import { usableWindow } from '../lib/freeSlot'
+import { onTheWay } from '../lib/home'
 import { proposalMessage } from '../lib/proposal'
 import SetupChecklist from '../SetupChecklist'
 import TermsGate from '../TermsGate'
@@ -66,9 +67,15 @@ export default function AgendaPage() {
   const [nextFor, setNextFor] = useState<string | null>(null) // booking id with the next-visit panel open
   const [editing, setEditing] = useState<'nova' | string | null>(null) // 'nova' or the id of the booking being edited
   const [actionError, setActionError] = useState('')
+  const [notice, setNotice] = useState('')
   const [refresh, setRefresh] = useState(0)
   const [freeing, setFreeing] = useState<string | null>(null) // booking id whose freed time is being offered
   const reload = useCallback(() => setRefresh(r => r + 1), [])
+  // Home visits, event packages and prepaid packs (migration 0022).
+  const [addresses, setAddresses] = useState<Record<string, { address: string; postcode: string | null; notes: string | null; zone_name: string | null }>>({})
+  const [packs, setPacks] = useState<{ id: string; phone_key: string; sessions_total: number; sessions_used: number }[]>([])
+  const [hourRate, setHourRate] = useState<Record<string, number>>({})
+  const [waitingSince, setWaitingSince] = useState<Record<string, number>>(() => { try { return JSON.parse(localStorage.getItem('cortecerto-espera') ?? '{}') } catch { return {} } })
   const [proposing, setProposing] = useState<string | null>(null) // booking id with "Sugerir outro horário" open
   // Phone keys already on the salon's client list (migration 0018); null before it, so nothing is asked.
   const [known, setKnown] = useState<Set<string> | null>(null)
@@ -120,6 +127,38 @@ export default function AgendaPage() {
     supabase.rpc('known_clients', { p_salon: salon.id, p_keys: keys })
       .then(({ data, error }) => setKnown(error ? null : new Set(((data ?? []) as (string | { known_clients: string })[]).map(r => typeof r === 'string' ? r : r.known_clients))))
   }, [salon, bookings])
+
+  useEffect(() => {
+    if (!salon) return
+    const home = bookings.filter(b => b.location === 'domicilio').map(b => b.id)
+    if (home.length) supabase.from('booking_addresses').select('booking_id,address,postcode,notes,zone_name').in('booking_id', home)
+      .then(({ data }) => setAddresses(Object.fromEntries((data ?? []).map(a => [a.booking_id, a]))))
+    supabase.from('client_packs').select('id,phone_key,sessions_total,sessions_used').eq('salon_id', salon.id).eq('status', 'ativo')
+      .then(({ data, error }) => { if (!error) setPacks(data ?? []) })
+    const pk = [...new Set(bookings.map(b => b.package_id).filter((x): x is string => Boolean(x)))]
+    if (pk.length) supabase.from('packages').select('id,extra_hour_cents').in('id', pk)
+      .then(({ data }) => setHourRate(Object.fromEntries((data ?? []).filter(x => x.extra_hour_cents).map(x => [x.id, x.extra_hour_cents as number]))))
+  }, [salon, bookings])
+
+  function toggleWaiting(b: Booking) {
+    const since = waitingSince[b.id]
+    const next = { ...waitingSince }
+    if (since) {
+      delete next[b.id]
+      const add = Math.max(1, Math.round((Date.now() - since) / 60000))
+      update(b, { waiting_min: (b.waiting_min ?? 0) + add })
+    } else next[b.id] = Date.now()
+    setWaitingSince(next)
+    try { localStorage.setItem('cortecerto-espera', JSON.stringify(next)) } catch { /* private mode */ }
+  }
+  async function usePack(b: Booking, packId: string) {
+    setActionError('')
+    const { data, error } = await supabase.rpc('use_pack_session', { p_pack: packId, p_booking: b.id })
+    if (error) { setActionError(error.message.includes('pack_expirado') ? 'Este pack já passou da validade.' : 'Não foi possível usar a sessão do pack.'); return }
+    setBookings(bs => bs.map(x => x.id === b.id ? { ...x, client_pack_id: packId, price_cents: 0 } : x))
+    setPacks(ps => ps.map(p => p.id === packId ? { ...p, sessions_used: p.sessions_used + 1 } : p).filter(p => p.sessions_used < p.sessions_total))
+    setNotice(`Sessão usada. Restam ${data} no pack.`)
+  }
 
   function dismiss(key: string) {
     setDismissed(d => {
@@ -229,6 +268,7 @@ export default function AgendaPage() {
         )
       })}
       {actionError && <p className="error" role="alert">{actionError}</p>}
+      {notice && <p className="ok" role="status">{notice}</p>}
       {bookings.length === 0 && editing !== 'nova' && (
         <div className="card" style={{ textAlign: 'center' }}>
           <p className="muted" style={{ margin: '4px 0 12px' }}>Sem marcações neste dia.</p>
@@ -252,7 +292,33 @@ export default function AgendaPage() {
             <div className="time">{formatTime(when, tz)}<small>{mins} min</small></div>
             <div style={{ minWidth: 0 }}>
               <div className="who"><b>{b.client_name}</b><span className={`tag ${b.status}`}>{STATUS_LABEL[b.status]}</span></div>
-              <div className="muted small" style={{ marginTop: 2 }}>{svc?.name} · {pros[b.professional_id]?.name}{svc && <> · {euros(bookingPrice(b, services))}</>}</div>
+              <div className="muted small" style={{ marginTop: 2 }}>{b.package_summary ?? svc?.name} · {pros[b.professional_id]?.name}{svc && <> · {euros(bookingPrice(b, services))}</>}{b.client_pack_id && ' · pago com pack'}</div>
+              {b.location === 'domicilio' && (
+                <div className="proposal home-visit">
+                  <b><Icon name="home" size={14} /> Ao domicílio</b>{addresses[b.id]?.zone_name ? ` · ${addresses[b.id].zone_name}` : ''}{b.travel_min ? ` · ${b.travel_min} min de viagem` : ''}{b.home_fee_cents ? ` · deslocação e taxas ${euros(b.home_fee_cents)}` : ''}
+                  {addresses[b.id] && <><br /><a href={`https://maps.google.com/?q=${encodeURIComponent(`${addresses[b.id].address} ${addresses[b.id].postcode ?? ''}`)}`} target="_blank" rel="noreferrer">{addresses[b.id].address}{addresses[b.id].postcode ? `, ${addresses[b.id].postcode}` : ''}</a>{addresses[b.id].notes && <><br /><small className="muted">{addresses[b.id].notes}</small></>}</>}
+                  {(b.status === 'pendente' || b.status === 'confirmada') && (
+                    <div className="actions">
+                      {hasPhone && <a className={b.en_route_at ? 'wa sent' : 'wa'} href={waLink(b.client_phone, onTheWay(b.client_name, salon.name, b.travel_min || 15))} target="_blank" rel="noreferrer"
+                        onClick={() => update(b, { en_route_at: new Date().toISOString() })}><WhatsAppIcon size={16} />{b.en_route_at ? 'Avisado' : 'A caminho'}</a>}
+                      {!b.started_at && <button onClick={() => update(b, { started_at: new Date().toISOString() })}>Comecei</button>}
+                      {b.started_at && !b.finished_at && <button onClick={() => update(b, { finished_at: new Date().toISOString(), status: 'concluida' })}>Terminei</button>}
+                    </div>
+                  )}
+                  {b.started_at && b.finished_at && <small className="muted"><br />Demorou {Math.round((new Date(b.finished_at).getTime() - new Date(b.started_at).getTime()) / 60000)} min (previsto {mins}).</small>}
+                </div>
+              )}
+              {b.package_request_id && b.package_id && hourRate[b.package_id] && (b.status === 'confirmada' || b.status === 'pendente' || b.status === 'concluida') && (
+                <div className="proposal">
+                  <Icon name="timer" size={14} /> Espera: {b.waiting_min ?? 0} min{waitingSince[b.id] ? ' + a contar…' : ''}
+                  {(b.waiting_min ?? 0) > 0 && ` · a cobrar ${euros(Math.ceil((b.waiting_min ?? 0) / 60) * hourRate[b.package_id])}`}
+                  <button className="link" onClick={() => toggleWaiting(b)}>{waitingSince[b.id] ? 'Parar' : 'Começar a contar'}</button>
+                </div>
+              )}
+              {!b.client_pack_id && (b.status === 'confirmada' || b.status === 'concluida' || b.status === 'pendente') && (() => {
+                const pk = packs.find(p => p.phone_key === waNumber(b.client_phone))
+                return pk && <div className="proposal">Tem um pack ({pk.sessions_total - pk.sessions_used} de {pk.sessions_total}) <button className="btn-inline" onClick={() => usePack(b, pk.id)}>Usar sessão do pack</button></div>
+              })()}
               {b.client_action && (
                 <div style={{ marginTop: 6 }}><span className={`tag ${b.client_action === 'aceitou' ? '' : 'warn'}`}>{{
                   mudou: 'Cliente mudou a hora', cancelou: 'Cancelada pelo cliente',

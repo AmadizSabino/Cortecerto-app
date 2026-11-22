@@ -27,6 +27,10 @@ import AiPage from './pages/AiPage'
 import BrandPage from './pages/BrandPage'
 import OfferPage from './pages/OfferPage'
 import PromosPage from './pages/PromosPage'
+import HomeSettingsPage from './pages/HomeSettingsPage'
+import PackagesPage from './pages/PackagesPage'
+import PackagePage from './pages/PackagePage'
+import RequestPage from './pages/RequestPage'
 import BillingPage from './pages/BillingPage'
 import LegalPage from './pages/LegalPage'
 import { LEGAL_DOCS } from './lib/legal'
@@ -43,6 +47,8 @@ export default function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/s/:slug" element={<BookingPage />} />
+        <Route path="/s/:slug/pacote/:id" element={<PackagePage />} />
+        <Route path="/pedido/:id" element={<RequestPage />} />
         <Route path="/painel" element={<AgendaPage />} />
         <Route path="/registar" element={<OnboardingPage />} />
         <Route path="/definicoes" element={<SettingsPage />} />
@@ -53,6 +59,8 @@ export default function App() {
         <Route path="/vaga/:id" element={<OfferPage />} />
         <Route path="/marca" element={<BrandPage />} />
         <Route path="/promocoes" element={<PromosPage />} />
+        <Route path="/domicilio" element={<HomeSettingsPage />} />
+        <Route path="/pacotes" element={<PackagesPage />} />
         <Route path="/fila" element={<QueuePage />} />
         <Route path="/horarios" element={<SchedulePage />} />
         <Route path="/semana" element={<WeekPage />} />

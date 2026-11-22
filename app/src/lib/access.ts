@@ -39,7 +39,7 @@ export const atLeast = (role: Role, need: Role) => RANK[role] >= RANK[need]
 export const NEED = {
   agenda: 'agenda', semana: 'agenda', fila: 'agenda', lembretes: 'agenda', revenue: 'gestor',
   clientes: 'rececao', convidar: 'rececao', clube: 'rececao', poster: 'rececao',
-  estatisticas: 'gestor', promocoes: 'gestor', horarios: 'gestor', precos: 'gestor', equipa: 'gestor', clubeDefinicoes: 'gestor', ia: 'gestor',
+  estatisticas: 'gestor', promocoes: 'gestor', pacotes: 'gestor', domicilio: 'gestor', horarios: 'gestor', precos: 'gestor', equipa: 'gestor', clubeDefinicoes: 'gestor', ia: 'gestor',
   acessos: 'dono', definicoes: 'dono', assinatura: 'dono', exportar: 'dono', apagarCliente: 'dono',
 } as const satisfies Record<string, Role>
 

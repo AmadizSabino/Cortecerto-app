@@ -8,20 +8,22 @@ import { can, levelLabel, NEED } from '../lib/access'
 import InstallCard from '../InstallCard'
 import { themeById, themeStyle } from '../lib/themes'
 
-interface Item { to: string; icon: string; label: string; hint: string; need: keyof typeof NEED }
+interface Item { to: string; icon: string; label: string; hint: string; need: keyof typeof NEED; show?: (s: Salon) => boolean }
 const GROUPS: { title: string; items: Item[] }[] = [
   { title: 'No salão', items: [
-    { to: '/fila', icon: 'queue', label: 'Fila de espera', hint: 'Clientes sem marcação, por ordem de chegada', need: 'fila' },
+    { to: '/fila', icon: 'queue', label: 'Fila de espera', hint: 'Clientes sem marcação, por ordem de chegada', need: 'fila', show: s => s.booking_mode !== 'marcacao' && s.work_place !== 'domicilio' },
     { to: '/lembretes', icon: 'bell', label: 'Lembretes', hint: 'Avisar os clientes de amanhã por WhatsApp', need: 'lembretes' },
     { to: '/poster', icon: 'qr', label: 'Poster com QR', hint: 'Para o espelho ou a porta', need: 'poster' },
   ] },
   { title: 'Clientes', items: [
     { to: '/promocoes', icon: 'spark', label: 'Social Media Manager', hint: 'Plano da semana, promoções, posts e datas', need: 'promocoes' },
+    { to: '/pacotes', icon: 'gift', label: 'Pacotes', hint: 'Combos, casamentos e eventos, packs de sessões', need: 'clientes' },
     { to: '/convidar', icon: 'userPlus', label: 'Convidar clientes', hint: 'Pelo número ou dos contactos do telemóvel', need: 'convidar' },
     { to: '/clube', icon: 'crown', label: 'Clube', hint: 'Mensalidade com benefícios e receita fixa', need: 'clube' },
   ] },
   { title: 'Gestão', items: [
     { to: '/estatisticas', icon: 'chart', label: 'Estatísticas', hint: 'Faturação, serviços, clientes e comissões', need: 'estatisticas' },
+    { to: '/domicilio', icon: 'home', label: 'Ao domicílio', hint: 'Zonas, deslocação, taxas e serviços que vão a casa', need: 'domicilio', show: s => s.work_place !== 'salao' },
     { to: '/horarios', icon: 'clock', label: 'Horários e folgas', hint: 'Por profissional, pausas e férias', need: 'horarios' },
     { to: '/precos', icon: 'tag', label: 'Preços por profissional', hint: 'Preços e durações diferentes', need: 'precos' },
     { to: '/marca', icon: 'camera', label: 'Marca e galeria', hint: 'Logótipo, capa, texto e fotos do seu trabalho', need: 'equipa' },
@@ -65,7 +67,7 @@ export default function MorePage() {
         </div>
       </div>
       {GROUPS.map(g => {
-        const items = g.items.filter(i => can(role, i.need))
+        const items = g.items.filter(i => can(role, i.need) && (!i.show || i.show(salon)))
         if (!items.length) return null
         return (
           <section key={g.title}>

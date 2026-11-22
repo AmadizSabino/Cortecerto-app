@@ -49,4 +49,4 @@ export async function removeMedia(paths: (string | null | undefined)[]) {
   if (list.length) await supabase.storage.from(BUCKET).remove(list)
 }
 
-export interface Photo { id: string; path: string; caption: string | null; position: number }
+export interface Photo { id: string; path: string; caption: string | null; position: number; package_id?: string | null }

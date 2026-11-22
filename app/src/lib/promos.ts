@@ -110,7 +110,7 @@ const IDEAS: Record<string, Record<string, string>> = {
 /** Dates in one year, with an idea for the salon's type. */
 export function occasions(year: number, type: string): Occasion[] {
   const e = easter(year)
-  const idea = (k: string) => IDEAS[k][type] ?? IDEAS[k].barbearia
+  const idea = (k: string) => IDEAS[k][type] ?? IDEAS[k][family(type)] ?? IDEAS[k].barbearia
   const y = (md: string) => `${year}-${md}`
   const holiday = (date: string, name: string): Occasion => ({ date, name, idea: idea('feriado'), holiday: true })
   const fridayAfterThanksgiving = shift(nth(year, 11, 4, 4), 1)
@@ -183,7 +183,9 @@ const PHRASES: Record<string, Phrase[]> = {
   ],
 }
 
-export const phrasesFor = (type: string): Phrase[] => [...(PHRASES[type] ?? []), ...PHRASES.todos]
+/** The closest set of phrases and ideas for the newer types (migration 0022). */
+const family = (type: string) => ({ estetica: 'depilacao', massagem: 'depilacao', sobrancelhas: 'unhas', maquilhagem: 'cabeleireiro' } as Record<string, string>)[type] ?? type
+export const phrasesFor = (type: string): Phrase[] => [...(PHRASES[family(type)] ?? []), ...PHRASES.todos]
 
 export function fillPhrase(text: string, v: { oferta: string; quando: string; salao: string; link: string }): string {
   return text.replace(/\{(oferta|quando|salao|link)\}/g, (_, k: keyof typeof v) => v[k])
