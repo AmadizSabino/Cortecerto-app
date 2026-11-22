@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { loadMySalon, type Role } from '../lib/mySalon'
+import { can } from '../lib/access'
 import { euros, supabase, type Professional, type Salon, type Service } from '../lib/supabase'
 import { parseEuros } from '../lib/onboarding'
 import { overrideKey, type Overrides } from '../lib/pricing'
@@ -55,7 +56,7 @@ export default function PricesPage() {
   if (salon === undefined) return <main className="page">A carregar…</main>
   if (salon === null) return <Navigate to="/registar" replace />
   // Team members don't see the salon's settings, prices, hours or revenue.
-  if (role !== 'dono') return <Navigate to="/painel" replace />
+  if (!can(role, 'precos')) return <Navigate to="/painel" replace />
 
   const setCell = (k: string, patch: Partial<Cell>) => { setCells(c => ({ ...c, [k]: { ...c[k], ...patch } })); setMsg(undefined) }
 

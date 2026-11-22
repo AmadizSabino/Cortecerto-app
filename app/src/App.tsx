@@ -20,7 +20,17 @@ import WeekPage from './pages/WeekPage'
 import PricesPage from './pages/PricesPage'
 import StatsPage from './pages/StatsPage'
 import LandingPage from './pages/LandingPage'
-import AccessPage from './pages/AccessPage'
+import TeamPage from './pages/TeamPage'
+import InvitePage from './pages/InvitePage'
+import ClubPage from './pages/ClubPage'
+import AiPage from './pages/AiPage'
+import BrandPage from './pages/BrandPage'
+import OfferPage from './pages/OfferPage'
+import PromosPage from './pages/PromosPage'
+import HomeSettingsPage from './pages/HomeSettingsPage'
+import PackagesPage from './pages/PackagesPage'
+import PackagePage from './pages/PackagePage'
+import RequestPage from './pages/RequestPage'
 import BillingPage from './pages/BillingPage'
 import LegalPage from './pages/LegalPage'
 import { LEGAL_DOCS } from './lib/legal'
@@ -37,6 +47,8 @@ export default function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/s/:slug" element={<BookingPage />} />
+        <Route path="/s/:slug/pacote/:id" element={<PackagePage />} />
+        <Route path="/pedido/:id" element={<RequestPage />} />
         <Route path="/painel" element={<AgendaPage />} />
         <Route path="/registar" element={<OnboardingPage />} />
         <Route path="/definicoes" element={<SettingsPage />} />
@@ -44,6 +56,11 @@ export default function App() {
         <Route path="/poster" element={<PosterPage />} />
         <Route path="/lembretes" element={<RemindersPage />} />
         <Route path="/m/:id" element={<ManagePage />} />
+        <Route path="/vaga/:id" element={<OfferPage />} />
+        <Route path="/marca" element={<BrandPage />} />
+        <Route path="/promocoes" element={<PromosPage />} />
+        <Route path="/domicilio" element={<HomeSettingsPage />} />
+        <Route path="/pacotes" element={<PackagesPage />} />
         <Route path="/fila" element={<QueuePage />} />
         <Route path="/horarios" element={<SchedulePage />} />
         <Route path="/semana" element={<WeekPage />} />
@@ -51,7 +68,11 @@ export default function App() {
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/precos" element={<PricesPage />} />
         <Route path="/estatisticas" element={<StatsPage />} />
-        <Route path="/acessos" element={<AccessPage />} />
+        <Route path="/equipa" element={<TeamPage />} />
+        <Route path="/acessos" element={<TeamPage />} />
+        <Route path="/convidar" element={<InvitePage />} />
+        <Route path="/clube" element={<ClubPage />} />
+        <Route path="/ia" element={<AiPage />} />
         <Route path="/assinatura" element={<BillingPage />} />
         <Route path="/f/:slug" element={<QueueJoinPage />} />
         {LEGAL_DOCS.map(d => <Route key={d.id} path={d.path} element={<LegalPage doc={d} />} />)}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { mediaUrl } from '../lib/brand'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { supabase, type Salon } from '../lib/supabase'
@@ -55,6 +56,7 @@ export default function PosterPage() {
       </div>
 
       <section className="poster" aria-label="Pré-visualização do poster">
+        {salon.logo_path && <img className="poster-logo" src={mediaUrl(salon.logo_path)!} alt="" />}
         <h2 className="poster-name">{salon.name}</h2>
         <p className="poster-title">{queue ? 'Sem marcação? Entre na fila' : 'Marque a sua visita'}</p>
         <svg className="poster-qr" viewBox={`-4 -4 ${qr.size + 8} ${qr.size + 8}`} role="img" aria-label={queue ? 'Código QR da fila de espera' : 'Código QR da página de marcação'} shapeRendering="crispEdges">

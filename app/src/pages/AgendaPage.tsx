@@ -1,12 +1,18 @@
-import { useEffect, useState } from 'react'
-import { Navigate, useSearchParams } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import Icon, { WhatsAppIcon } from '../components/Icon'
 import { euros, initials, supabase, type Booking, type Professional, type Salon, type Service } from '../lib/supabase'
 import { addDays, dateInTz, formatTime, zonedToUtc } from '../lib/time'
-import { formatPhone, waLink } from '../lib/whatsapp'
+import { formatPhone, waLink, waNumber } from '../lib/whatsapp'
 import { themeById, themeStyle } from '../lib/themes'
 import { loadMySalon, type Role } from '../lib/mySalon'
+import { can } from '../lib/access'
+import ProposeTime from '../ProposeTime'
+import FreeSlot from '../FreeSlot'
+import { usableWindow } from '../lib/freeSlot'
+import { onTheWay } from '../lib/home'
+import { proposalMessage } from '../lib/proposal'
 import SetupChecklist from '../SetupChecklist'
 import TermsGate from '../TermsGate'
 import RemindersCard from '../RemindersCard'
@@ -22,6 +28,8 @@ import { bookingPrice } from '../lib/pricing'
 const STATUS_LABEL: Record<Booking['status'], string> = {
   pendente: 'Pendente', confirmada: 'Confirmada', concluida: 'Concluída', faltou: 'Faltou', cancelada: 'Cancelada',
 }
+
+const DISMISS_KEY = 'cortecerto-newclient-dismissed'
 
 function Login() {
   const [email, setEmail] = useState('')
@@ -59,7 +67,21 @@ export default function AgendaPage() {
   const [nextFor, setNextFor] = useState<string | null>(null) // booking id with the next-visit panel open
   const [editing, setEditing] = useState<'nova' | string | null>(null) // 'nova' or the id of the booking being edited
   const [actionError, setActionError] = useState('')
+  const [notice, setNotice] = useState('')
   const [refresh, setRefresh] = useState(0)
+  const [freeing, setFreeing] = useState<string | null>(null) // booking id whose freed time is being offered
+  const reload = useCallback(() => setRefresh(r => r + 1), [])
+  // Home visits, event packages and prepaid packs (migration 0022).
+  const [addresses, setAddresses] = useState<Record<string, { address: string; postcode: string | null; notes: string | null; zone_name: string | null }>>({})
+  const [packs, setPacks] = useState<{ id: string; phone_key: string; sessions_total: number; sessions_used: number }[]>([])
+  const [hourRate, setHourRate] = useState<Record<string, number>>({})
+  const [waitingSince, setWaitingSince] = useState<Record<string, number>>(() => { try { return JSON.parse(localStorage.getItem('cortecerto-espera') ?? '{}') } catch { return {} } })
+  const [proposing, setProposing] = useState<string | null>(null) // booking id with "Sugerir outro horário" open
+  // Phone keys already on the salon's client list (migration 0018); null before it, so nothing is asked.
+  const [known, setKnown] = useState<Set<string> | null>(null)
+  const [dismissed, setDismissed] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(DISMISS_KEY) ?? '[]')) } catch { return new Set() }
+  })
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -97,6 +119,55 @@ export default function AgendaPage() {
       .then(({ data, error }) => setOffs(error ? [] : data ?? []))
   }, [salon, date, refresh])
 
+  // Which of the day's clients are not yet on the salon's client list.
+  useEffect(() => {
+    if (!salon) return
+    const keys = [...new Set(bookings.map(b => waNumber(b.client_phone)).filter(k => k.length >= 11))]
+    if (keys.length === 0) { setKnown(new Set()); return }
+    supabase.rpc('known_clients', { p_salon: salon.id, p_keys: keys })
+      .then(({ data, error }) => setKnown(error ? null : new Set(((data ?? []) as (string | { known_clients: string })[]).map(r => typeof r === 'string' ? r : r.known_clients))))
+  }, [salon, bookings])
+
+  useEffect(() => {
+    if (!salon) return
+    const home = bookings.filter(b => b.location === 'domicilio').map(b => b.id)
+    if (home.length) supabase.from('booking_addresses').select('booking_id,address,postcode,notes,zone_name').in('booking_id', home)
+      .then(({ data }) => setAddresses(Object.fromEntries((data ?? []).map(a => [a.booking_id, a]))))
+    supabase.from('client_packs').select('id,phone_key,sessions_total,sessions_used').eq('salon_id', salon.id).eq('status', 'ativo')
+      .then(({ data, error }) => { if (!error) setPacks(data ?? []) })
+    const pk = [...new Set(bookings.map(b => b.package_id).filter((x): x is string => Boolean(x)))]
+    if (pk.length) supabase.from('packages').select('id,extra_hour_cents').in('id', pk)
+      .then(({ data }) => setHourRate(Object.fromEntries((data ?? []).filter(x => x.extra_hour_cents).map(x => [x.id, x.extra_hour_cents as number]))))
+  }, [salon, bookings])
+
+  function toggleWaiting(b: Booking) {
+    const since = waitingSince[b.id]
+    const next = { ...waitingSince }
+    if (since) {
+      delete next[b.id]
+      const add = Math.max(1, Math.round((Date.now() - since) / 60000))
+      update(b, { waiting_min: (b.waiting_min ?? 0) + add })
+    } else next[b.id] = Date.now()
+    setWaitingSince(next)
+    try { localStorage.setItem('cortecerto-espera', JSON.stringify(next)) } catch { /* private mode */ }
+  }
+  async function spendPackSession(b: Booking, packId: string) {
+    setActionError('')
+    const { data, error } = await supabase.rpc('use_pack_session', { p_pack: packId, p_booking: b.id })
+    if (error) { setActionError(error.message.includes('pack_expirado') ? 'Este pack já passou da validade.' : 'Não foi possível usar a sessão do pack.'); return }
+    setBookings(bs => bs.map(x => x.id === b.id ? { ...x, client_pack_id: packId, price_cents: 0 } : x))
+    setPacks(ps => ps.map(p => p.id === packId ? { ...p, sessions_used: p.sessions_used + 1 } : p).filter(p => p.sessions_used < p.sessions_total))
+    setNotice(`Sessão usada. Restam ${data} no pack.`)
+  }
+
+  function dismiss(key: string) {
+    setDismissed(d => {
+      const n = new Set(d).add(key)
+      try { localStorage.setItem(DISMISS_KEY, JSON.stringify([...n].slice(-500))) } catch { /* private mode */ }
+      return n
+    })
+  }
+
   // New online bookings appear without reloading: when the app comes back to the screen, and every minute.
   useEffect(() => {
     const again = () => { if (document.visibilityState === 'visible') setRefresh(r => r + 1) }
@@ -119,6 +190,15 @@ export default function AgendaPage() {
     setBookings(bs => bs.map(x => x.id === b.id ? { ...x, ...patch } : x))
     // Right after a visit is the moment to book the next one.
     if (patch.status === 'concluida') setNextFor(b.id)
+    // A cancellation or a no-show frees time: offer it straight away, while it can still be filled.
+    if ((patch.status === 'cancelada' || patch.status === 'faltou') && usableWindow(new Date(b.starts_at), new Date(b.ends_at), new Date())) setFreeing(b.id)
+  }
+
+  async function withdraw(b: Booking) {
+    setActionError('')
+    const { error } = await supabase.rpc('withdraw_booking_proposal', { p_booking: b.id })
+    if (error) { setActionError('Não foi possível retirar a sugestão.'); return }
+    setBookings(bs => bs.map(x => x.id === b.id ? { ...x, proposed_starts_at: null, proposal_note: null } : x))
   }
 
   /** After creating or editing: show it if it's on the day being viewed, otherwise go to its day. */
@@ -159,7 +239,9 @@ export default function AgendaPage() {
       {role === 'dono' && <BillingNotice salon={salon} />}
       <div className="stats">
         <div className="stat"><b>{live.length}</b><span>Marcações {date === today ? 'hoje' : 'no dia'}</span></div>
-        <div className="stat"><b>{euros(revenue).replace(',00', '')}</b><span>Faturação prevista</span></div>
+        {can(role, 'revenue')
+          ? <div className="stat"><b>{euros(revenue).replace(',00', '')}</b><span>Faturação prevista</span></div>
+          : <div className="stat"><b>{live.filter(b => b.status === 'pendente').length}</b><span>Por confirmar</span></div>}
         <div className="stat"><b>{deposits}</b><span>Sinais por confirmar</span></div>
       </div>
       <InstallCard />
@@ -186,6 +268,7 @@ export default function AgendaPage() {
         )
       })}
       {actionError && <p className="error" role="alert">{actionError}</p>}
+      {notice && <p className="ok" role="status">{notice}</p>}
       {bookings.length === 0 && editing !== 'nova' && (
         <div className="card" style={{ textAlign: 'center' }}>
           <p className="muted" style={{ margin: '4px 0 12px' }}>Sem marcações neste dia.</p>
@@ -201,14 +284,62 @@ export default function AgendaPage() {
           <BookingEditor key={b.id} salon={salon} booking={b} defaultDate={date} onClose={() => setEditing(null)} onSaved={saved} />
         )
         const hasPhone = /\d{6}/.test(b.client_phone.replace(/\D/g, ''))
+        const key = waNumber(b.client_phone)
+        const isNew = Boolean(known) && can(role, 'clientes') && hasPhone && key.length >= 11 && !known!.has(key) && !dismissed.has(key)
+          && b.status !== 'cancelada' && b.client_name !== 'Cliente apagado'
         return (
           <article key={b.id} className={`card booking st-${b.status}`}>
             <div className="time">{formatTime(when, tz)}<small>{mins} min</small></div>
             <div style={{ minWidth: 0 }}>
               <div className="who"><b>{b.client_name}</b><span className={`tag ${b.status}`}>{STATUS_LABEL[b.status]}</span></div>
-              <div className="muted small" style={{ marginTop: 2 }}>{svc?.name} · {pros[b.professional_id]?.name}{svc && <> · {euros(bookingPrice(b, services))}</>}</div>
-              {(b.client_action === 'mudou' || b.client_action === 'cancelou') && (
-                <div style={{ marginTop: 6 }}><span className="tag warn">{b.client_action === 'mudou' ? 'Cliente mudou a hora' : 'Cancelada pelo cliente'}</span></div>
+              <div className="muted small" style={{ marginTop: 2 }}>{b.package_summary ?? svc?.name} · {pros[b.professional_id]?.name}{svc && <> · {euros(bookingPrice(b, services))}</>}{b.client_pack_id && ' · pago com pack'}</div>
+              {b.location === 'domicilio' && (
+                <div className="proposal home-visit">
+                  <b><Icon name="home" size={14} /> Ao domicílio</b>{addresses[b.id]?.zone_name ? ` · ${addresses[b.id].zone_name}` : ''}{b.travel_min ? ` · ${b.travel_min} min de viagem` : ''}{b.home_fee_cents ? ` · deslocação e taxas ${euros(b.home_fee_cents)}` : ''}
+                  {addresses[b.id] && <><br /><a href={`https://maps.google.com/?q=${encodeURIComponent(`${addresses[b.id].address} ${addresses[b.id].postcode ?? ''}`)}`} target="_blank" rel="noreferrer">{addresses[b.id].address}{addresses[b.id].postcode ? `, ${addresses[b.id].postcode}` : ''}</a>{addresses[b.id].notes && <><br /><small className="muted">{addresses[b.id].notes}</small></>}</>}
+                  {(b.status === 'pendente' || b.status === 'confirmada') && (
+                    <div className="actions">
+                      {hasPhone && <a className={b.en_route_at ? 'wa sent' : 'wa'} href={waLink(b.client_phone, onTheWay(b.client_name, salon.name, b.travel_min || 15))} target="_blank" rel="noreferrer"
+                        onClick={() => update(b, { en_route_at: new Date().toISOString() })}><WhatsAppIcon size={16} />{b.en_route_at ? 'Avisado' : 'A caminho'}</a>}
+                      {!b.started_at && <button onClick={() => update(b, { started_at: new Date().toISOString() })}>Comecei</button>}
+                      {b.started_at && !b.finished_at && <button onClick={() => update(b, { finished_at: new Date().toISOString(), status: 'concluida' })}>Terminei</button>}
+                    </div>
+                  )}
+                  {b.started_at && b.finished_at && <small className="muted"><br />Demorou {Math.round((new Date(b.finished_at).getTime() - new Date(b.started_at).getTime()) / 60000)} min (previsto {mins}).</small>}
+                </div>
+              )}
+              {b.package_request_id && b.package_id && hourRate[b.package_id] && (b.status === 'confirmada' || b.status === 'pendente' || b.status === 'concluida') && (
+                <div className="proposal">
+                  <Icon name="timer" size={14} /> Espera: {b.waiting_min ?? 0} min{waitingSince[b.id] ? ' + a contar…' : ''}
+                  {(b.waiting_min ?? 0) > 0 && ` · a cobrar ${euros(Math.ceil((b.waiting_min ?? 0) / 60) * hourRate[b.package_id])}`}
+                  <button className="link" onClick={() => toggleWaiting(b)}>{waitingSince[b.id] ? 'Parar' : 'Começar a contar'}</button>
+                </div>
+              )}
+              {!b.client_pack_id && (b.status === 'confirmada' || b.status === 'concluida' || b.status === 'pendente') && (() => {
+                const pk = packs.find(p => p.phone_key === waNumber(b.client_phone))
+                return pk && <div className="proposal">Tem um pack ({pk.sessions_total - pk.sessions_used} de {pk.sessions_total}) <button className="btn-inline" onClick={() => spendPackSession(b, pk.id)}>Usar sessão do pack</button></div>
+              })()}
+              {b.client_action && (
+                <div style={{ marginTop: 6 }}><span className={`tag ${b.client_action === 'aceitou' ? '' : 'warn'}`}>{{
+                  mudou: 'Cliente mudou a hora', cancelou: 'Cancelada pelo cliente',
+                  aceitou: 'Cliente aceitou o novo horário', recusou: 'Cliente recusou o horário sugerido',
+                }[b.client_action]}</span></div>
+              )}
+              {b.proposed_starts_at && (b.status === 'pendente' || b.status === 'confirmada') && (
+                <div className="proposal">
+                  Sugeriu <b>{new Date(b.proposed_starts_at).toLocaleDateString('pt-PT', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short' })} às {formatTime(new Date(b.proposed_starts_at), tz)}</b> · à espera da resposta do cliente
+                  <div className="actions">
+                    {hasPhone && <a className="wa" href={waLink(b.client_phone, proposalMessage(b, salon, svc?.name ?? '', new Date(b.proposed_starts_at), b.proposal_note))} target="_blank" rel="noreferrer"><WhatsAppIcon size={16} />Reenviar</a>}
+                    <button className="link" onClick={() => withdraw(b)}>Retirar sugestão</button>
+                  </div>
+                </div>
+              )}
+              {isNew && (
+                <div className="newclient">
+                  <span><b>Cliente novo.</b> Ainda não faz parte da sua lista de clientes. Quer adicionar?</span>
+                  <Link className="btn-inline" to={`/clientes?novo=${encodeURIComponent(b.client_phone)}&nome=${encodeURIComponent(b.client_name)}`}>Sim, adicionar</Link>
+                  <button className="link" onClick={() => dismiss(key)}>Agora não</button>
+                </div>
               )}
               {hasPhone && <div className="small" style={{ marginTop: 4 }}><a href={`tel:+${formatPhone(b.client_phone).replace(/\D/g, '')}`}>{formatPhone(b.client_phone)}</a></div>}
               {b.deposit !== 'nenhum' && (
@@ -225,9 +356,18 @@ export default function AgendaPage() {
                 </>}
                 {hasPhone && <a className="wa" href={waLink(b.client_phone, msg)} target="_blank" rel="noreferrer"><WhatsAppIcon size={16} />WhatsApp</a>}
                 {b.status === 'concluida' && nextFor !== b.id && <button onClick={() => setNextFor(b.id)}>Próxima visita</button>}
+                {(b.status === 'cancelada' || b.status === 'faltou') && freeing !== b.id && usableWindow(new Date(b.starts_at), new Date(b.ends_at), new Date()) && <button className="btn-inline" onClick={() => setFreeing(b.id)}>Oferecer a vaga</button>}
+                {(b.status === 'pendente' || b.status === 'confirmada') && !b.proposed_starts_at && proposing !== b.id && <button onClick={() => setProposing(b.id)}>Sugerir outro horário</button>}
                 {(b.status === 'pendente' || b.status === 'confirmada') && <button className="link" onClick={() => setEditing(b.id)}>Editar</button>}
               </div>
             </div>
+            {freeing === b.id && (
+              <FreeSlot salon={salon} freed={b} proName={pros[b.professional_id]?.name ?? ''} onClose={() => setFreeing(null)} onFilled={reload} />
+            )}
+            {proposing === b.id && (
+              <ProposeTime salon={salon} booking={b} serviceName={svc?.name ?? ''} onClose={() => setProposing(null)}
+                onDone={nb => setBookings(bs => bs.map(x => x.id === nb.id ? nb : x))} />
+            )}
             {nextFor === b.id && svc && pros[b.professional_id] && (
               <NextVisit salon={salon} booking={b} service={svc} pro={pros[b.professional_id]}
                 onClose={() => setNextFor(null)}

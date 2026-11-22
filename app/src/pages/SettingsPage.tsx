@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { supabase, type Salon } from '../lib/supabase'
+import BusinessProfile, { type Profile } from '../components/BusinessProfile'
+import type { SalonType } from '../lib/onboarding'
 import { parseEuros, WEEKDAYS } from '../lib/onboarding'
 import ThemePicker from '../ThemePicker'
 import { themeById, themeStyle } from '../lib/themes'
@@ -10,7 +12,6 @@ import { exportBookings, exportClients } from '../lib/exportData'
 import { loadMySalon } from '../lib/mySalon'
 
 interface SvcRow { id?: string; name: string; duration: string; price: string; active: boolean }
-interface ProRow { id?: string; name: string; active: boolean }
 interface DayRow { open: boolean; opens: string; closes: string }
 
 const centsToText = (c: number) => (c / 100).toFixed(2).replace('.', ',')
@@ -18,10 +19,10 @@ const centsToText = (c: number) => (c / 100).toFixed(2).replace('.', ',')
 export default function SettingsPage() {
   const [session, setSession] = useState<Session | null>()
   const [salon, setSalon] = useState<Salon | null>()
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [info, setInfo] = useState({ name: '', whatsapp: '', mbway: '', deposit: '0', theme: '', change: '2', address: '', news: '', review: '' })
   const [allThemes, setAllThemes] = useState(false)
   const [services, setServices] = useState<SvcRow[]>([])
-  const [pros, setPros] = useState<ProRow[]>([])
   const [days, setDays] = useState<DayRow[]>([])
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>()
   const [saving, setSaving] = useState(false)
@@ -37,14 +38,13 @@ export default function SettingsPage() {
     const s = mine.salon
     setSalon(s)
     if (!s || mine.role !== 'dono') return
+    setProfile(s.areas ? { type: s.type as SalonType, areas: s.areas, booking_mode: s.booking_mode ?? 'ambos', work_place: s.work_place ?? 'salao' } : null)
     setInfo({ name: s.name, whatsapp: s.whatsapp ?? '', mbway: s.mbway_number ?? '', deposit: centsToText(s.deposit_cents), theme: s.theme, change: s.client_change_hours == null ? '' : String(s.client_change_hours), address: s.address ?? '', news: s.news ?? '', review: s.google_review_url ?? '' })
-    const [sv, pr, hr] = await Promise.all([
+    const [sv, hr] = await Promise.all([
       supabase.from('services').select('id,name,duration_min,price_cents,active').eq('salon_id', s.id).order('name'),
-      supabase.from('professionals').select('id,name,active').eq('salon_id', s.id).order('name'),
       supabase.from('opening_hours').select('weekday,opens,closes').eq('salon_id', s.id),
     ])
     setServices((sv.data ?? []).map(x => ({ id: x.id, name: x.name, duration: String(x.duration_min), price: centsToText(x.price_cents), active: x.active })))
-    setPros(pr.data ?? [])
     setDays(WEEKDAYS.map((_, i) => {
       const h = (hr.data ?? []).find(x => x.weekday === i)
       return h ? { open: true, opens: h.opens.slice(0, 5), closes: h.closes.slice(0, 5) } : { open: false, opens: '09:00', closes: '19:00' }
@@ -58,7 +58,6 @@ export default function SettingsPage() {
   if (teamMember) return <Navigate to="/painel" replace />
 
   const setSvc = (i: number, p: Partial<SvcRow>) => setServices(r => r.map((x, j) => j === i ? { ...x, ...p } : x))
-  const setPro = (i: number, p: Partial<ProRow>) => setPros(r => r.map((x, j) => j === i ? { ...x, ...p } : x))
   const setDay = (i: number, p: Partial<DayRow>) => setDays(r => r.map((x, j) => j === i ? { ...x, ...p } : x))
 
   function validate(): string {
@@ -69,7 +68,6 @@ export default function SettingsPage() {
     const svc = services.filter(s => s.name.trim())
     if (!svc.some(s => s.active)) return 'Mantenha pelo menos um serviço ativo.'
     if (svc.some(s => isNaN(parseEuros(s.price)) || !(Number(s.duration) >= 5))) return 'Verifique o preço e a duração (mínimo 5 min) de cada serviço.'
-    if (!pros.some(p => p.active && p.name.trim())) return 'Mantenha pelo menos um profissional ativo.'
     if (days.some(d => d.open && d.closes <= d.opens)) return 'A hora de fecho tem de ser depois da abertura.'
     return ''
   }
@@ -95,15 +93,13 @@ export default function SettingsPage() {
         ...('client_change_hours' in s ? { client_change_hours: info.change === '' ? null : Number(info.change) } : {}),
         // Profile shown on the booking page (migration 0016); skipped if the columns aren't there yet.
         ...('address' in s ? { address: info.address.trim() || null, news: info.news.trim() || null, google_review_url: info.review.trim() || null } : {}),
+        // Business profile (migration 0022).
+        ...(profile ? { type: profile.type, areas: [...new Set([profile.type, ...profile.areas])], booking_mode: profile.booking_mode, work_place: profile.work_place } : {}),
       }).eq('id', s.id).select('id'),
-      // Services and team are switched off rather than deleted, so past bookings keep their history.
+      // Services are switched off rather than deleted, so past bookings keep their history.
       ...services.filter(x => x.name.trim()).map(x => {
         const row = { salon_id: s.id, name: x.name.trim(), duration_min: Number(x.duration), price_cents: parseEuros(x.price), active: x.active }
         return x.id ? supabase.from('services').update(row).eq('id', x.id) : supabase.from('services').insert(row)
-      }),
-      ...pros.filter(x => x.name.trim()).map(x => {
-        const row = { salon_id: s.id, name: x.name.trim(), active: x.active }
-        return x.id ? supabase.from('professionals').update(row).eq('id', x.id) : supabase.from('professionals').insert(row)
       }),
     ])
     // The salon row must actually change: an update the database refuses returns no row rather than an error.
@@ -144,6 +140,12 @@ export default function SettingsPage() {
         </label>
       )}
 
+      {profile && <>
+        <h2>Perfil do negócio</h2>
+        <p className="muted small">Define o que a app lhe mostra: estilos, serviços sugeridos, fila de espera, visitas ao domicílio e ideias de posts.</p>
+        <BusinessProfile value={profile} onChange={setProfile} />
+      </>}
+
       <h2>Estilo da página</h2>
       <p className="muted">Guardado logo ao escolher. É o estilo do painel e da sua página de marcação.</p>
       <ThemePicker value={info.theme} type={salon!.type} showAll={allThemes} onChange={chooseTheme} />
@@ -165,14 +167,7 @@ export default function SettingsPage() {
       <button type="button" onClick={() => setServices(r => [...r, { name: '', duration: '30', price: '', active: true }])}>+ Adicionar serviço</button>
 
       <h2>Equipa</h2>
-      <p className="muted"><Link to="/acessos">Dar acesso ao painel a alguém da equipa</Link></p>
-      {pros.map((p, i) => (
-        <div key={p.id ?? 'new' + i} className="row">
-          <input aria-label="Nome do profissional" value={p.name} onChange={e => setPro(i, { name: e.target.value })} style={{ flex: 1 }} />
-          <label className="check"><input type="checkbox" checked={p.active} onChange={e => setPro(i, { active: e.target.checked })} />Ativo</label>
-        </div>
-      ))}
-      <button type="button" onClick={() => setPros(r => [...r, { name: '', active: true }])} style={{ marginTop: 8 }}>+ Adicionar profissional</button>
+      <p className="muted">Profissionais, comissões e acessos ao painel estão em <Link to="/equipa">Mais &gt; Equipa</Link>.</p>
 
       <h2>Horário</h2>
       <p className="muted">Horário de abertura do salão. <Link to="/horarios">Horários por profissional, pausas, folgas e férias</Link></p>
