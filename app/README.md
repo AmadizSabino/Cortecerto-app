@@ -5,7 +5,7 @@ The production app, built from the [prototype](../prototype/index.html). React +
 ## Run locally
 
 1. Create a free Supabase project (an EU region, e.g. Frankfurt or Stockholm).
-2. In the Supabase SQL editor, run the files in `../supabase/migrations/` in order (0001 to 0020). A project that already ran 0001 and 0002 can paste `../supabase/pending/0003_to_0020.sql` once instead (see the README next to it).
+2. In the Supabase SQL editor, run the files in `../supabase/migrations/` in order (0001 to 0021). A project that already ran 0001 and 0002 can paste `../supabase/pending/0003_to_0021.sql` once instead (see the README next to it).
 3. Copy `.env.example` to `.env.local` and fill in the project URL and anon key (Project settings > API).
 4. `npm install && npm run dev`, open http://localhost:5173/painel and sign in with your email.
 5. The first sign-in goes to `/registar`, a 4-step setup: salon type and name, services and prices, team and hours, WhatsApp and MB Way deposit. Then open your booking link to book.
