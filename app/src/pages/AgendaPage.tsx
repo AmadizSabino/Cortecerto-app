@@ -56,6 +56,8 @@ function Login() {
 export default function AgendaPage() {
   const [session, setSession] = useState<Session | null>()
   const [role, setRole] = useState<Role>('dono')
+  // CorteCerto's own team: a shortcut to /admin (the same login can own test salons).
+  const [admin, setAdmin] = useState(false)
   const [salon, setSalon] = useState<Salon | null>()
   const [services, setServices] = useState<Record<string, Service>>({})
   const [pros, setPros] = useState<Record<string, Professional>>({})
@@ -92,6 +94,7 @@ export default function AgendaPage() {
 
   useEffect(() => {
     if (!session) return
+    supabase.rpc('is_platform_admin').then(({ data }) => setAdmin(data === true));
     (async () => {
       const mine = await loadMySalon(session.user.id)
       const s = mine.salon
@@ -235,7 +238,10 @@ export default function AgendaPage() {
           <p className="eyebrow">{salon.name} · {new Date().toLocaleDateString('pt-PT', { timeZone: tz, day: 'numeric', month: 'short' }).replace('.', '')}</p>
           <h1>{greeting}</h1>
         </div>
-        <span className="avatar">{initials(salon.name)}</span>
+        <span className="row" style={{ gap: 10, flexWrap: 'nowrap' }}>
+          {admin && <Link className="btn ghost inline sm" to="/admin">Admin</Link>}
+          <span className="avatar">{initials(salon.name)}</span>
+        </span>
       </header>
       {pending && pending.length > 0 && <TermsGate docs={pending} salonId={salon.id} onAccepted={() => setPending([])} />}
       {!(pending && pending.length > 0) && <>

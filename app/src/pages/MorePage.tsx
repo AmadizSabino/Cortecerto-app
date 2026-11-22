@@ -58,6 +58,7 @@ export default function MorePage() {
         <div><p className="eyebrow">Painel · acesso {levelLabel(role)}</p><h1>{salon.name}</h1></div>
         <span className="avatar">{initials(salon.name)}</span>
       </div>
+      {admin && <div className="card menu"><Link to="/admin"><Icon name="star" size={22} /><span>Administração CorteCerto<small>Assinaturas e faturas de todos os salões</small></span><span className="chev"><Icon name="chevronRight" size={18} /></span></Link></div>}
       <div className="card soft">
         <p className="small muted" style={{ margin: 0 }}>Link de marcação</p>
         <p style={{ margin: '4px 0 10px', wordBreak: 'break-all', fontWeight: 600 }}>{link.replace(/^https?:\/\//, '')}</p>
@@ -86,7 +87,6 @@ export default function MorePage() {
       })}
       <h2>App no telemóvel</h2>
       <InstallCard always />
-      {admin && <div className="card menu"><Link to="/admin"><Icon name="star" size={22} /><span>Administração CorteCerto<small>Assinaturas e faturas de todos os salões</small></span><span className="chev"><Icon name="chevronRight" size={18} /></span></Link></div>}
       <div className="card menu">
         <button onClick={() => supabase.auth.signOut().then(() => location.assign('/painel'))}><Icon name="logout" size={22} /><span>Sair da conta</span></button>
       </div>
