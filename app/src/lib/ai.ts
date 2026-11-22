@@ -8,7 +8,7 @@ import { supabase } from './supabase'
  */
 export type AiFeature =
   | 'try-on' | 'before-after' | 'cut-suggestions' | 'reference-notes'
-  | 'owner-assistant' | 'whatsapp-assistant' | 'review-reply' | 'weekly-report' | 'price-suggestions'
+  | 'owner-assistant' | 'whatsapp-assistant' | 'review-reply' | 'weekly-report' | 'price-suggestions' | 'promo-caption' | 'social-plan'
 
 export interface AiResult { status: 'feito' | 'indisponivel' | 'limite' | 'erro'; text?: string; image?: string; message?: string }
 
@@ -20,6 +20,8 @@ export const AI_FEATURES: { id: AiFeature; title: string; where: string; what: s
   { id: 'owner-assistant', title: 'Assistente do salão', where: 'Mais > Assistente IA', what: 'Pergunte pelo seu dia, semana ou clientes, em português.', kind: 'text' },
   { id: 'weekly-report', title: 'Relatório semanal', where: 'Mais > Assistente IA', what: 'Resumo da semana com três números e uma ação concreta.', kind: 'text' },
   { id: 'review-reply', title: 'Respostas a avaliações Google', where: 'Mais > Assistente IA', what: 'Cole uma avaliação e receba uma resposta no tom do salão, para aprovar.', kind: 'text' },
+  { id: 'promo-caption', title: 'Legendas para promoções', where: 'Mais > Promoções', what: 'Escreve a legenda do post de cada promoção, no tom do salão.', kind: 'text' },
+  { id: 'social-plan', title: 'Ideias de posts da semana', where: 'Mais > Social Media Manager', what: 'Três ideias de posts com base nas horas calmas da agenda e nas datas que aí vêm.', kind: 'text' },
   { id: 'price-suggestions', title: 'Sugestões de preço', where: 'Mais > Assistente IA', what: 'Intervalos indicativos para os seus serviços. O preço é sempre decisão sua.', kind: 'text' },
   { id: 'whatsapp-assistant', title: 'Assistente de WhatsApp', where: 'WhatsApp do salão', what: 'Responde aos clientes 24 horas e marca, muda e cancela na agenda real.', kind: 'text' },
 ]

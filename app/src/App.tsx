@@ -24,6 +24,9 @@ import TeamPage from './pages/TeamPage'
 import InvitePage from './pages/InvitePage'
 import ClubPage from './pages/ClubPage'
 import AiPage from './pages/AiPage'
+import BrandPage from './pages/BrandPage'
+import OfferPage from './pages/OfferPage'
+import PromosPage from './pages/PromosPage'
 import BillingPage from './pages/BillingPage'
 import LegalPage from './pages/LegalPage'
 import { LEGAL_DOCS } from './lib/legal'
@@ -47,6 +50,9 @@ export default function App() {
         <Route path="/poster" element={<PosterPage />} />
         <Route path="/lembretes" element={<RemindersPage />} />
         <Route path="/m/:id" element={<ManagePage />} />
+        <Route path="/vaga/:id" element={<OfferPage />} />
+        <Route path="/marca" element={<BrandPage />} />
+        <Route path="/promocoes" element={<PromosPage />} />
         <Route path="/fila" element={<QueuePage />} />
         <Route path="/horarios" element={<SchedulePage />} />
         <Route path="/semana" element={<WeekPage />} />

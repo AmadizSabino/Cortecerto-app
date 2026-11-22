@@ -13,6 +13,7 @@ export interface Salon {
   deposit_cents: number; theme: string; timezone: string
   client_change_hours?: number | null // migration 0007
   address?: string | null; news?: string | null; google_review_url?: string | null // migration 0016
+  logo_path?: string | null; cover_path?: string | null; about?: string | null // migration 0019
 }
 export interface Service { id: string; name: string; duration_min: number; price_cents: number }
 export interface Professional { id: string; name: string }

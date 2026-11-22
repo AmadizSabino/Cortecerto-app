@@ -16,6 +16,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     { to: '/poster', icon: 'qr', label: 'Poster com QR', hint: 'Para o espelho ou a porta', need: 'poster' },
   ] },
   { title: 'Clientes', items: [
+    { to: '/promocoes', icon: 'spark', label: 'Social Media Manager', hint: 'Plano da semana, promoções, posts e datas', need: 'promocoes' },
     { to: '/convidar', icon: 'userPlus', label: 'Convidar clientes', hint: 'Pelo número ou dos contactos do telemóvel', need: 'convidar' },
     { to: '/clube', icon: 'crown', label: 'Clube', hint: 'Mensalidade com benefícios e receita fixa', need: 'clube' },
   ] },
@@ -23,6 +24,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     { to: '/estatisticas', icon: 'chart', label: 'Estatísticas', hint: 'Faturação, serviços, clientes e comissões', need: 'estatisticas' },
     { to: '/horarios', icon: 'clock', label: 'Horários e folgas', hint: 'Por profissional, pausas e férias', need: 'horarios' },
     { to: '/precos', icon: 'tag', label: 'Preços por profissional', hint: 'Preços e durações diferentes', need: 'precos' },
+    { to: '/marca', icon: 'camera', label: 'Marca e galeria', hint: 'Logótipo, capa, texto e fotos do seu trabalho', need: 'equipa' },
     { to: '/equipa', icon: 'users', label: 'Equipa', hint: 'Profissionais, comissões e acessos ao painel', need: 'equipa' },
     { to: '/ia', icon: 'spark', label: 'Assistente IA', hint: 'Antes e depois, relatórios, respostas e mais', need: 'ia' },
     { to: '/assinatura', icon: 'card', label: 'Assinatura', hint: 'Período grátis e pagamento', need: 'assinatura' },

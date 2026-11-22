@@ -16,6 +16,8 @@ import { effective, priceRange, type Overrides } from '../lib/pricing'
 import { loadOverrides } from '../lib/pricingData'
 import AiTryOn from '../components/AiTryOn'
 import { benefitList, type Club } from '../lib/club'
+import { mediaUrl, type Photo } from '../lib/brand'
+import { applies, offerText, promoPrice, whenText, type Promo } from '../lib/promos'
 
 const ERRORS: Record<string, string> = {
   horario_ocupado: 'Esse horário acabou de ser ocupado. Escolha outro, por favor.',
@@ -82,6 +84,10 @@ export default function BookingPage() {
   const [tick, setTick] = useState(0)
   const [doneDeposit, setDoneDeposit] = useState<string | null>(null)
   const [club, setClub] = useState<Club | null>(null)
+  const [photos, setPhotos] = useState<Photo[]>([])
+  // ?promo=<code>: the promotion whose link the client followed (migration 0020).
+  const [promo, setPromo] = useState<Promo | null>(null)
+  const [viewing, setViewing] = useState<Photo | null>(null)
   const [joining, setJoining] = useState(() => new URLSearchParams(location.search).has('clube'))
   const [joinForm, setJoinForm] = useState({ name: '', phone: '' })
   const [joinState, setJoinState] = useState<{ ok: boolean; text: string }>()
@@ -91,6 +97,11 @@ export default function BookingPage() {
       const { data: s } = await supabase.from('salons').select('*').eq('slug', slug!).maybeSingle()
       setSalon(s)
       if (!s) return
+      const code = new URLSearchParams(location.search).get('promo')
+      if (code) supabase.from('promotions').select('*').eq('salon_id', s.id).eq('code', code).eq('active', true).maybeSingle()
+        .then(({ data, error }) => { if (!error && data) setPromo(data as Promo) })
+      supabase.from('salon_photos').select('id,path,caption,position').eq('salon_id', s.id).order('position').order('created_at')
+        .then(({ data, error }) => { if (!error) setPhotos((data ?? []) as Photo[]) }) // migration 0019
       const [sv, pr, hr, ov, cl] = await Promise.all([
         supabase.from('services').select('id,name,duration_min,price_cents').eq('salon_id', s.id).eq('active', true).order('price_cents'),
         supabase.from('professionals').select('id,name').eq('salon_id', s.id).eq('active', true).order('name'),
@@ -181,16 +192,21 @@ export default function BookingPage() {
     return !r || r.min === r.max ? euros(r?.min ?? s.price_cents) : `${euros(r.min)}–${euros(r.max)}`
   }
   const priceText = eff ? euros(eff.price_cents) : service ? range(service) : ''
+  // The promotion covers this service and time: the price the database will charge.
+  const promoOn = Boolean(promo && service && slot && applies(promo, service.id, slot.start, tz))
   const skipPro = pros.length === 1
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (submitting) return // a second tap must not book twice
     setError(''); setSubmitting(true)
-    const { data: bookingId, error } = await supabase.rpc('create_booking', {
+    const args = {
       p_salon: salon!.id, p_service: service!.id, p_professional: slot!.proId, p_starts_at: slot!.start.toISOString(),
       p_client_name: name, p_client_phone: phone, p_consent: consent,
-    })
+    }
+    const { data: bookingId, error } = promo
+      ? await supabase.rpc('create_booking_with_promo', { ...args, p_promo: promo.id })
+      : await supabase.rpc('create_booking', args)
     setSubmitting(false)
     if (error) {
       setError(Object.entries(ERRORS).find(([k]) => error.message.includes(k))?.[1] ?? 'Não foi possível marcar. Tente de novo.')
@@ -219,17 +235,31 @@ export default function BookingPage() {
 
   const header = (
     <>
-      <div className="cover" />
+      <div className="cover" style={salon.cover_path ? { backgroundImage: `url(${mediaUrl(salon.cover_path)})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined} />
       <div className="hero">
         <div className="row" style={{ alignItems: 'flex-end', justifyContent: 'flex-start', flexWrap: 'nowrap', gap: 14 }}>
-          <span className="avatar">{initials(salon.name)}</span>
+          {salon.logo_path
+            ? <img className="avatar logo" src={mediaUrl(salon.logo_path)!} alt={`Logótipo ${salon.name}`} />
+            : <span className="avatar">{initials(salon.name)}</span>}
           <h1 className="grow">{salon.name}</h1>
         </div>
         <div className="meta">
           {salon.address && <span><Icon name="pin" size={16} />{salon.address}</span>}
           {hours.salon.length > 0 && <span><Icon name="clock" size={16} />{summarizeHours(hours.salon)}</span>}
         </div>
+        {salon.about && <p className="about">{salon.about}</p>}
         {salon.news && <div className="card soft"><b>Novidades:</b> {salon.news}</div>}
+        {photos.length > 0 && (
+          <div className="gallery-strip" aria-label="Trabalhos do salão">
+            {photos.map(p => <button key={p.id} onClick={() => setViewing(p)} aria-label={p.caption ?? 'Ver foto'}><img src={mediaUrl(p.path)!} alt={p.caption ?? ''} loading="lazy" /></button>)}
+          </div>
+        )}
+        {viewing && (
+          <div className="lightbox" role="dialog" aria-modal="true" onClick={() => setViewing(null)}>
+            <img src={mediaUrl(viewing.path)!} alt={viewing.caption ?? ''} />
+            {viewing.caption && <p>{viewing.caption}</p>}
+          </div>
+        )}
       </div>
     </>
   )
@@ -264,7 +294,8 @@ export default function BookingPage() {
               <dt>Serviço</dt><dd>{service!.name}</dd>
               <dt>Com</dt><dd>{proName(slot!.proId)}</dd>
               <dt>Quando</dt><dd>{cap(longDate(slot!.start))}, {formatTime(slot!.start, tz)}</dd>
-              {eff && <><dt>Preço</dt><dd>{euros(eff.price_cents)}</dd></>}
+              {eff && <><dt>Preço</dt><dd>{promoOn ? <><s className="muted">{euros(eff.price_cents)}</s> <b>{euros(promoPrice(promo!, eff.price_cents))}</b></> : euros(eff.price_cents)}</dd></>}
+              {promoOn && promo!.kind === 'oferta' && <><dt>Oferta</dt><dd>{promo!.gift}</dd></>}
             </dl>
           </div>
           {owesDeposit && (
@@ -307,6 +338,12 @@ export default function BookingPage() {
       <main className="page">
         {myTheme && !picking && (
           <p className="banner small" style={{ borderRadius: 12 }}>Está a ver esta página com um estilo escolhido por si. <button className="link" onClick={() => chooseTheme(null)}>Usar o estilo do salão</button></p>
+        )}
+        {promo && (
+          <section className="card promo-banner">
+            <b>{offerText(promo)}</b> · {promo.title}
+            <small className="muted">{whenText(promo, today)}{promo.service_ids ? ` · ${services.filter(x => promo.service_ids!.includes(x.id)).map(x => x.name).join(', ')}` : ''}</small>
+          </section>
         )}
         {club && (step === 1 || joining) && <ClubOffer club={club} open={joining} setOpen={setJoining} form={joinForm} setForm={setJoinForm} state={joinState}
           onJoin={async () => {

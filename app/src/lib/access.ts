@@ -20,7 +20,7 @@ export const LEVELS: { id: Level; label: string; short: string; can: string[]; c
   },
   {
     id: 'gestor', label: 'Gestor', short: 'Gere a equipa, horários e preços',
-    can: ['Tudo o que a Receção faz', 'Estatísticas e faturação', 'Horários, folgas e férias', 'Preços por profissional', 'Equipa e comissões', 'Definições do Clube', 'Assistente IA'],
+    can: ['Tudo o que a Receção faz', 'Estatísticas e faturação', 'Promoções e posts', 'Horários, folgas e férias', 'Preços por profissional', 'Equipa e comissões', 'Definições do Clube', 'Assistente IA'],
     cannot: 'Não dá acessos, não muda as definições do salão nem a assinatura, e não exporta nem apaga dados.',
   },
 ]
@@ -39,7 +39,7 @@ export const atLeast = (role: Role, need: Role) => RANK[role] >= RANK[need]
 export const NEED = {
   agenda: 'agenda', semana: 'agenda', fila: 'agenda', lembretes: 'agenda', revenue: 'gestor',
   clientes: 'rececao', convidar: 'rececao', clube: 'rececao', poster: 'rececao',
-  estatisticas: 'gestor', horarios: 'gestor', precos: 'gestor', equipa: 'gestor', clubeDefinicoes: 'gestor', ia: 'gestor',
+  estatisticas: 'gestor', promocoes: 'gestor', horarios: 'gestor', precos: 'gestor', equipa: 'gestor', clubeDefinicoes: 'gestor', ia: 'gestor',
   acessos: 'dono', definicoes: 'dono', assinatura: 'dono', exportar: 'dono', apagarCliente: 'dono',
 } as const satisfies Record<string, Role>
 
