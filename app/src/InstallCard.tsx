@@ -1,42 +1,44 @@
-import { useEffect, useState } from 'react'
-
-interface InstallEvent extends Event { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }
+import { useState } from 'react'
+import { manualSteps, useInstall } from './lib/install'
 
 const KEY = 'cortecerto-install-hidden'
 const hidden = () => { try { return localStorage.getItem(KEY) === '1' } catch { return false } }
-const standalone = () => window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true
 
-/** On the panel: suggest adding the app to the home screen, once, until installed or closed. */
-export default function InstallCard() {
-  const [event, setEvent] = useState<InstallEvent | null>(null)
-  const [show, setShow] = useState(() => !hidden() && !standalone())
-  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent)
-
-  useEffect(() => {
-    const onPrompt = (e: Event) => { e.preventDefault(); setEvent(e as InstallEvent) }
-    const onInstalled = () => setShow(false)
-    window.addEventListener('beforeinstallprompt', onPrompt)
-    window.addEventListener('appinstalled', onInstalled)
-    return () => { window.removeEventListener('beforeinstallprompt', onPrompt); window.removeEventListener('appinstalled', onInstalled) }
-  }, [])
+/**
+ * Install the app on the phone. On the agenda it shows once, until installed or
+ * closed ("Agora não"); in Mais it is always there (`always`).
+ * The button always does something: the browser's install dialog when it offers
+ * one, otherwise the steps for this phone.
+ */
+export default function InstallCard({ always = false }: { always?: boolean }) {
+  const inst = useInstall()
+  const [show, setShow] = useState(() => always || !hidden())
+  const [steps, setSteps] = useState(false)
 
   function close() {
     try { localStorage.setItem(KEY, '1') } catch { /* private mode */ }
     setShow(false)
   }
 
-  if (!show || (!event && !ios)) return null
+  if (inst.installed) return always ? <p className="muted small">A app já está instalada neste aparelho.</p> : null
+  if (!show) return null
   return (
     <section className="card install-card">
       <img src="/icon-192.png" alt="" width={44} height={44} />
       <div>
         <strong>Instale a CorteCerto no telemóvel</strong>
-        <p className="muted small">{ios
-          ? 'No Safari, toque em Partilhar e depois em "Adicionar ao ecrã principal".'
+        <p className="muted small">{steps || (inst.platform === 'ios' && !inst.canPrompt)
+          ? manualSteps(inst.platform)
           : 'Abre como uma app, sem barra do browser, e fica a um toque.'}</p>
         <div className="actions">
-          {event && <button className="btn-inline" onClick={async () => { await event.prompt(); setEvent(null); close() }}>Instalar</button>}
-          <button className="link" onClick={close}>Agora não</button>
+          {!(inst.platform === 'ios' && !inst.canPrompt) && (
+            <button className="btn-inline" onClick={async () => {
+              const opened = await inst.install()
+              if (!opened) setSteps(true)
+              else if (!always) close()
+            }}>Instalar</button>
+          )}
+          {!always && <button className="link" onClick={close}>Agora não</button>}
         </div>
       </div>
     </section>

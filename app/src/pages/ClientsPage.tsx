@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { euros, supabase, type Booking, type Salon, type Service } from '../lib/supabase'
-import { AT_RISK_DAYS, birthdaySoon, buildClients, daysSince, filterClients, isAtRisk, type Client, type ClientFilter, type ClientNote } from '../lib/clients'
+import { AT_RISK_DAYS, birthdaySoon, buildClients, daysSince, filterClients, isAtRisk, mergeRegistered, type Client, type ClientFilter, type ClientNote, type RegisteredClient } from '../lib/clients'
 import { dateInTz, formatTime } from '../lib/time'
-import { formatPhone, waLink } from '../lib/whatsapp'
+import { formatPhone, waLink, waNumber } from '../lib/whatsapp'
 import { themeById, themeStyle } from '../lib/themes'
 import { loadMySalon, type Role } from '../lib/mySalon'
+import { can } from '../lib/access'
+import AiTryOn from '../components/AiTryOn'
+import Icon from '../components/Icon'
+import { photoToDataUrl, runAi } from '../lib/ai'
 
 const FILTERS: { id: ClientFilter; label: string }[] = [
   { id: 'todos', label: 'Todos' },
@@ -24,10 +28,10 @@ function birthdayLabel(days: number): string {
 }
 
 /** Notes and birthday for one client, saved to client_notes. */
-function NoteEditor({ salonId, phoneKey, note, onSaved }: {
-  salonId: string; phoneKey: string; note: ClientNote | undefined; onSaved: (n: ClientNote) => void
+function NoteEditor({ salonId, phoneKey, note, draft, onSaved }: {
+  salonId: string; phoneKey: string; note: ClientNote | undefined; draft?: string; onSaved: (n: ClientNote) => void
 }) {
-  const [notes, setNotes] = useState(note?.notes ?? '')
+  const [notes, setNotes] = useState(draft ?? note?.notes ?? '')
   const [day, setDay] = useState(note?.birthday_day ? String(note.birthday_day) : '')
   const [month, setMonth] = useState(note?.birthday_month ? String(note.birthday_month) : '')
   const [state, setState] = useState<'' | 'saving' | 'saved' | 'error'>('')
@@ -77,6 +81,67 @@ function NoteEditor({ salonId, phoneKey, note, onSaved }: {
   )
 }
 
+/** Adds a client to the salon's own list, or completes one (salon_clients, migration 0018). */
+function RegisterForm({ salonId, initial, onSaved, onClose }: {
+  salonId: string; initial: { name: string; phone: string; email?: string | null }
+  onSaved: (r: RegisteredClient) => void; onClose: () => void
+}) {
+  const [name, setName] = useState(initial.name)
+  const [phone, setPhone] = useState(initial.phone)
+  const [email, setEmail] = useState(initial.email ?? '')
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  async function save(e: React.FormEvent) {
+    e.preventDefault(); setError('')
+    const key = waNumber(phone)
+    if (!name.trim() || key.length < 11) { setError('Indique o nome e um telemóvel válido.'); return }
+    if (email.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) { setError('Email inválido.'); return }
+    setSaving(true)
+    const row = { salon_id: salonId, phone_key: key, name: name.trim(), phone: phone.trim(), email: email.trim() || null, updated_at: new Date().toISOString() }
+    const { data, error } = await supabase.from('salon_clients').upsert(row, { onConflict: 'salon_id,phone_key' }).select('phone_key,name,phone,email,source,created_at').single()
+    setSaving(false)
+    if (error || !data) { setError('Não foi possível guardar.'); return }
+    onSaved(data as RegisteredClient)
+  }
+  return (
+    <form className="card editor" onSubmit={save}>
+      <div className="row"><strong>Registar cliente</strong><button type="button" className="link" onClick={onClose}>Fechar</button></div>
+      <label>Nome<input value={name} onChange={e => setName(e.target.value)} autoComplete="off" /></label>
+      <label>Telemóvel<input value={phone} onChange={e => setPhone(e.target.value)} inputMode="tel" autoComplete="off" placeholder="912 345 678" /></label>
+      <label><span>Email <span className="muted">(opcional)</span></span><input type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="off" /></label>
+      <p className="muted small" style={{ margin: 0 }}>Depois de guardar, pode juntar notas e o aniversário na ficha do cliente.</p>
+      {error && <p className="error">{error}</p>}
+      <button className="btn" disabled={saving}>{saving ? 'A guardar…' : 'Guardar cliente'}</button>
+    </form>
+  )
+}
+
+/** Technical notes for the professional from a reference photo the client shows (AI). */
+function ReferenceNotes({ onUse }: { onUse: (text: string) => void }) {
+  const [state, setState] = useState<'' | 'a-ler'>('')
+  const [out, setOut] = useState<{ ok: boolean; text: string }>()
+  async function read(file: File | undefined) {
+    if (!file) return
+    setState('a-ler'); setOut(undefined)
+    try {
+      const r = await runAi('reference-notes', { image: await photoToDataUrl(file) })
+      setOut(r.status === 'feito' && r.text ? { ok: true, text: r.text } : { ok: false, text: r.message ?? 'Não foi possível agora.' })
+    } catch { setOut({ ok: false, text: 'Não foi possível abrir essa foto.' }) }
+    setState('')
+  }
+  return (
+    <div className="ai-tool">
+      <label className="btn ghost inline sm" style={{ cursor: 'pointer' }}>
+        <Icon name="spark" size={16} />{state ? 'A ler a foto…' : 'Notas a partir de uma foto de referência (IA)'}
+        <input type="file" accept="image/*" hidden onChange={e => read(e.target.files?.[0])} />
+      </label>
+      {out && (out.ok
+        ? <div className="card soft ai-answer">{out.text.split('\n').map((l, i) => <p key={i}>{l}</p>)}<button className="link" onClick={() => onUse(out.text)}>Juntar às notas</button></div>
+        : <p className="muted small">{out.text}</p>)}
+    </div>
+  )
+}
+
 const STATUS_LABEL: Record<Booking['status'], string> = {
   pendente: 'Pendente', confirmada: 'Confirmada', concluida: 'Concluída', faltou: 'Faltou', cancelada: 'Cancelada',
 }
@@ -95,6 +160,13 @@ export default function ClientsPage() {
   const [forgetting, setForgetting] = useState<string | null>(null) // client key awaiting confirmation
   const [reload, setReload] = useState(0)
   const [forgetError, setForgetError] = useState('')
+  const [registered, setRegistered] = useState<RegisteredClient[]>([])
+  const [registerReady, setRegisterReady] = useState(true)
+  const [params, setParams] = useSearchParams()
+  // ?novo=<phone>&nome=<name>: from the agenda, "add this new client to your list".
+  const [registering, setRegistering] = useState<{ name: string; phone: string; email?: string | null } | null>(() =>
+    params.get('novo') ? { name: params.get('nome') ?? '', phone: params.get('novo') ?? '' } : null)
+  const [noteSeed, setNoteSeed] = useState<Record<string, string>>({})
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -108,11 +180,15 @@ export default function ClientsPage() {
       setRole(mine.role)
       setSalon(s)
       if (!s) return
-      const [sv, bk, nt] = await Promise.all([
+      const [sv, bk, nt, rg] = await Promise.all([
         supabase.from('services').select('id,name,duration_min,price_cents').eq('salon_id', s.id),
         supabase.from('bookings').select('*').eq('salon_id', s.id).order('starts_at', { ascending: false }).limit(5000),
         supabase.from('client_notes').select('phone_key,notes,birthday_day,birthday_month').eq('salon_id', s.id),
+        supabase.from('salon_clients').select('phone_key,name,phone,email,source,created_at').eq('salon_id', s.id),
       ])
+      // Before migration 0018 there is no client list of the salon's own: clients come from bookings only.
+      setRegisterReady(!rg.error)
+      setRegistered((rg.data ?? []) as RegisteredClient[])
       setServices(Object.fromEntries((sv.data ?? []).map(x => [x.id, x])))
       // Before migration 0003 runs the table is missing: the list still works, without notes.
       setNotesReady(!nt.error)
@@ -123,7 +199,7 @@ export default function ClientsPage() {
 
   const [now] = useState(() => new Date())
   const today = dateInTz(now, salon?.timezone ?? 'Europe/Lisbon')
-  const clients = useMemo(() => buildClients(bookings ?? [], services, now), [bookings, services, now])
+  const clients = useMemo(() => mergeRegistered(buildClients(bookings ?? [], services, now), registered), [bookings, services, now, registered])
   const shown = useMemo(() => filterClients(clients, query, filter, now, notes, today), [clients, query, filter, now, notes, today])
   const atRiskCount = useMemo(() => clients.filter(c => isAtRisk(c, now)).length, [clients, now])
   const birthdayCount = useMemo(() => clients.filter(c => birthdaySoon(notes[c.key], today) !== null).length, [clients, notes, today])
@@ -132,6 +208,7 @@ export default function ClientsPage() {
   if (!session) return <Navigate to="/painel" replace />
   if (salon === undefined) return <main className="page">A carregar…</main>
   if (salon === null) return <Navigate to="/registar" replace />
+  if (!can(role, 'clientes')) return <Navigate to="/painel" replace />
 
   const tz = salon.timezone
   const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('pt-PT', { timeZone: tz, day: 'numeric', month: 'short', year: 'numeric' })
@@ -167,7 +244,14 @@ export default function ClientsPage() {
 
   return (
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page wide">
-      <header className="row"><h1>Clientes</h1></header>
+      <header className="row"><h1>Clientes</h1>
+        <span className="row">
+          <Link className="btn ghost inline sm" to="/convidar"><Icon name="userPlus" size={16} />Convidar</Link>
+          {registerReady && <button className="btn inline sm" onClick={() => setRegistering({ name: '', phone: '' })}><Icon name="plus" size={16} />Novo cliente</button>}
+        </span>
+      </header>
+      {registering && registerReady && <RegisterForm salonId={salon.id} initial={registering} onClose={() => { setRegistering(null); if (params.get('novo')) setParams({}, { replace: true }) }}
+        onSaved={r => { setRegistered(rs => [...rs.filter(x => x.phone_key !== r.phone_key), r]); setRegistering(null); setOpen(r.phone_key); setQuery(''); setFilter('todos'); if (params.get('novo')) setParams({}, { replace: true }) }} />}
 
       {bookings === null ? <p className="muted">A carregar…</p> : <>
         <p className="muted">
@@ -184,7 +268,7 @@ export default function ClientsPage() {
           ))}
         </div>
 
-        {clients.length === 0 && <p className="muted">Ainda não há clientes. Aparecem aqui assim que alguém marcar pelo seu link.</p>}
+        {clients.length === 0 && <p className="muted">Ainda não há clientes. Aparecem aqui quando alguém marcar pelo seu link, quando os convidar ou quando os registar.</p>}
         {clients.length > 0 && shown.length === 0 && <p className="muted">Nenhum cliente encontrado.</p>}
 
         {shown.map(c => {
@@ -204,6 +288,8 @@ export default function ClientsPage() {
                 </span>
                 <span className="tags">
                   {bday !== null && <span className="tag bday">🎂 {bday === 0 ? 'Hoje' : `${bday} d`}</span>}
+                  {registerReady && !c.registered && <span className="tag">Não registado</span>}
+                  {c.bookings.length === 0 && <span className="tag">Sem marcações</span>}
                   {c.nextBooking && <span className="tag">Marcado</span>}
                   {risk && <span className="tag warn">Em risco</span>}
                   {c.noShows > 0 && <span className="tag warn">{c.noShows} {c.noShows === 1 ? 'falta' : 'faltas'}</span>}
@@ -211,7 +297,10 @@ export default function ClientsPage() {
               </button>
 
               {expanded && <div className="client-body">
-                <div><a href={`tel:+${formatPhone(c.phone).replace(/\D/g, '')}`}>{formatPhone(c.phone)}</a></div>
+                <div><a href={`tel:+${formatPhone(c.phone).replace(/\D/g, '')}`}>{formatPhone(c.phone)}</a>{c.email && <> · <a href={`mailto:${c.email}`}>{c.email}</a></>}</div>
+                {registerReady && (c.registered
+                  ? <button className="link" onClick={() => setRegistering({ name: c.name, phone: c.phone, email: c.email })}>Editar registo</button>
+                  : <div className="newclient"><span>Ainda não está na sua lista de clientes.</span><button className="btn-inline" onClick={() => setRegistering({ name: c.name, phone: c.phone })}>Adicionar à lista</button></div>)}
                 <div className="muted">
                   Gastou {euros(c.spentCents)}
                   {c.nextBooking && <> · próxima marcação {fmtDate(c.nextBooking)} às {formatTime(new Date(c.nextBooking), tz)}</>}
@@ -227,8 +316,12 @@ export default function ClientsPage() {
                     <a className="wa" href={waLink(c.phone, comeBackMsg(c))} target="_blank" rel="noreferrer">Convidar a voltar</a>
                   )}
                 </div>
-                {notesReady && <NoteEditor salonId={salon.id} phoneKey={c.key} note={notes[c.key]}
+                {notesReady && <NoteEditor key={noteSeed[c.key] ?? ''} salonId={salon.id} phoneKey={c.key}
+                  note={notes[c.key]} draft={noteSeed[c.key]}
                   onSaved={n => setNotes(ns => ({ ...ns, [n.phone_key]: n }))} />}
+                {notesReady && <ReferenceNotes onUse={t => setNoteSeed(ns => ({ ...ns, [c.key]: [notes[c.key]?.notes, t].filter(Boolean).join('\n').slice(0, 2000) }))} />}
+                <AiTryOn feature="before-after" title="Antes e depois" intro="Tire a foto do antes e mostre ao cliente o resultado esperado do serviço."
+                  styles={Object.values(services).map(s => s.name)} />
                 <h2>Histórico</h2>
                 <ul className="history">
                   {c.bookings.map(b => (
@@ -248,7 +341,7 @@ export default function ClientsPage() {
                       <button className="link" onClick={() => setForgetting(null)}>Cancelar</button>
                     </div>
                   </div>
-                ) : role === 'dono' && <button className="link danger-link" onClick={() => setForgetting(c.key)}>Apagar dados deste cliente (pedido RGPD)</button>}
+                ) : can(role, 'apagarCliente') && <button className="link danger-link" onClick={() => setForgetting(c.key)}>Apagar dados deste cliente (pedido RGPD)</button>}
               </div>}
             </article>
           )

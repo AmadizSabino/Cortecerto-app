@@ -14,6 +14,30 @@ export interface Client {
   lastVisit: string | null  // starts_at of the last completed visit
   nextBooking: string | null // starts_at of the next pending or confirmed booking
   consent: boolean       // opted in to messages in their most recent booking
+  registered?: boolean   // on the salon's own client list (salon_clients, migration 0018)
+  email?: string | null
+}
+
+/** A client the salon added to its list (salon_clients, migration 0018). */
+export interface RegisteredClient { phone_key: string; name: string; phone: string; email: string | null; source: string; created_at: string }
+
+/**
+ * Adds the salon's own list to the clients found in bookings: the salon's name
+ * and email win, and clients without bookings yet (invited or added by hand)
+ * come first, newest first.
+ */
+export function mergeRegistered(clients: Client[], registered: RegisteredClient[]): Client[] {
+  const byKey = new Map(registered.map(r => [r.phone_key, r]))
+  const merged = clients.map(c => {
+    const r = byKey.get(c.key)
+    return r ? { ...c, name: r.name || c.name, email: r.email, registered: true } : { ...c, registered: false }
+  })
+  const seen = new Set(clients.map(c => c.key))
+  const only = registered.filter(r => !seen.has(r.phone_key)).sort((a, b) => b.created_at.localeCompare(a.created_at)).map((r): Client => ({
+    key: r.phone_key, name: r.name, phone: r.phone, bookings: [], visits: 0, noShows: 0, spentCents: 0,
+    lastVisit: null, nextBooking: null, consent: false, registered: true, email: r.email,
+  }))
+  return [...only, ...merged]
 }
 
 export type ClientFilter = 'todos' | 'em_risco' | 'faltas' | 'consentimento' | 'aniversario'

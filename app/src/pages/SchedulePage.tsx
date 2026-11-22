@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { loadMySalon, type Role } from '../lib/mySalon'
+import { can } from '../lib/access'
 import { supabase, type Professional, type Salon } from '../lib/supabase'
 import { WEEKDAYS } from '../lib/onboarding'
 import { emptyWeek, weekToRows, type DayForm, type SalonHours } from '../lib/schedule'
@@ -49,7 +50,7 @@ export default function SchedulePage() {
   if (salon === undefined) return <main className="page">A carregar…</main>
   if (salon === null) return <Navigate to="/registar" replace />
   // Team members don't see the salon's settings, prices, hours or revenue.
-  if (role !== 'dono') return <Navigate to="/painel" replace />
+  if (!can(role, 'horarios')) return <Navigate to="/painel" replace />
 
   const tz = salon.timezone
   const proName = (id: string | null) => id ? pros.find(p => p.id === id)?.name ?? 'Profissional' : 'Todo o salão'

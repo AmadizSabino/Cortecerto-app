@@ -5,6 +5,8 @@ import './index.css'
 import App from './App'
 import ErrorBoundary from './ErrorBoundary'
 import { installErrorReporting } from './lib/errorReporting'
+// Listens for the browser's install prompt from the very start (see lib/install.ts).
+import './lib/install'
 
 installErrorReporting()
 

@@ -20,7 +20,10 @@ import WeekPage from './pages/WeekPage'
 import PricesPage from './pages/PricesPage'
 import StatsPage from './pages/StatsPage'
 import LandingPage from './pages/LandingPage'
-import AccessPage from './pages/AccessPage'
+import TeamPage from './pages/TeamPage'
+import InvitePage from './pages/InvitePage'
+import ClubPage from './pages/ClubPage'
+import AiPage from './pages/AiPage'
 import BillingPage from './pages/BillingPage'
 import LegalPage from './pages/LegalPage'
 import { LEGAL_DOCS } from './lib/legal'
@@ -51,7 +54,11 @@ export default function App() {
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/precos" element={<PricesPage />} />
         <Route path="/estatisticas" element={<StatsPage />} />
-        <Route path="/acessos" element={<AccessPage />} />
+        <Route path="/equipa" element={<TeamPage />} />
+        <Route path="/acessos" element={<TeamPage />} />
+        <Route path="/convidar" element={<InvitePage />} />
+        <Route path="/clube" element={<ClubPage />} />
+        <Route path="/ia" element={<AiPage />} />
         <Route path="/assinatura" element={<BillingPage />} />
         <Route path="/f/:slug" element={<QueueJoinPage />} />
         {LEGAL_DOCS.map(d => <Route key={d.id} path={d.path} element={<LegalPage doc={d} />} />)}

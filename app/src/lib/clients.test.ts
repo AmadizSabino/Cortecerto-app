@@ -1,5 +1,5 @@
-import { expect, it } from 'vitest'
-import { buildClients, daysUntilBirthday, filterClients, isAtRisk } from './clients'
+import { describe, expect, it } from 'vitest'
+import { buildClients, daysUntilBirthday, filterClients, isAtRisk, mergeRegistered } from './clients'
 import type { Booking } from './supabase'
 
 const now = new Date('2026-11-20T12:00:00Z')
@@ -73,4 +73,19 @@ it('filters coming birthdays and searches the notes', () => {
   }
   expect(filterClients(clients, '', 'aniversario', now, notes, '2026-11-20').map(c => c.name)).toEqual(['Joana'])
   expect(filterClients(clients, 'degrade', 'todos', now, notes, '2026-11-20').map(c => c.name)).toEqual(['Joana'])
+})
+
+describe('mergeRegistered', () => {
+  it('adds the salon list: its name wins, clients without bookings come first', () => {
+    const fromBookings = [{ key: '351912345678', name: 'Rui', phone: '912345678', bookings: [], visits: 1, noShows: 0, spentCents: 1200, lastVisit: null, nextBooking: null, consent: true }]
+    const out = mergeRegistered(fromBookings, [
+      { phone_key: '351912345678', name: 'Rui Almeida', phone: '912345678', email: 'rui@x.pt', source: 'marcacao', created_at: '2026-11-01T10:00:00Z' },
+      { phone_key: '351934000000', name: 'Convidado', phone: '934000000', email: null, source: 'convite', created_at: '2026-11-20T10:00:00Z' },
+    ])
+    expect(out.map(c => [c.key, c.name, c.registered])).toEqual([
+      ['351934000000', 'Convidado', true],
+      ['351912345678', 'Rui Almeida', true],
+    ])
+    expect(mergeRegistered(fromBookings, [])[0].registered).toBe(false)
+  })
 })
