@@ -95,6 +95,12 @@ export const FEATURES: Record<string, Feature> = {
     system: `Fazes o resumo semanal de um salão para o dono ler no telemóvel. ${PT} Três números importantes, o que correu bem, o que melhorar, e uma só ação concreta para esta semana.`,
     prompt: i => str(i.context, 4000) ? `Números da semana:\n${str(i.context, 4000)}` : { error: 'Sem dados da semana.' },
   },
+  // Salon: the caption for a promotion's post (Mais > Promoções).
+  'promo-caption': {
+    kind: 'text', who: 'salon', need: 'gestor', monthly: 100,
+    system: `Escreves legendas curtas para as redes sociais de um salão em Portugal. ${PT} Máximo 3 frases, tom próximo, uma chamada para marcar no fim com o link dado, sem hashtags (são juntas depois) e sem emojis em excesso (no máximo 2).`,
+    prompt: i => str(i.offer, 80) ? `Salão: ${str(i.salon, 80)} (${str(i.type, 30)}).\nPromoção: ${str(i.title, 80)}, ${str(i.offer, 80)}, ${str(i.when, 160)}.\nLink: ${str(i.link, 200)}` : { error: 'Falta a promoção.' },
+  },
   // Salon: price ranges for the salon's services in its area. The salon always decides.
   'price-suggestions': {
     kind: 'text', who: 'salon', need: 'gestor', monthly: 20,

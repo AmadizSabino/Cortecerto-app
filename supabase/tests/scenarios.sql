@@ -256,4 +256,21 @@ reset role;
 set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
 do $$ begin perform set_salon_brand((select id from salons), null, null, 'hack'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
 reset role;
+-- 0020: promotions -----------------------------------------------------------------
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+insert into promotions (salon_id, code, title, kind, percent, service_ids, time_from, time_to)
+values (:'salon', 'tarde-20', 'Tardes -20%', 'percentagem', 20, array[:'corte'::uuid], '14:00', '17:00') returning id as pr1 \gset
+reset role;
+set role anon; reset request.jwt.claim.sub;
+select pg_temp.check(count(*) = 1, 'promotions are public') from promotions where code = 'tarde-20';
+select price_cents as base from effective_service(:'corte', :'ana') \gset
+select create_booking_with_promo(:'salon', :'corte', :'ana', (date_trunc('day', now() at time zone 'Europe/Lisbon') + interval '20 days 15 hours') at time zone 'Europe/Lisbon', 'Promo', '936100000', false, :'pr1') as pb1 \gset
+select create_booking_with_promo(:'salon', :'corte', :'ana', (date_trunc('day', now() at time zone 'Europe/Lisbon') + interval '20 days 10 hours') at time zone 'Europe/Lisbon', 'Manha', '936200000', false, :'pr1') as pb2 \gset
+reset role;
+select pg_temp.check(promotion_id = :'pr1' and price_before_cents = :base and price_cents = round(:base * 0.8)::int, 'promotion applied in its hours') from bookings where id = :'pb1';
+select pg_temp.check(promotion_id is null and price_cents = :base, 'outside its hours the normal price stands') from bookings where id = :'pb2';
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+do $$ begin insert into promotions (salon_id, code, title, kind, gift) values ((select id from salons), 'hack', 'x', 'oferta', 'y'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%row-level security%' then raise; end if; end $$;
+reset role;
+do $$ begin insert into promotions (salon_id, code, title, kind) values ((select id from salons), 'semvalor', 'x', 'percentagem'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%check%' then raise; end if; end $$;
 \echo All database checks passed
