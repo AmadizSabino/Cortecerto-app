@@ -397,3 +397,6 @@ button:disabled { opacity: .5; cursor: default; }
 .chips-set legend { font-weight: 600; margin-bottom: 4px; }
 .phrase { display: block; width: 100%; text-align: left; margin: 6px 0; }
 .card.off { opacity: .65; }
+.plan-item { padding: 10px 0; border-top: 1px solid var(--line); }
+.plan-item p { margin: 4px 0 6px 28px; }
+.plan-item.done b { text-decoration: line-through; opacity: .6; }

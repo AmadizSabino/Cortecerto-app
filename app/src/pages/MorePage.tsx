@@ -16,7 +16,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     { to: '/poster', icon: 'qr', label: 'Poster com QR', hint: 'Para o espelho ou a porta', need: 'poster' },
   ] },
   { title: 'Clientes', items: [
-    { to: '/promocoes', icon: 'tag', label: 'Promoções', hint: 'Posts para as redes e links que trazem marcações', need: 'promocoes' },
+    { to: '/promocoes', icon: 'spark', label: 'Social Media Manager', hint: 'Plano da semana, promoções, posts e datas', need: 'promocoes' },
     { to: '/convidar', icon: 'userPlus', label: 'Convidar clientes', hint: 'Pelo número ou dos contactos do telemóvel', need: 'convidar' },
     { to: '/clube', icon: 'crown', label: 'Clube', hint: 'Mensalidade com benefícios e receita fixa', need: 'clube' },
   ] },

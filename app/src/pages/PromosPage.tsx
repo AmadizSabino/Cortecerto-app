@@ -10,7 +10,10 @@ import { mediaUrl, uploadMedia } from '../lib/brand'
 import { runAi } from '../lib/ai'
 import { codeFrom, fillPhrase, hashtags, offerText, phrasesFor, promoLink, upcoming, WEEKDAYS, whenText, type Occasion, type Promo } from '../lib/promos'
 import { promoImage, sharePost } from '../lib/promoImage'
-import { dateInTz } from '../lib/time'
+import { addDays, dateInTz, zonedToUtc } from '../lib/time'
+import { loadHours } from '../lib/scheduleData'
+import { NO_HOURS, type SalonHours } from '../lib/schedule'
+import { quietPeriods, quietText, weekKey, weekPlan, type Quiet } from '../lib/socialPlan'
 import { themeById, themeStyle } from '../lib/themes'
 import { formatPhone, waLink, waNumber } from '../lib/whatsapp'
 
@@ -51,6 +54,12 @@ export default function PromosPage() {
   const [sharing, setSharing] = useState<string | null>(null) // promo id with the "send to clients" list open
   const [sent, setSent] = useState<Set<string>>(new Set())
   const [note, setNote] = useState('')
+  const [hours, setHours] = useState<SalonHours>(NO_HOURS)
+  const [proIds, setProIds] = useState<string[]>([])
+  const [busy7, setBusy7] = useState<{ professional_id: string; start: Date; end: Date }[]>([])
+  const [week, setWeek] = useState<Result>({ bookings: 0, revenue: 0 })
+  const [done, setDone] = useState<Set<string>>(new Set())
+  const [ideas, setIdeas] = useState<{ ok: boolean; text: string } | null>(null)
 
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setSession(data.session)) }, [])
   useEffect(() => {
@@ -70,17 +79,28 @@ export default function PromosPage() {
     setPromos((pr.data ?? []) as Promo[])
     setServices(sv.data ?? [])
     setPhotos((ph.data ?? []).map(p => p.path))
+    const tzz = salon.timezone, t0 = dateInTz(new Date(), tzz)
+    const [hr, pr2, bs] = await Promise.all([
+      loadHours(salon.id),
+      supabase.from('professionals').select('id').eq('salon_id', salon.id).eq('active', true),
+      supabase.rpc('busy_slots', { p_salon: salon.id, p_from: zonedToUtc(t0, '00:00', tzz).toISOString(), p_to: zonedToUtc(addDays(t0, 8), '00:00', tzz).toISOString() }),
+    ])
+    setHours(hr); setProIds((pr2.data ?? []).map(p => p.id))
+    setBusy7(((bs.data ?? []) as { professional_id: string; starts_at: string; ends_at: string }[]).map(b => ({ professional_id: b.professional_id, start: new Date(b.starts_at), end: new Date(b.ends_at) })))
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString()
+    const wk: Result = { bookings: 0, revenue: 0 }
     const res: Record<string, Result> = {}
     const latest = new Map<string, Consented & { consent: boolean }>()
-    for (const b of (bk.data ?? []) as { promotion_id?: string | null; status: string; price_cents: number | null; client_name: string; client_phone: string; consent_messages: boolean }[]) {
+    for (const b of (bk.data ?? []) as { promotion_id?: string | null; status: string; price_cents: number | null; client_name: string; client_phone: string; consent_messages: boolean; created_at: string }[]) {
       if (b.promotion_id && b.status !== 'cancelada') {
         const r = (res[b.promotion_id] ??= { bookings: 0, revenue: 0 })
         r.bookings++; if (b.status !== 'faltou') r.revenue += b.price_cents ?? 0
+        if (b.created_at >= weekAgo) { wk.bookings++; if (b.status !== 'faltou') wk.revenue += b.price_cents ?? 0 }
       }
       const key = waNumber(b.client_phone)
       if (key.length >= 11 && !latest.has(key)) latest.set(key, { key, name: b.client_name, phone: b.client_phone, consent: b.consent_messages })
     }
-    setResults(res)
+    setResults(res); setWeek(wk)
     // Marketing messages only to clients who agreed in their latest booking (RGPD).
     setConsented([...latest.values()].filter(c => c.consent && c.name !== 'Cliente apagado'))
   }, [salon])
@@ -89,6 +109,12 @@ export default function PromosPage() {
   const tz = salon?.timezone ?? 'Europe/Lisbon'
   const today = dateInTz(new Date(), tz)
   const dates = useMemo(() => salon ? upcoming(today, salon.type, 75) : [], [salon, today])
+  const quiet = useMemo(() => quietPeriods({ today, pros: proIds, hours, tz, now: new Date(), busy: busy7 }), [today, proIds, hours, tz, busy7])
+  const doneKey = salon ? `cortecerto-social-${salon.id}-${weekKey(today)}` : ''
+  useEffect(() => {
+    if (!doneKey) return
+    try { setDone(new Set(JSON.parse(localStorage.getItem(doneKey) ?? '[]'))) } catch { setDone(new Set()) }
+  }, [doneKey])
 
   if (session === undefined) return <main className="page">A carregar…</main>
   if (!session) return <Navigate to="/painel" replace />
@@ -103,6 +129,30 @@ export default function PromosPage() {
     weekdays: f.weekdays.length ? f.weekdays : null, time_from: f.from || null, time_to: f.to || null, starts_on: f.starts, ends_on: f.ends || null,
   })
   const caption = (p: Pick<Promo, 'message' | 'code'>) => `${p.message}${p.message.includes(promoLink(location.origin, salon.slug, p.code)) ? '' : `\n${promoLink(location.origin, salon.slug, p.code)}`}\n\n${hashtags(salon.type, salon.address)}`
+
+  const plan = weekPlan({ type: salon.type, hasPhotos: photos.length > 0, quiet: quiet[0] ?? null, next: dates[0] ?? null, today })
+  function tick(key: string) {
+    setDone(d => {
+      const n = new Set(d); if (n.has(key)) n.delete(key); else n.add(key)
+      try { localStorage.setItem(doneKey, JSON.stringify([...n])) } catch { /* private mode */ }
+      return n
+    })
+  }
+  function fromQuiet(q: Quiet) {
+    const name = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'][q.weekday]
+    setForm({ ...blank(today), title: `${q.period === 'manhã' ? 'Manhã' : q.period === 'tarde' ? 'Tarde' : 'Fim do dia'} de ${name} -15%`, value: '15', weekdays: [q.weekday], from: q.from, to: q.to, ends: q.date })
+    setError(''); window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+  async function askIdeas() {
+    setBusy('ideias'); setIdeas(null)
+    const r = await runAi('social-plan', {
+      salon: salon!.name, type: salon!.type,
+      context: [`Horas calmas: ${quiet.map(quietText).join('; ') || 'nenhuma'}.`, `Próximas datas: ${dates.slice(0, 3).map(d => `${d.name} (${d.date})`).join(', ') || 'nenhuma'}.`,
+        `Promoções ativas: ${promos.filter(p => p.active).map(p => `${p.title} ${offerText(p)}`).join('; ') || 'nenhuma'}.`, `Fotos na galeria: ${photos.length}.`].join('\n'),
+    })
+    setBusy('')
+    setIdeas(r.status === 'feito' && r.text ? { ok: true, text: r.text } : { ok: false, text: r.message ?? 'Não foi possível agora.' })
+  }
 
   function fromOccasion(o: Occasion) {
     setForm({ ...blank(today), title: o.name === 'Black Friday' ? 'Black Friday' : `${o.name}: ${o.idea}`.slice(0, 80), ends: o.date, message: '' })
@@ -171,9 +221,36 @@ export default function PromosPage() {
   const preview = f ? asPromo(f) : null
   return (
     <div className="themed" style={themeStyle(theme)}><main className="page">
-      <header className="row"><h1>Promoções</h1><Link to="/mais">‹ Mais</Link></header>
+      <header className="row"><h1>Social Media Manager</h1><Link to="/mais">‹ Mais</Link></header>
       {missing && <p className="banner">Para usar promoções, corra <code>supabase/migrations/0020_promotions.sql</code> no editor SQL do Supabase.</p>}
       <p className="muted">Cada promoção tem o seu link de marcação: o desconto entra sozinho e vê quantas marcações trouxe. Partilhe o post no Instagram, Facebook ou Estado do WhatsApp num toque.</p>
+
+      {!f && (
+        <section className="card">
+          <div className="row"><h2 style={{ margin: 0 }}>Esta semana</h2><small className="muted">{done.size}/{plan.length} feitos</small></div>
+          {week.bookings > 0 && <p className="ok small" style={{ margin: '6px 0' }}>Nos últimos 7 dias, as promoções trouxeram {week.bookings} {week.bookings === 1 ? 'marcação' : 'marcações'} ({euros(week.revenue)}).</p>}
+          {plan.map(it => (
+            <div key={it.key} className={done.has(it.key) ? 'plan-item done' : 'plan-item'}>
+              <label className="check"><input type="checkbox" checked={done.has(it.key)} onChange={() => tick(it.key)} /><span><small className="muted">{it.day}</small><br /><b>{it.title}</b></span></label>
+              <p className="small muted">{it.how}</p>
+              {it.action === 'galeria' && <Link className="link small" to="/marca">Juntar fotos à galeria</Link>}
+              {it.action === 'promo' && quiet[0] && !missing && <button className="btn-inline" onClick={() => fromQuiet(quiet[0])}>Criar esta promoção</button>}
+              {it.action === 'data' && dates[0] && !missing && <button className="btn-inline" onClick={() => fromOccasion(dates[0])}>Criar promoção</button>}
+            </div>
+          ))}
+          {quiet.length > 1 && <>
+            <p className="small" style={{ margin: '10px 0 4px' }}><b>Outras horas calmas</b></p>
+            {quiet.slice(1).map(q => (
+              <div key={q.date + q.period} className="row invite-row">
+                <span className="small">{quietText(q)}<br /><small className="muted">{Math.round(q.occupancy * 100)}% ocupado</small></span>
+                {!missing && <button onClick={() => fromQuiet(q)}>Criar promoção</button>}
+              </div>
+            ))}
+          </>}
+          <button className="btn ghost inline sm" style={{ marginTop: 8 }} onClick={askIdeas} disabled={busy === 'ideias'}><Icon name="spark" size={16} />{busy === 'ideias' ? 'A pensar…' : 'Mais ideias com IA'}</button>
+          {ideas && (ideas.ok ? <div className="card soft ai-answer">{ideas.text.split('\n').map((l, i) => <p key={i}>{l}</p>)}</div> : <p className="muted small">{ideas.text}</p>)}
+        </section>
+      )}
 
       {!f && !missing && <button className="btn" onClick={() => { setForm(blank(today)); setError('') }}><Icon name="plus" size={18} />Nova promoção</button>}
 

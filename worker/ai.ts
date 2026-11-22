@@ -101,6 +101,12 @@ export const FEATURES: Record<string, Feature> = {
     system: `Escreves legendas curtas para as redes sociais de um salão em Portugal. ${PT} Máximo 3 frases, tom próximo, uma chamada para marcar no fim com o link dado, sem hashtags (são juntas depois) e sem emojis em excesso (no máximo 2).`,
     prompt: i => str(i.offer, 80) ? `Salão: ${str(i.salon, 80)} (${str(i.type, 30)}).\nPromoção: ${str(i.title, 80)}, ${str(i.offer, 80)}, ${str(i.when, 160)}.\nLink: ${str(i.link, 200)}` : { error: 'Falta a promoção.' },
   },
+  // Salon: post ideas for the week, from the agenda's quiet hours and the dates coming up (Social Media Manager).
+  'social-plan': {
+    kind: 'text', who: 'salon', need: 'gestor', monthly: 30,
+    system: `És o gestor de redes sociais de um salão em Portugal. ${PT} Dá 3 ideias de posts para esta semana, cada uma com o dia, o que fotografar ou filmar e uma legenda curta. Usa os dados dados; não inventes promoções que não existem.`,
+    prompt: i => `Salão: ${str(i.salon, 80)} (${str(i.type, 30)}).\n${str(i.context, 2000)}`,
+  },
   // Salon: price ranges for the salon's services in its area. The salon always decides.
   'price-suggestions': {
     kind: 'text', who: 'salon', need: 'gestor', monthly: 20,
