@@ -4,7 +4,7 @@
  * POST /api/notify-booking { id } — emails the salon owner about a new booking.
  * POST /api/notify-change { id } — emails the owner when a client cancels or moves it.
  * POST /api/errors — error reports from the app (see errors.ts).
- * POST /api/ai/<feature> — the AI features (see ai.ts): ANTHROPIC_API_KEY, AI_MODEL, IMAGE_API_URL, IMAGE_API_KEY.
+ * POST /api/ai/<feature> — the AI features (see ai.ts): ANTHROPIC_API_KEY, AI_MODEL, GEMINI_API_KEY (or IMAGE_API_URL, IMAGE_API_KEY).
  * Secrets, set in Cloudflare > Workers > cortecerto-app > Settings > Variables:
  *   RESEND_API_KEY             Resend API key
  *   SUPABASE_SERVICE_ROLE_KEY  Supabase secret key (Project settings > API keys)
@@ -29,6 +29,8 @@ interface Env {
   AI_MODEL?: string
   IMAGE_API_URL?: string
   IMAGE_API_KEY?: string
+  GEMINI_API_KEY?: string
+  GEMINI_IMAGE_MODEL?: string
 }
 
 export interface Claimed {

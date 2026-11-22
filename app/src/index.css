@@ -410,3 +410,9 @@ button:disabled { opacity: .5; cursor: default; }
 .home-visit b { display: inline-flex; align-items: center; gap: 4px; }
 .price-big { font-size: 1.25rem; margin: 0 0 8px; }
 .business-profile .chips-set { margin-top: 10px; }
+
+/* 0023: read-only account */
+.billing-notice.locked { border-color: #c0392b; }
+.tabbar .locked-strip, .tabbar a.locked-strip { position: absolute; left: 0; right: 0; bottom: 100%; padding: 7px 16px; background: #c0392b; color: #fff !important; display: block; font-size: .8rem; font-weight: 600; text-align: center; text-decoration: none; }
+.booking-paused { text-align: center; }
+.themed a.btn-inline, .themed a.btn-inline:visited { color: var(--accent-fg); text-decoration: none; }

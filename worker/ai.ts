@@ -12,7 +12,9 @@
  * Switching on:
  *   ANTHROPIC_API_KEY (secret)  text features and reading photos, with Claude.
  *   AI_MODEL (variable)         optional, defaults to DEFAULT_MODEL.
- *   IMAGE_API_URL / IMAGE_API_KEY  an image-editing service for try-on and before/after.
+ *   GEMINI_API_KEY (secret)     try-on and before/after with Google Gemini image editing
+ *                               (GEMINI_IMAGE_MODEL optional, defaults to gemini-2.5-flash-image).
+ *   IMAGE_API_URL / IMAGE_API_KEY  or any other image-editing service instead of Gemini.
  *     It receives POST { feature, image, style, prompt } and answers { image } (a data URL).
  * Salon features need the person's Supabase session (Authorization: Bearer <access token>)
  * and the access level in `need`. Client features need the salon's id.
@@ -26,6 +28,8 @@ export interface AiEnv {
   AI_MODEL?: string
   IMAGE_API_URL?: string
   IMAGE_API_KEY?: string
+  GEMINI_API_KEY?: string
+  GEMINI_IMAGE_MODEL?: string
 }
 
 type Level = 'agenda' | 'rececao' | 'gestor' | 'dono'
@@ -144,7 +148,7 @@ export async function handleAi(request: Request, env: AiEnv, name: string): Prom
   const prompt = feature.prompt(input)
   if (typeof prompt !== 'string') return json({ status: 'erro', message: prompt.error }, 400)
 
-  const configured = feature.kind === 'text' ? Boolean(env.ANTHROPIC_API_KEY) : Boolean(env.IMAGE_API_URL)
+  const configured = feature.kind === 'text' ? Boolean(env.ANTHROPIC_API_KEY) : Boolean(env.GEMINI_API_KEY || env.IMAGE_API_URL)
   if (feature.building || !configured) {
     await log(env, salonId, name, 'indisponivel', userId)
     return json({ status: 'indisponivel', message: feature.building ? 'Esta funcionalidade está em desenvolvimento.' : 'A IA ainda não está ligada. Em breve.' })
@@ -213,7 +217,31 @@ async function askClaude(env: AiEnv, feature: Feature, prompt: string, image: st
   return (data.content ?? []).filter(c => c.type === 'text').map(c => c.text).join('\n').trim()
 }
 
+/** Gemini image editing (generateContent with an image in and an image out). */
+async function geminiImage(env: AiEnv, image: string, prompt: string): Promise<string> {
+  const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(image)
+  if (!m) throw new Error('image: not a photo')
+  const model = env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image'
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY! },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: m[1], data: m[2] } }] }],
+      generationConfig: { responseModalities: ['IMAGE'] },
+    }),
+  })
+  if (!res.ok) throw new Error(`gemini ${res.status}`)
+  type Part = { inlineData?: { mimeType?: string; data?: string }; inline_data?: { mime_type?: string; data?: string } }
+  const data = await res.json() as { candidates?: { content?: { parts?: Part[] } }[] }
+  const part = (data.candidates?.[0]?.content?.parts ?? []).find(p => p.inlineData?.data || p.inline_data?.data)
+  const d = part?.inlineData?.data ?? part?.inline_data?.data
+  const mime = part?.inlineData?.mimeType ?? part?.inline_data?.mime_type ?? 'image/png'
+  if (!d) throw new Error('gemini: no image')
+  return `data:${mime};base64,${d}`
+}
+
 async function editImage(env: AiEnv, feature: string, input: Input, prompt: string): Promise<string> {
+  if (env.GEMINI_API_KEY) return geminiImage(env, str(input.image, 3_000_000), prompt)
   const res = await fetch(env.IMAGE_API_URL!, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(env.IMAGE_API_KEY ? { Authorization: `Bearer ${env.IMAGE_API_KEY}` } : {}) },

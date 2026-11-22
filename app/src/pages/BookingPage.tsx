@@ -20,6 +20,7 @@ import { mediaUrl, type Photo } from '../lib/brand'
 import { applies, offerText, promoPrice, whenText, type Promo } from '../lib/promos'
 import { homeQuote, widen, zoneFor, type HomeFee, type HomeSettings, type Zone } from '../lib/home'
 import { comboTotals, priceLabel, type Package, type PackageItem } from '../lib/packages'
+import { lockState, type BillingFields } from '../lib/billing'
 
 const ERRORS: Record<string, string> = {
   horario_ocupado: 'Esse horário acabou de ser ocupado. Escolha outro, por favor.',
@@ -332,6 +333,22 @@ export default function BookingPage() {
       </div> : <button className="link" onClick={() => setPicking(true)}>Mudar o estilo da página</button>}
       <p className="muted" style={{ marginTop: 10 }}>Feito com CorteCerto · <a href="/privacidade">Privacidade</a></p>
     </footer>
+  )
+
+  // The salon's account is read-only (migration 0023): online booking is paused, the salon can still be reached.
+  if (!done && lockState(salon as Salon & BillingFields).locked) return (
+    <div className="themed" style={themeStyle(theme)}>
+      {header}
+      <main className="page">
+        <div className="card raised booking-paused" style={{ marginTop: 20 }}>
+          <h2>Marcações online em pausa</h2>
+          <p className="muted">De momento não é possível marcar por aqui. Fale diretamente com o salão para marcar a sua visita.</p>
+          {salon.whatsapp && <a className="btn wa" href={waLink(salon.whatsapp, `Olá! Gostava de marcar uma visita no ${salon.name}.`)} target="_blank" rel="noreferrer"><WhatsAppIcon />Falar por WhatsApp</a>}
+          {salon.whatsapp && <p className="small" style={{ marginTop: 10 }}><a href={`tel:+${formatPhone(salon.whatsapp).replace(/\D/g, '')}`}>{formatPhone(salon.whatsapp)}</a></p>}
+        </div>
+      </main>
+      {footer}
+    </div>
   )
 
   if (done) {

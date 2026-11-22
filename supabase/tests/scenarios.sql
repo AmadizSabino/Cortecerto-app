@@ -353,4 +353,33 @@ update client_packs set status = 'ativo', paid_at = now() where id = :'cp1';
 select pg_temp.check(use_pack_session(:'cp1', :'pb') = 1, 'one session left');
 reset role;
 select pg_temp.check(price_cents = 0 and client_pack_id = :'cp1', 'visit paid with the pack') from bookings where id = :'pb';
+-- 0023: gentle lock -------------------------------------------------------------------
+set role anon; reset request.jwt.claim.sub;
+select create_booking(:'salon', :'corte', :'rui', date_trunc('hour', now()) + interval '25 days 11 hours', 'Antes', '931000000', false) as lb \gset
+reset role;
+select pg_temp.check(not salon_locked(:'salon'), 'a paid salon is not locked');
+update salons set paid_until = now() - interval '10 days' where id = :'salon';
+select pg_temp.check(not salon_locked(:'salon'), 'still in the 14-day grace period');
+update salons set paid_until = now() - interval '15 days' where id = :'salon';
+select pg_temp.check(salon_locked(:'salon'), 'locked 14 days after the paid period ends');
+select set_config('t.rui', :'rui', false) \g /dev/null
+select set_config('t.corte', :'corte', false) \g /dev/null
+select set_config('t.salon', :'salon', false) \g /dev/null
+set role anon;
+do $$ begin perform create_booking(current_setting('t.salon')::uuid, current_setting('t.corte')::uuid, current_setting('t.rui')::uuid, date_trunc('hour', now()) + interval '26 days 11 hours', 'Novo', '931000001', false); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%salao_bloqueado%' then raise; end if; end $$;
+select cancel_booking_by_client(:'lb') \g /dev/null
+reset role;
+select pg_temp.check(status = 'cancelada', 'a client can still cancel while the salon is locked') from bookings where id = :'lb';
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+select pg_temp.check(count(*) > 0, 'the owner still sees the bookings') from bookings;
+do $$ begin update salons set theme = 'b2'; raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%salao_bloqueado%' then raise; end if; end $$;
+do $$ begin update bookings set status = 'concluida' where status = 'confirmada'; raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%salao_bloqueado%' then raise; end if; end $$;
+do $$ begin insert into services (salon_id, name, duration_min, price_cents) values (current_setting('t.salon')::uuid, 'Novo', 30, 1000); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%salao_bloqueado%' then raise; end if; end $$;
+select forget_client(:'salon', '351931000000') \g /dev/null
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+select admin_set_subscription(:'salon', 'ativa', now() + interval '1 month', null) \g /dev/null
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+with u as (update salons set theme = 'b2' where id = :'salon' returning 1) select pg_temp.check((select count(*) from u) = 1, 'marking the salon paid unlocks it');
+reset role;
+select pg_temp.check(client_name = 'Cliente apagado', 'forgetting a client works while locked') from bookings where id = :'lb';
 \echo All database checks passed

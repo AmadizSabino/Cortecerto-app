@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { billingState, needsNotice } from './billing'
+import { billingState, lockState, needsNotice } from './billing'
 
 const now = new Date('2026-11-21T12:00:00Z')
 
@@ -21,4 +21,15 @@ it('shows a notice only in the last week or when payment is needed', () => {
   expect(needsNotice({ kind: 'experimental', daysLeft: 7 })).toBe(true)
   expect(needsNotice({ kind: 'terminou' })).toBe(true)
   expect(needsNotice({ kind: 'ativa', until: null })).toBe(false)
+})
+
+it('locks 14 days after the money was due, like the database', () => {
+  const trial = (d: string) => lockState({ subscription: 'experimental', trial_ends_at: d }, now)
+  expect(trial('2026-12-01T00:00:00Z')).toEqual({ locked: false, daysToLock: null })
+  expect(trial('2026-11-11T12:00:00Z')).toEqual({ locked: false, daysToLock: 4 })
+  expect(trial('2026-11-01T00:00:00Z')).toEqual({ locked: true })
+  expect(lockState({ subscription: 'ativa', trial_ends_at: 'x', paid_until: '2026-11-01T00:00:00Z' }, now)).toEqual({ locked: true })
+  expect(lockState({ subscription: 'ativa', trial_ends_at: 'x', paid_until: null }, now)).toEqual({ locked: false, daysToLock: null })
+  expect(lockState({ subscription: 'cancelada', trial_ends_at: '2026-10-01T00:00:00Z', paid_until: '2026-11-20T00:00:00Z' }, now)).toEqual({ locked: true })
+  expect(lockState({}, now)).toEqual({ locked: false, daysToLock: null })
 })

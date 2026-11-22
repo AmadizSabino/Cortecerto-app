@@ -20,6 +20,7 @@ import NextVisit from '../NextVisit'
 import BookingEditor from '../BookingEditor'
 import InstallCard from '../InstallCard'
 import BillingNotice from '../BillingNotice'
+import { isLockedError, LOCKED_MESSAGE, lockState, type BillingFields } from '../lib/billing'
 import { pendingDocs } from '../lib/acceptance'
 import type { LegalDoc } from '../lib/legal'
 import { manageLink } from '../lib/clientChanges'
@@ -182,7 +183,7 @@ export default function AgendaPage() {
     // select() so a write the database refused (no row changed) shows as a failure, not as done.
     const { data, error } = await supabase.from('bookings').update(patch).eq('id', b.id).select('id')
     if (error || !data?.length) {
-      setActionError(error?.message.includes('no_overlap')
+      setActionError(isLockedError(error) ? LOCKED_MESSAGE : error?.message.includes('no_overlap')
         ? 'Não foi possível: esse profissional já tem outra marcação a essa hora.'
         : 'Não foi possível guardar a alteração. Verifique a ligação e tente de novo.')
       return
@@ -223,6 +224,8 @@ export default function AgendaPage() {
   const greeting = hour < 12 ? 'Bom dia' : hour < 20 ? 'Boa tarde' : 'Boa noite'
   const dayLabel = date === today ? 'Hoje' : date === addDays(today, 1) ? 'Amanhã' : date === addDays(today, -1) ? 'Ontem'
     : new Date(date + 'T12:00:00Z').toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
+  // Read-only account (migration 0023): the day stays visible, the buttons that change it go.
+  const locked = lockState(salon as Salon & BillingFields).locked
   const openNew = () => { setEditing('nova'); requestAnimationFrame(() => document.getElementById('agenda')?.scrollIntoView({ behavior: 'smooth' })) }
 
   return (
@@ -236,7 +239,7 @@ export default function AgendaPage() {
       </header>
       {pending && pending.length > 0 && <TermsGate docs={pending} salonId={salon.id} onAccepted={() => setPending([])} />}
       {!(pending && pending.length > 0) && <>
-      {role === 'dono' && <BillingNotice salon={salon} />}
+      {(role === 'dono' || locked) && <BillingNotice salon={salon} />}
       <div className="stats">
         <div className="stat"><b>{live.length}</b><span>Marcações {date === today ? 'hoje' : 'no dia'}</span></div>
         {can(role, 'revenue')
@@ -245,8 +248,8 @@ export default function AgendaPage() {
         <div className="stat"><b>{deposits}</b><span>Sinais por confirmar</span></div>
       </div>
       <InstallCard />
-      <RemindersCard salon={salon} />
-      <SetupChecklist salon={salon} services={Object.keys(services).length} professionals={Object.keys(pros).length} />
+      {!locked && <RemindersCard salon={salon} />}
+      {!locked && <SetupChecklist salon={salon} services={Object.keys(services).length} professionals={Object.keys(pros).length} />}
 
       <div className="daynav" id="agenda">
         <button className="icon-btn" aria-label="Dia anterior" onClick={() => setDate(addDays(date, -1))}><Icon name="chevronLeft" /></button>
@@ -272,7 +275,7 @@ export default function AgendaPage() {
       {bookings.length === 0 && editing !== 'nova' && (
         <div className="card" style={{ textAlign: 'center' }}>
           <p className="muted" style={{ margin: '4px 0 12px' }}>Sem marcações neste dia.</p>
-          <button className="btn ghost inline sm" onClick={openNew}><Icon name="plus" size={16} />Adicionar marcação</button>
+          {!locked && <button className="btn ghost inline sm" onClick={openNew}><Icon name="plus" size={16} />Adicionar marcação</button>}
         </div>
       )}
       {bookings.map(b => {
@@ -285,7 +288,7 @@ export default function AgendaPage() {
         )
         const hasPhone = /\d{6}/.test(b.client_phone.replace(/\D/g, ''))
         const key = waNumber(b.client_phone)
-        const isNew = Boolean(known) && can(role, 'clientes') && hasPhone && key.length >= 11 && !known!.has(key) && !dismissed.has(key)
+        const isNew = !locked && Boolean(known) && can(role, 'clientes') && hasPhone && key.length >= 11 && !known!.has(key) && !dismissed.has(key)
           && b.status !== 'cancelada' && b.client_name !== 'Cliente apagado'
         return (
           <article key={b.id} className={`card booking st-${b.status}`}>
@@ -345,20 +348,22 @@ export default function AgendaPage() {
               {b.deposit !== 'nenhum' && (
                 <div className="small" style={{ marginTop: 4 }}>Sinal: {b.deposit === 'pago'
                   ? <span className="ok" style={{ fontWeight: 600 }}>recebido ✓</span>
-                  : <button className="link" onClick={() => update(b, b.status === 'pendente' ? { deposit: 'pago', status: 'confirmada' } : { deposit: 'pago' })}>marcar como recebido</button>}</div>
+                  : locked ? 'por receber' : <button className="link" onClick={() => update(b, b.status === 'pendente' ? { deposit: 'pago', status: 'confirmada' } : { deposit: 'pago' })}>marcar como recebido</button>}</div>
               )}
               <div className="actions">
-                {b.status === 'pendente' && <button className="btn-inline" onClick={() => update(b, { status: 'confirmada' })}>Confirmar</button>}
-                {(b.status === 'pendente' || b.status === 'confirmada') && <>
+                {!locked && b.status === 'pendente' && <button className="btn-inline" onClick={() => update(b, { status: 'confirmada' })}>Confirmar</button>}
+                {!locked && (b.status === 'pendente' || b.status === 'confirmada') && <>
                   <button onClick={() => update(b, { status: 'concluida' })}>Concluída</button>
                   <button onClick={() => update(b, { status: 'faltou' })}>Faltou</button>
                   <button onClick={() => update(b, { status: 'cancelada' })}>Cancelar</button>
                 </>}
                 {hasPhone && <a className="wa" href={waLink(b.client_phone, msg)} target="_blank" rel="noreferrer"><WhatsAppIcon size={16} />WhatsApp</a>}
+                {!locked && <>
                 {b.status === 'concluida' && nextFor !== b.id && <button onClick={() => setNextFor(b.id)}>Próxima visita</button>}
                 {(b.status === 'cancelada' || b.status === 'faltou') && freeing !== b.id && usableWindow(new Date(b.starts_at), new Date(b.ends_at), new Date()) && <button className="btn-inline" onClick={() => setFreeing(b.id)}>Oferecer a vaga</button>}
                 {(b.status === 'pendente' || b.status === 'confirmada') && !b.proposed_starts_at && proposing !== b.id && <button onClick={() => setProposing(b.id)}>Sugerir outro horário</button>}
                 {(b.status === 'pendente' || b.status === 'confirmada') && <button className="link" onClick={() => setEditing(b.id)}>Editar</button>}
+                </>}
               </div>
             </div>
             {freeing === b.id && (
@@ -376,7 +381,7 @@ export default function AgendaPage() {
           </article>
         )
       })}
-      {editing !== 'nova' && <button className="btn inline fab" onClick={openNew}><Icon name="plus" size={18} />Marcação</button>}
+      {editing !== 'nova' && !locked && <button className="btn inline fab" onClick={openNew}><Icon name="plus" size={18} />Marcação</button>}
       </>}
     </main></div>
   )
