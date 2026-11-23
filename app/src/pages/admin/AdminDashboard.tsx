@@ -7,21 +7,21 @@ import {
 
 const pct = (n: number | null) => n === null ? '—' : `${Math.round(n * 100)}%`
 const shortDate = (iso: string) => new Date(iso + (iso.length === 10 ? 'T12:00:00Z' : '')).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' })
-/** One series of bars: a week each, with the value on hover and on the highest bar. */
-function Bars({ data, label, format = String }: { data: { x: string; y: number }[]; label: string; format?: (n: number) => string }) {
+/** One series of bars: a week (or a day) each, with the value on hover and on the highest bar. */
+export function Bars({ data, label, format = String, daily = false }: { data: { x: string; y: number }[]; label: string; format?: (n: number) => string; daily?: boolean }) {
   const max = Math.max(1, ...data.map(d => d.y))
   const top = data.reduce((m, d, i) => (d.y > data[m].y ? i : m), 0)
   return (
     <figure className="bars" aria-label={label}>
       <div className="bars-plot">
         {data.map((d, i) => (
-          <div key={d.x} className="bar-col" title={`Semana de ${shortDate(d.x)}: ${format(d.y)}`}>
+          <div key={d.x} className="bar-col" title={`${daily ? '' : 'Semana de '}${shortDate(d.x)}: ${format(d.y)}`}>
             {i === top && d.y > 0 && <small className="bar-val">{format(d.y)}</small>}
             <i style={{ height: `${Math.max(d.y ? 4 : 1, (d.y / max) * 100)}%` }} className={d.y ? '' : 'zero'} />
           </div>
         ))}
       </div>
-      <figcaption className="bars-axis muted small"><span>{shortDate(data[0]?.x ?? '')}</span><span>esta semana</span></figcaption>
+      <figcaption className="bars-axis muted small"><span>{shortDate(data[0]?.x ?? '')}</span><span>{daily ? 'hoje' : 'esta semana'}</span></figcaption>
       <table className="sr-only"><caption>{label}</caption><tbody>{data.map(d => <tr key={d.x}><th>{d.x}</th><td>{format(d.y)}</td></tr>)}</tbody></table>
     </figure>
   )
@@ -81,7 +81,7 @@ export function AdminOverview({ data, onOpen }: { data: Dashboard; onOpen: (salo
             )
           })}
         </ol>
-        <p className="muted small">Visitas e cliques no site entram aqui quando o registo de tráfego estiver ligado.</p>
+        <p className="muted small">Antes do registo: visitas ao site e contas criadas estão no separador Site.</p>
       </section>
 
       <section className="card">
@@ -191,7 +191,6 @@ export function AdminSystem({ data }: { data: Dashboard }) {
             )
           })}
         </ul>
-        <p className="muted small">O custo por pedido e o alerta de orçamento (10 € por mês) chegam na próxima fase.</p>
       </section>
 
       <p className="muted small">Dados de {new Date(data.generated_at).toLocaleString('pt-PT')}.</p>

@@ -426,4 +426,54 @@ reset role;
 set role service_role;
 select pg_temp.check(count(*) = 0, 'no automatic reminders while switched off') from reminders_due_auto();
 reset role;
+-- 0026: payment requests -----------------------------------------------------------
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+select pg_temp.check(count(*) = 1, 'a paying salon is due a request next month')
+  from admin_payment_requests_due((date_trunc('month', current_date) + interval '1 month')::date);
+select number as pp from admin_new_payment_request(:'salon', (date_trunc('month', current_date) + interval '1 month')::date, 'próximo mês', 2448,
+  current_date, current_date + 8, :'salon' || '/pp-1.pdf') \gset
+select pg_temp.check(:'pp' = 'PP ' || to_char(current_date, 'YYYY') || '/001', 'requests are numbered PP year/001');
+select pg_temp.check(count(*) = 0, 'a salon with a request for the month is not due again')
+  from admin_payment_requests_due((date_trunc('month', current_date) + interval '1 month')::date);
+do $$ begin perform admin_new_payment_request((select id from salons limit 1), (date_trunc('month', current_date) + interval '1 month')::date, 'x', 2448, current_date, current_date + 8, (select id from salons limit 1)::text || '/pp-2.pdf'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%invoices_one_request_per_month%' then raise; end if; end $$;
+select pg_temp.check(count(*) = 1 and min(number) = :'pp', 'the admin claims the request email')
+  from admin_claim_request_email((select id from invoices where number = :'pp'));
+select pg_temp.check(sent_at is not null and sent_to = 'faturas@x.pt', 'the request is sent to the billing email') from invoices where number = :'pp';
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+select pg_temp.check(count(*) = 1, 'the owner sees the request') from invoices where kind = 'pedido';
+do $$ begin perform admin_new_payment_request((select id from salons limit 1), current_date, 'x', 2448, current_date, current_date + 8, (select id from salons limit 1)::text || '/pp-3.pdf'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+reset role;
+-- 0027: site events, uptime, AI cost, alerts ------------------------------------------
+set role service_role;
+insert into site_events (name, page, path, src, visitor, device) values
+  ('visita', 'site', '/', 'cartaz', '0123456789abcdef', 'telemovel'),
+  ('visita', 'site', '/', 'cartaz', '0123456789abcdef', 'telemovel'),
+  ('conta_criada', 'registo', '/painel', 'cartaz', '0123456789abcdef', 'telemovel');
+insert into site_events (name, page, path, salon_id, visitor) values
+  ('visita', 'salao', '/s/x', :'salon', 'fedcba9876543210'), ('marcacao_feita', 'salao', '/s/x', :'salon', 'fedcba9876543210');
+insert into uptime_checks (ok, app_ok, db_ok, ms) values (true, true, true, 120);
+insert into uptime_checks (ok, app_ok, db_ok, ms, detail) values (false, true, false, 5000, 'db 503'), (false, true, false, 5000, 'db 503');
+insert into ai_requests (salon_id, feature, status, model, input_tokens, output_tokens) values (:'salon', 'review-reply', 'feito', 'claude-haiku-5-5', 1000000, 1000000);
+insert into ai_requests (salon_id, feature, status, model, images) values (:'salon', 'try-on', 'feito', 'gemini-2.5-flash-image', 1);
+select pg_temp.check(sum(cost_usd) = 0.64, 'AI requests are priced from the settings') from ai_requests where model is not null;
+select pg_temp.check((s->>'email') = 'outro@x.pt' and jsonb_array_length(s->'last_checks') = 3 and s->>'down_since' is not null
+  and (s->'ai'->>'cost_eur')::numeric = round(0.64 * 0.87, 4), 'the Worker reads the ops status') from (select ops_status() as s) x;
+select pg_temp.check(claim_admin_alert('site_em_baixo', '2026-11-23 10'), 'an alert is claimed once');
+select pg_temp.check(not claim_admin_alert('site_em_baixo', '2026-11-23 10'), 'the same alert is not claimed twice');
+select pg_temp.check((d->>'paying')::int >= 0 and d ? 'owed_cents', 'the daily summary builds') from (select ops_digest() as d) x;
+reset role;
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+select pg_temp.check((s->'visitors'->>'site')::int = 1 and (s->'totals'->>'registo:conta_criada')::int = 1
+  and (s->'sources'->0->>'source') = 'cartaz' and (s->'salons'->0->>'booked')::int = 1 and jsonb_array_length(s->'daily') = 31,
+  'the admin gets the site stats') from (select admin_site_stats(30) as s) x;
+select pg_temp.check((o->'uptime'->'24h'->>'failed')::int = 2 and jsonb_array_length(o->'ai_features') = 2, 'the admin gets uptime and AI cost')
+  from (select admin_ops() as o) x;
+update platform_settings set value = jsonb_set(value, '{orcamento_eur}', '5') where key = 'ia';
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+do $$ begin perform admin_site_stats(30); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+do $$ begin perform ops_status(); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+do $$ begin perform claim_admin_alert('resumo', 'x'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+select pg_temp.check(count(*) = 0, 'owners cannot read site events or uptime') from (select id from site_events union all select id from uptime_checks) x;
+reset role;
+select pg_temp.check((value->>'orcamento_eur')::int = 5, 'the admin changes the AI budget') from platform_settings where key = 'ia';
 \echo All database checks passed

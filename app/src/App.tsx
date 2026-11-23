@@ -32,6 +32,7 @@ import PackagesPage from './pages/PackagesPage'
 import PackagePage from './pages/PackagePage'
 import RequestPage from './pages/RequestPage'
 import BillingPage from './pages/BillingPage'
+import PasswordPage from './pages/PasswordPage'
 import LegalPage from './pages/LegalPage'
 import { LEGAL_DOCS } from './lib/legal'
 
@@ -74,6 +75,7 @@ export default function App() {
         <Route path="/clube" element={<ClubPage />} />
         <Route path="/ia" element={<AiPage />} />
         <Route path="/assinatura" element={<BillingPage />} />
+        <Route path="/palavra-passe" element={<PasswordPage />} />
         <Route path="/f/:slug" element={<QueueJoinPage />} />
         {LEGAL_DOCS.map(d => <Route key={d.id} path={d.path} element={<LegalPage doc={d} />} />)}
         <Route path="*" element={<main className="page"><h1>Página não encontrada</h1></main>} />

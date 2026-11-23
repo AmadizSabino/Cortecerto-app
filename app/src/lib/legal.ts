@@ -21,7 +21,9 @@ export interface LegalDoc {
 }
 
 // Registered office address still to add (DL 7/2004, art. 10): Francisco is choosing a domiciliação address.
-const COMPANY = 'Amadiz Sabino Consulting, Lda., NIPC 510900801, com sede em Setúbal, email amadiz.sabino@gmail.com'
+/** CorteCerto's company, as it appears on payment requests and in the legal texts. */
+export const COMPANY_DETAILS = { name: 'Amadiz Sabino Consulting, Lda.', nipc: '510900801', city: 'Setúbal', email: 'amadiz.sabino@gmail.com' }
+const COMPANY = `${COMPANY_DETAILS.name}, NIPC ${COMPANY_DETAILS.nipc}, com sede em ${COMPANY_DETAILS.city}, email ${COMPANY_DETAILS.email}`
 
 export const TERMS: LegalDoc = {
   id: 'termos',
@@ -140,6 +142,7 @@ export const PRIVACY: LegalDoc = {
     ] },
     { heading: '6. Armazenamento no seu browser', paragraphs: [
       'Se escolher um estilo para a página de marcação, essa escolha fica guardada apenas no seu browser. A CorteCerto não usa cookies de publicidade nem de análise.',
+      'Para saber quantas pessoas visitam o site e as páginas de marcação, contamos visitas e cliques sem cookies e sem dados pessoais: guardamos a página, o site de onde veio (por exemplo Instagram), o tipo de aparelho e um código que muda todos os dias e não identifica ninguém. O endereço IP não é guardado. A origem da visita fica no browser só enquanto a aba estiver aberta. Se o browser pedir para não ser seguido (Do Not Track), nada é contado.',
     ] },
   ],
 }

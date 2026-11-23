@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { manualSteps, useInstall } from './lib/install'
+import { track } from './lib/track'
 
 const KEY = 'cortecerto-install-hidden'
 const hidden = () => { try { return localStorage.getItem(KEY) === '1' } catch { return false } }
@@ -34,6 +35,7 @@ export default function InstallCard({ always = false }: { always?: boolean }) {
           {!(inst.platform === 'ios' && !inst.canPrompt) && (
             <button className="btn-inline" onClick={async () => {
               const opened = await inst.install()
+              if (opened) track('instalar', { page: 'painel' })
               if (!opened) setSteps(true)
               else if (!always) close()
             }}>Instalar</button>

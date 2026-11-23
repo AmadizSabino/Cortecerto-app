@@ -25,33 +25,13 @@ import { pendingDocs } from '../lib/acceptance'
 import type { LegalDoc } from '../lib/legal'
 import { manageLink } from '../lib/clientChanges'
 import { bookingPrice } from '../lib/pricing'
+import Login from '../components/Login'
 
 const STATUS_LABEL: Record<Booking['status'], string> = {
   pendente: 'Pendente', confirmada: 'Confirmada', concluida: 'Concluída', faltou: 'Faltou', cancelada: 'Cancelada',
 }
 
 const DISMISS_KEY = 'cortecerto-newclient-dismissed'
-
-function Login() {
-  const [email, setEmail] = useState('')
-  const [sent, setSent] = useState(false)
-  async function send(e: React.FormEvent) {
-    e.preventDefault()
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + '/painel' } })
-    if (!error) setSent(true)
-  }
-  return (
-    <main className="page">
-      <h1>Painel do salão</h1>
-      {sent ? <p>Enviámos um link de acesso para <b>{email}</b>.</p> : (
-        <form onSubmit={send} className="card">
-          <label>Email<input type="email" value={email} onChange={e => setEmail(e.target.value)} required /></label>
-          <button className="btn">Receber link de acesso</button>
-        </form>
-      )}
-    </main>
-  )
-}
 
 export default function AgendaPage() {
   const [session, setSession] = useState<Session | null>()

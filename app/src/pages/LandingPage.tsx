@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom'
 import { euros, supabase } from '../lib/supabase'
 import { LEGAL_DOCS } from '../lib/legal'
 import { PLAN } from '../lib/plan'
+import { track } from '../lib/track'
 
 const DAY = [
   { time: '09:00', title: 'Os lembretes de amanhã saem em dois minutos', text: 'Abre "Lembretes", toca em cada cliente e o WhatsApp abre com a mensagem pronta.' },
@@ -32,7 +33,7 @@ export default function LandingPage() {
   const price = euros(PLAN.priceCents).replace(/,00(?=\s?€)/, '')
   // A salon that is signed in goes straight to its panel.
   const [signedIn, setSignedIn] = useState(false)
-  useEffect(() => { supabase.auth.getSession().then(({ data }) => setSignedIn(Boolean(data.session))) }, [])
+  useEffect(() => { supabase.auth.getSession().then(({ data }) => { setSignedIn(Boolean(data.session)); if (!data.session) track('visita', { page: 'site', key: 'site' }) }) }, [])
   if (signedIn) return <Navigate to="/painel" replace />
   return (
     <div className="lp">

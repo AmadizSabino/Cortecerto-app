@@ -4,7 +4,10 @@
  * POST /api/notify-booking { id } — emails the salon owner about a new booking.
  * POST /api/notify-change { id } — emails the owner when a client cancels or moves it.
  * POST /api/admin/remind — a payment reminder email the admin sends from /admin (see reminders.ts).
- * Every morning (cron trigger): automatic payment reminders, only when switched on in /admin.
+ * POST /api/admin/send-request — emails a monthly payment request PDF to a salon (see requests.ts).
+ * POST /api/t — an anonymous visit or click, for /admin > Site (see track.ts).
+ * Every 5 minutes (cron trigger): uptime check and AI budget check, with alert emails (see ops.ts).
+ * Every morning (cron trigger): automatic payment reminders and the daily summary, each only when switched on in /admin.
  * POST /api/errors — error reports from the app (see errors.ts).
  * POST /api/ai/<feature> — the AI features (see ai.ts): ANTHROPIC_API_KEY, AI_MODEL, GEMINI_API_KEY (or IMAGE_API_URL, IMAGE_API_KEY).
  * Secrets, set in Cloudflare > Workers > cortecerto-app > Settings > Variables:
@@ -20,6 +23,9 @@ import { bookingEmail, changeEmail, type ChangeClaimed } from './email'
 import { reportError } from './errors'
 import { handleAi } from './ai'
 import { remindNow, remindScheduled } from './reminders'
+import { sendRequest } from './requests'
+import { track } from './track'
+import { opsDaily, opsEveryFiveMinutes } from './ops'
 
 interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> }
@@ -45,6 +51,7 @@ export interface Claimed {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const TEST_SENDER = 'CorteCerto <onboarding@resend.dev>'
+const DAILY = '0 8 * * *' // must match wrangler.jsonc
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -53,13 +60,16 @@ export default {
     if (url.pathname === '/api/notify-change') return notifyOwner<ChangeClaimed>(request, env, url.origin, 'claim_client_change_notification', changeEmail)
     if (url.pathname === '/api/errors') return reportError(request, env)
     if (url.pathname === '/api/admin/remind') return remindNow(request, env, url.origin)
+    if (url.pathname === '/api/admin/send-request') return sendRequest(request, env, url.origin)
+    if (url.pathname === '/api/t') return track(request, env)
     if (url.pathname === '/api/manifest') return clientManifest(url)
     if (url.pathname.startsWith('/api/ai/')) return handleAi(request, env, url.pathname.slice('/api/ai/'.length))
     if (url.pathname.startsWith('/api/')) return new Response('Not found', { status: 404 })
     return env.ASSETS.fetch(request)
   },
-  async scheduled(_event: unknown, env: Env, ctx: { waitUntil(p: Promise<unknown>): void }): Promise<void> {
-    ctx.waitUntil(remindScheduled(env))
+  async scheduled(event: { cron: string }, env: Env, ctx: { waitUntil(p: Promise<unknown>): void }): Promise<void> {
+    if (event.cron === DAILY) ctx.waitUntil(Promise.all([remindScheduled(env), opsDaily(env)]))
+    else ctx.waitUntil(opsEveryFiveMinutes(env))
   },
 }
 

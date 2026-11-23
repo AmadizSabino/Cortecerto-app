@@ -159,9 +159,9 @@ export async function handleAi(request: Request, env: AiEnv, name: string): Prom
   }
 
   try {
-    const out = feature.kind === 'text' ? { text: await askClaude(env, feature, prompt, str(input.image, 3_000_000)) } : { image: await editImage(env, name, input, prompt) }
-    await log(env, salonId, name, 'feito', userId)
-    return json({ status: 'feito', ...out })
+    const r = feature.kind === 'text' ? await askClaude(env, feature, prompt, str(input.image, 3_000_000)) : await editImage(env, name, input, prompt)
+    await log(env, salonId, name, 'feito', userId, r.usage)
+    return json({ status: 'feito', ...(feature.kind === 'text' ? { text: r.out } : { image: r.out }) })
   } catch (e) {
     await log(env, salonId, name, 'erro', userId)
     console.error('ai', name, e instanceof Error ? e.message : e)
@@ -193,32 +193,44 @@ async function usedThisMonth(env: AiEnv, salonId: string, feature: string): Prom
   return Number(res.headers.get('content-range')?.split('/')[1] ?? 0) || 0
 }
 
-async function log(env: AiEnv, salonId: string, feature: string, status: string, userId: string | null) {
+/** What a request used, for its cost (migration 0027 prices it from the settings). */
+export interface Usage { model: string; input_tokens?: number; output_tokens?: number; images?: number }
+
+async function log(env: AiEnv, salonId: string, feature: string, status: string, userId: string | null, usage?: Usage) {
   if (!env.SUPABASE_SERVICE_ROLE_KEY) return
   await fetch(`${env.SUPABASE_URL}/rest/v1/ai_requests`, {
     method: 'POST',
     headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-    body: JSON.stringify({ salon_id: salonId, feature, status, created_by: userId }),
+    body: JSON.stringify({ salon_id: salonId, feature, status, created_by: userId, ...usage }),
+  }).then(async r => {
+    // Before migration 0027 the usage columns are missing: keep the row without them.
+    if (!r.ok && usage) await log(env, salonId, feature, status, userId)
   }).catch(() => {}) // before migration 0018 the table is missing: the feature still answers
 }
 
-async function askClaude(env: AiEnv, feature: Feature, prompt: string, image: string): Promise<string> {
+type Answer = { out: string; usage?: Usage }
+
+async function askClaude(env: AiEnv, feature: Feature, prompt: string, image: string): Promise<Answer> {
   const content: unknown[] = []
   const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(image)
   if (m) content.push({ type: 'image', source: { type: 'base64', media_type: m[1], data: m[2] } })
   content.push({ type: 'text', text: prompt })
+  const model = env.AI_MODEL || DEFAULT_MODEL
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'x-api-key': env.ANTHROPIC_API_KEY!, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({ model: env.AI_MODEL || DEFAULT_MODEL, max_tokens: 800, system: feature.system, messages: [{ role: 'user', content }] }),
+    body: JSON.stringify({ model, max_tokens: 800, system: feature.system, messages: [{ role: 'user', content }] }),
   })
   if (!res.ok) throw new Error(`anthropic ${res.status}`)
-  const data = await res.json() as { content?: { type: string; text?: string }[] }
-  return (data.content ?? []).filter(c => c.type === 'text').map(c => c.text).join('\n').trim()
+  const data = await res.json() as { content?: { type: string; text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number } }
+  return {
+    out: (data.content ?? []).filter(c => c.type === 'text').map(c => c.text).join('\n').trim(),
+    usage: { model, input_tokens: data.usage?.input_tokens, output_tokens: data.usage?.output_tokens },
+  }
 }
 
 /** Gemini image editing (generateContent with an image in and an image out). */
-async function geminiImage(env: AiEnv, image: string, prompt: string): Promise<string> {
+async function geminiImage(env: AiEnv, image: string, prompt: string): Promise<Answer> {
   const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(image)
   if (!m) throw new Error('image: not a photo')
   const model = env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image'
@@ -232,15 +244,19 @@ async function geminiImage(env: AiEnv, image: string, prompt: string): Promise<s
   })
   if (!res.ok) throw new Error(`gemini ${res.status}`)
   type Part = { inlineData?: { mimeType?: string; data?: string }; inline_data?: { mime_type?: string; data?: string } }
-  const data = await res.json() as { candidates?: { content?: { parts?: Part[] } }[] }
+  const data = await res.json() as { candidates?: { content?: { parts?: Part[] } }[]; usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number } }
   const part = (data.candidates?.[0]?.content?.parts ?? []).find(p => p.inlineData?.data || p.inline_data?.data)
   const d = part?.inlineData?.data ?? part?.inline_data?.data
   const mime = part?.inlineData?.mimeType ?? part?.inline_data?.mime_type ?? 'image/png'
   if (!d) throw new Error('gemini: no image')
-  return `data:${mime};base64,${d}`
+  // Priced per image made (the settings' "imagem" price); the tokens are kept for reference.
+  return {
+    out: `data:${mime};base64,${d}`,
+    usage: { model, images: 1, input_tokens: data.usageMetadata?.promptTokenCount, output_tokens: data.usageMetadata?.candidatesTokenCount },
+  }
 }
 
-async function editImage(env: AiEnv, feature: string, input: Input, prompt: string): Promise<string> {
+async function editImage(env: AiEnv, feature: string, input: Input, prompt: string): Promise<Answer> {
   if (env.GEMINI_API_KEY) return geminiImage(env, str(input.image, 3_000_000), prompt)
   const res = await fetch(env.IMAGE_API_URL!, {
     method: 'POST',
@@ -250,5 +266,5 @@ async function editImage(env: AiEnv, feature: string, input: Input, prompt: stri
   if (!res.ok) throw new Error(`image ${res.status}`)
   const { image } = await res.json() as { image?: string }
   if (!image || !image.startsWith('data:image/')) throw new Error('image: empty')
-  return image
+  return { out: image, usage: { model: 'image-api', images: 1 } }
 }

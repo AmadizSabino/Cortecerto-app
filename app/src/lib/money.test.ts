@@ -24,6 +24,7 @@ it('sums expected, invoiced, collected, outstanding and overdue', () => {
     inv({ issued_on: '2026-11-15', due_on: '2026-11-23' }),
     inv({ issued_on: '2026-10-01', due_on: '2026-10-09' }),
     inv({ status: 'anulada' }),
+    inv({ status: 'paga', paid_on: '2026-11-06', request_id: 'r1' }),
   ], salons, '2026-11-23')
   expect(m).toMatchObject({ expectedCents: 2448, invoicedCents: 4896, collectedCents: 2448, outstandingCents: 4896, outstandingCount: 2, overdueCents: 2448, overdueCount: 1 })
   expect(m.ageing.find(a => a.count)?.label).toBe('31–60 d')

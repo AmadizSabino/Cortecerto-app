@@ -21,6 +21,7 @@ import { applies, offerText, promoPrice, whenText, type Promo } from '../lib/pro
 import { homeQuote, widen, zoneFor, type HomeFee, type HomeSettings, type Zone } from '../lib/home'
 import { comboTotals, priceLabel, type Package, type PackageItem } from '../lib/packages'
 import { lockState, type BillingFields } from '../lib/billing'
+import { track } from '../lib/track'
 
 const ERRORS: Record<string, string> = {
   horario_ocupado: 'Esse horário acabou de ser ocupado. Escolha outro, por favor.',
@@ -118,6 +119,7 @@ export default function BookingPage() {
       const { data: s } = await supabase.from('salons').select('*').eq('slug', slug!).maybeSingle()
       setSalon(s)
       if (!s) return
+      track('visita', { page: 'salao', salon: s.id, key: `visita-${s.id}` })
       const code = new URLSearchParams(location.search).get('promo')
       if (code) supabase.from('promotions').select('*').eq('salon_id', s.id).eq('code', code).eq('active', true).maybeSingle()
         .then(({ data, error }) => { if (!error && data) setPromo(data as Promo) })
@@ -278,6 +280,7 @@ export default function BookingPage() {
       body: JSON.stringify({ id: bookingId }), keepalive: true,
     }).catch(() => {})
     setDone(String(bookingId))
+    track('marcacao_feita', { page: 'salao', salon: salon?.id })
     window.scrollTo(0, 0)
   }
 
@@ -343,7 +346,7 @@ export default function BookingPage() {
         <div className="card raised booking-paused" style={{ marginTop: 20 }}>
           <h2>Marcações online em pausa</h2>
           <p className="muted">De momento não é possível marcar por aqui. Fale diretamente com o salão para marcar a sua visita.</p>
-          {salon.whatsapp && <a className="btn wa" href={waLink(salon.whatsapp, `Olá! Gostava de marcar uma visita no ${salon.name}.`)} target="_blank" rel="noreferrer"><WhatsAppIcon />Falar por WhatsApp</a>}
+          {salon.whatsapp && <a className="btn wa" onClick={() => track('whatsapp', { page: 'salao', salon: salon.id })} href={waLink(salon.whatsapp, `Olá! Gostava de marcar uma visita no ${salon.name}.`)} target="_blank" rel="noreferrer"><WhatsAppIcon />Falar por WhatsApp</a>}
           {salon.whatsapp && <p className="small" style={{ marginTop: 10 }}><a href={`tel:+${formatPhone(salon.whatsapp).replace(/\D/g, '')}`}>{formatPhone(salon.whatsapp)}</a></p>}
         </div>
       </main>
@@ -385,7 +388,7 @@ export default function BookingPage() {
           )}
           <div className="stack" style={{ marginTop: 16 }}>
             <button className="btn ghost" onClick={addToCalendar}><Icon name="calendar" size={18} />Adicionar ao calendário</button>
-            {salon.whatsapp && <a className="btn wa" href={waLink(salon.whatsapp, msg)} target="_blank" rel="noreferrer"><WhatsAppIcon />Avisar o salão por WhatsApp</a>}
+            {salon.whatsapp && <a className="btn wa" onClick={() => track('whatsapp', { page: 'salao', salon: salon.id })} href={waLink(salon.whatsapp, msg)} target="_blank" rel="noreferrer"><WhatsAppIcon />Avisar o salão por WhatsApp</a>}
           </div>
           <div className="card">
             <h3>Precisa de cancelar ou mudar?</h3>
@@ -402,7 +405,10 @@ export default function BookingPage() {
   const canNext = (step === 1 && service && (!atHome || zone)) || (step === 2 && proId) || (step === 3 && slot)
   const toSteps = () => requestAnimationFrame(() => document.getElementById('steps')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   const go = (s: number) => { setStep(s); toSteps() }
-  const next = () => go(step === 1 && skipPro ? 3 : step + 1)
+  const next = () => {
+    if (step === 1) track('marcacao_inicio', { page: 'salao', salon: salon?.id, key: `inicio-${salon?.id}` })
+    go(step === 1 && skipPro ? 3 : step + 1)
+  }
   const back = (from: number) => go(from === 3 && skipPro ? 1 : from - 1)
 
   return (
