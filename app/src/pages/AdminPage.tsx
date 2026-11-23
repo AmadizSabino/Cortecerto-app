@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { euros, supabase } from '../lib/supabase'
 import { billingState, lockState, type BillingFields } from '../lib/billing'
-import { addDaysIso, BUCKET, DUE_DAYS, invoicePath, listInvoices, METHOD_LABEL, openInvoice, parseAmount, STATUS_LABEL, type Invoice } from '../lib/invoices'
+import { addDaysIso, BUCKET, DUE_DAYS, invoicePath, listInvoices, openInvoice, parseAmount, type Invoice } from '../lib/invoices'
 import { PLAN } from '../lib/plan'
 import { health, since, HEALTH_LABEL, HEALTH_TAG, type AdminSalonRow, type Dashboard } from '../lib/adminStats'
 import { AdminOverview, AdminSystem, SalonFacts } from './admin/AdminDashboard'
@@ -11,6 +11,8 @@ import { AdminMoney, MarkPaid } from './admin/AdminMoney'
 import { AuditLog, BillingDetails, SalonNotes } from './admin/SalonExtras'
 import { AdminSite } from './admin/AdminSite'
 import { AdminOps } from './admin/AdminOps'
+import { DocTags } from './admin/Documents'
+import { docDetail, documentRows } from '../lib/money'
 
 interface AdminSalon extends BillingFields { id: string; name: string; slug: string; type: string; created_at: string }
 
@@ -230,22 +232,20 @@ function SalonAdmin({ salon, onChanged }: { salon: AdminSalon; onChanged: () => 
       <button className="btn" onClick={savePlan}>Guardar assinatura</button>
       {planMsg && <p className={planMsg.ok ? 'ok' : 'error'}>{planMsg.text}</p>}
 
-      <h3 style={{ marginTop: 20 }}>Faturas</h3>
+      <h3 style={{ marginTop: 20 }}>Pedidos de pagamento e faturas</h3>
       {invoices === undefined && <p className="muted">A carregar…</p>}
-      {invoices?.length === 0 && <p className="muted">Ainda sem faturas.</p>}
+      {invoices?.length === 0 && <p className="muted">Ainda nada enviado a este salão.</p>}
       {invoices && invoices.length > 0 && (
         <ul className="history">
-          {invoices.map(inv => {
-            const st = inv.status ?? 'por_pagar'
+          {documentRows(invoices).map(r => {
+            const inv = r.inv, st = inv.status ?? 'por_pagar'
             return (
             <li key={inv.id} className="invoice-row">
               <span>{inv.issued_on}</span>
-              <span>{inv.number}{inv.period && ` · ${inv.period}`} · {euros(inv.amount_cents)}
-                <small className="muted">{st === 'paga'
-                  ? ` · paga a ${inv.paid_on}${inv.payment_method ? ` por ${METHOD_LABEL[inv.payment_method]}` : ''}`
-                  : inv.due_on ? ` · vence ${inv.due_on}` : ''}</small></span>
+              <span><b>{inv.number}</b>{inv.period && ` · ${inv.period}`} · {euros(inv.amount_cents)}
+                <small className="muted"><br />{docDetail(r)}</small></span>
               <span className="row" style={{ gap: 10 }}>
-                <span className={`tag ${st === 'paga' ? 'concluida' : st === 'anulada' ? 'cancelada' : 'pendente'}`}>{STATUS_LABEL[st]}</span>
+                <DocTags r={r} />
                 <button className="link" onClick={() => openInvoice(inv)}>Abrir</button>
                 {st === 'paga' && <button className="link" onClick={() => setStatus(inv, 'por_pagar')}>Desfazer</button>}
                 {st === 'por_pagar' && <button className="link" onClick={() => setStatus(inv, 'anulada')}>Anular</button>}
