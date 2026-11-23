@@ -148,12 +148,13 @@ function SalonAdmin({ salon, onChanged }: { salon: AdminSalon; onChanged: () => 
   const [plan, setPlan] = useState({ status: salon.subscription ?? 'experimental', paid: dateOnly(salon.paid_until), trial: dateOnly(salon.trial_ends_at) })
   const [planMsg, setPlanMsg] = useState<{ ok: boolean; text: string }>()
   const [invoices, setInvoices] = useState<Invoice[] | null>()
-  const [form, setForm] = useState({ number: '', issued: new Date().toISOString().slice(0, 10), due: addDaysIso(new Date().toISOString().slice(0, 10), DUE_DAYS), period: thisMonth(), amount: withVat })
+  const [form, setForm] = useState({ number: '', issued: new Date().toISOString().slice(0, 10), due: addDaysIso(new Date().toISOString().slice(0, 10), DUE_DAYS), period: thisMonth(), amount: withVat, request: '' })
   const [file, setFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
   const [invMsg, setInvMsg] = useState<{ ok: boolean; text: string }>()
 
   const reload = () => listInvoices(salon.id).then(setInvoices)
+  const paidRequests = (invoices ?? []).filter(i => i.kind === 'pedido' && i.status === 'paga' && !invoices?.some(x => x.request_id === i.id))
   useEffect(() => { reload() }, [salon.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function savePlan() {
@@ -177,14 +178,17 @@ function SalonAdmin({ salon, onChanged }: { salon: AdminSalon; onChanged: () => 
     const path = invoicePath(salon.id)
     const up = await supabase.storage.from(BUCKET).upload(path, file, { contentType: 'application/pdf' })
     if (up.error) { setBusy(false); return setInvMsg({ ok: false, text: 'Não foi possível enviar o ficheiro.' }) }
+    // The legal invoice for a payment request that was already paid: recorded as paid, linked to the request.
+    const req = invoices?.find(i => i.id === form.request)
     const ins = await supabase.from('invoices').insert({
       salon_id: salon.id, number: form.number.trim(), issued_on: form.issued, due_on: form.due || null, period: form.period.trim() || null, amount_cents: amount, file_path: path,
+      ...(req ? { request_id: req.id, status: 'paga', paid_on: req.paid_on ?? form.issued, payment_method: req.payment_method ?? null } : {}),
     })
     if (ins.error) await supabase.storage.from(BUCKET).remove([path]) // don't leave a file without its invoice
     setBusy(false)
     if (ins.error) return setInvMsg({ ok: false, text: 'Não foi possível guardar a fatura.' })
     setInvMsg({ ok: true, text: 'Fatura enviada. O salão já a vê em Assinatura.' })
-    setForm(f => ({ ...f, number: '' })); setFile(null)
+    setForm(f => ({ ...f, number: '', request: '' })); setFile(null)
     reload()
   }
 
@@ -259,6 +263,17 @@ function SalonAdmin({ salon, onChanged }: { salon: AdminSalon; onChanged: () => 
           <label className="grow">Referente a<input value={form.period} onChange={e => setForm({ ...form, period: e.target.value })} /></label>
           <label className="grow">Valor com IVA (€)<input inputMode="decimal" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} /></label>
         </div>
+        {paidRequests.length > 0 && (
+          <label>Fatura-recibo de um pedido já pago
+            <select value={form.request} onChange={e => {
+              const r = paidRequests.find(x => x.id === e.target.value)
+              setForm({ ...form, request: e.target.value, ...(r ? { period: r.period ?? form.period, amount: (r.amount_cents / 100).toFixed(2).replace('.', ',') } : {}) })
+            }}>
+              <option value="">Não, é uma fatura nova (fica por pagar)</option>
+              {paidRequests.map(r => <option key={r.id} value={r.id}>{r.number}{r.period ? ` · ${r.period}` : ''} · {euros(r.amount_cents)}</option>)}
+            </select>
+          </label>
+        )}
         <label>PDF<input type="file" accept="application/pdf" onChange={e => setFile(e.target.files?.[0] ?? null)} /></label>
         <button className="btn" disabled={busy}>{busy ? 'A enviar…' : 'Enviar fatura'}</button>
         {invMsg && <p className={invMsg.ok ? 'ok' : 'error'}>{invMsg.text}</p>}

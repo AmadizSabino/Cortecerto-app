@@ -21,7 +21,9 @@ export interface LegalDoc {
 }
 
 // Registered office address still to add (DL 7/2004, art. 10): Francisco is choosing a domiciliação address.
-const COMPANY = 'Amadiz Sabino Consulting, Lda., NIPC 510900801, com sede em Setúbal, email amadiz.sabino@gmail.com'
+/** CorteCerto's company, as it appears on payment requests and in the legal texts. */
+export const COMPANY_DETAILS = { name: 'Amadiz Sabino Consulting, Lda.', nipc: '510900801', city: 'Setúbal', email: 'amadiz.sabino@gmail.com' }
+const COMPANY = `${COMPANY_DETAILS.name}, NIPC ${COMPANY_DETAILS.nipc}, com sede em ${COMPANY_DETAILS.city}, email ${COMPANY_DETAILS.email}`
 
 export const TERMS: LegalDoc = {
   id: 'termos',

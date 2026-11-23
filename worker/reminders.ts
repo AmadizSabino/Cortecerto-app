@@ -21,6 +21,7 @@ export interface ReminderClaim {
   trial_ends_at: string; lock_on: string | null
   invoice_number: string | null; amount_cents: number | null; issued_on: string | null; due_on: string | null
   payments: { mbway?: string; iban?: string; titular?: string; nota?: string }
+  doc_kind?: 'fatura' | 'pedido' | null
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -37,10 +38,11 @@ const euros = (c: number) => new Intl.NumberFormat('pt-PT', { style: 'currency',
 export function reminderEmail(r: ReminderClaim, appUrl: string): { subject: string; html: string; text: string } {
   const late = r.kind.startsWith('atraso')
   const subject = late
-    ? `Fatura ${r.invoice_number} por pagar: ${r.salon_name}`
+    ? `${r.doc_kind === 'pedido' ? 'Pedido de pagamento' : 'Fatura'} ${r.invoice_number} por pagar: ${r.salon_name}`
     : r.kind === 'gratis_0' ? `O período grátis do ${r.salon_name} terminou` : `O período grátis do ${r.salon_name} acaba a ${day(r.trial_ends_at)}`
+  const doc = r.doc_kind === 'pedido' ? 'O pedido de pagamento' : 'A fatura'
   const lines = late
-    ? [`A fatura ${r.invoice_number} de ${euros(r.amount_cents ?? 0)}, emitida a ${day(r.issued_on!)}, venceu a ${day(r.due_on!)} e ainda não recebemos o pagamento.`,
+    ? [`${doc} ${r.invoice_number} de ${euros(r.amount_cents ?? 0)}, ${r.doc_kind === 'pedido' ? 'emitido' : 'emitida'} a ${day(r.issued_on!)}, venceu a ${day(r.due_on!)} e ainda não recebemos o pagamento.`,
        'Se já pagou, ignore este email, ou responda com o comprovativo para atualizarmos.']
     : r.kind === 'gratis_0'
       ? [`O período grátis terminou a ${day(r.trial_ends_at)}. Para continuar a usar a CorteCerto, a assinatura custa ${PRICE} por mês.`]
@@ -59,7 +61,7 @@ export function reminderEmail(r: ReminderClaim, appUrl: string): { subject: stri
     text: `${r.salon_name}\n\n${lines.join('\n\n')}\n\nComo pagar:\n${how.join('\n')}\n\nVer a assinatura: ${panel}\n\nObrigado,\nCorteCerto`,
     html: `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:480px;margin:0 auto;color:#1d1b18">
   <p style="color:#6b655c;margin:0 0 4px">${esc(r.salon_name)}</p>
-  <h1 style="font-size:20px;margin:0 0 16px">${esc(late ? 'Fatura por pagar' : r.kind === 'gratis_0' ? 'O período grátis terminou' : 'O período grátis está a acabar')}</h1>
+  <h1 style="font-size:20px;margin:0 0 16px">${esc(late ? (r.doc_kind === 'pedido' ? 'Pagamento em atraso' : 'Fatura por pagar') : r.kind === 'gratis_0' ? 'O período grátis terminou' : 'O período grátis está a acabar')}</h1>
   ${lines.map(l => `<p style="margin:0 0 10px">${esc(l)}</p>`).join('\n  ')}
   <p style="margin:16px 0 4px"><b>Como pagar</b></p>
   ${how.map(l => `<p style="margin:0 0 4px">${esc(l)}</p>`).join('\n  ')}

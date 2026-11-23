@@ -4,6 +4,7 @@
  * POST /api/notify-booking { id } — emails the salon owner about a new booking.
  * POST /api/notify-change { id } — emails the owner when a client cancels or moves it.
  * POST /api/admin/remind — a payment reminder email the admin sends from /admin (see reminders.ts).
+ * POST /api/admin/send-request — emails a monthly payment request PDF to a salon (see requests.ts).
  * Every morning (cron trigger): automatic payment reminders, only when switched on in /admin.
  * POST /api/errors — error reports from the app (see errors.ts).
  * POST /api/ai/<feature> — the AI features (see ai.ts): ANTHROPIC_API_KEY, AI_MODEL, GEMINI_API_KEY (or IMAGE_API_URL, IMAGE_API_KEY).
@@ -20,6 +21,7 @@ import { bookingEmail, changeEmail, type ChangeClaimed } from './email'
 import { reportError } from './errors'
 import { handleAi } from './ai'
 import { remindNow, remindScheduled } from './reminders'
+import { sendRequest } from './requests'
 
 interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> }
@@ -53,6 +55,7 @@ export default {
     if (url.pathname === '/api/notify-change') return notifyOwner<ChangeClaimed>(request, env, url.origin, 'claim_client_change_notification', changeEmail)
     if (url.pathname === '/api/errors') return reportError(request, env)
     if (url.pathname === '/api/admin/remind') return remindNow(request, env, url.origin)
+    if (url.pathname === '/api/admin/send-request') return sendRequest(request, env, url.origin)
     if (url.pathname === '/api/manifest') return clientManifest(url)
     if (url.pathname.startsWith('/api/ai/')) return handleAi(request, env, url.pathname.slice('/api/ai/'.length))
     if (url.pathname.startsWith('/api/')) return new Response('Not found', { status: 404 })

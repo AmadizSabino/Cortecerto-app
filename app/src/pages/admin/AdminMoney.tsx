@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { euros, supabase } from '../../lib/supabase'
 import type { BillingFields } from '../../lib/billing'
 import { METHOD_LABEL, type Invoice, type PaymentMethod } from '../../lib/invoices'
+import { PaymentRequests } from './PaymentRequests'
+import { emailRequest } from '../../lib/paymentRequest'
 import { cleanIban, daysLate, moneySummary, nextPaidUntil, REMINDER_LABEL } from '../../lib/money'
 
 interface SalonLite extends BillingFields { id: string; name: string }
@@ -25,6 +27,17 @@ async function sendReminder(d: Due): Promise<string> {
 }
 
 const SENT: Record<string, string> = { enviado: 'Enviado', nao_devido: 'Já não é preciso', falhou: 'Falhou. Tente de novo.', sem_email: 'Envio de emails por ligar', erro: 'Erro' }
+
+/** When a request went out, and a button to send it again. */
+function ResendRequest({ id, sentAt, sentTo }: { id: string; sentAt: string | null; sentTo: string | null }) {
+  const [st, setSt] = useState('')
+  return (
+    <p className="small muted">
+      {sentAt ? `Enviado a ${new Date(sentAt).toLocaleDateString('pt-PT')} para ${sentTo}` : 'Ainda não enviado por email'}
+      {' · '}<button className="link" disabled={st === '…'} onClick={async () => { setSt('…'); setSt(SENT[await emailRequest(id)] ?? 'Falhou') }}>{st && st !== '…' ? st : 'Reenviar'}</button>
+    </p>
+  )
+}
 
 /** "Marcar como paga": date, method, reference, and whether "Pago até" moves on. */
 export function MarkPaid({ inv, salon, onDone }: { inv: Invoice; salon?: BillingFields; onDone: () => void }) {
@@ -129,6 +142,8 @@ export function AdminMoney({ salons, onOpen, onChanged }: { salons: SalonLite[];
         <div className="stat"><b>{euros(m.overdueCents)}</b><span>Em atraso · {m.overdueCount} {m.overdueCount === 1 ? 'fatura' : 'faturas'}</span></div>
       </div>
 
+      <PaymentRequests payments={pay} onSent={refresh} />
+
       <section className="card">
         <h2>Lembretes de pagamento</h2>
         <label className="check"><input type="checkbox" checked={auto} onChange={e => toggleAuto(e.target.checked)} />
@@ -167,6 +182,7 @@ export function AdminMoney({ salons, onOpen, onChanged }: { salons: SalonLite[];
                   <span><button className="link" onClick={() => onOpen(i.salon_id)}>{byId.get(i.salon_id)?.name ?? 'Salão'}</button> · {i.number} · <b>{euros(i.amount_cents)}</b></span>
                   <span className={`tag ${late ? 'faltou' : 'pendente'}`}>{late ? `${late} d em atraso` : `vence ${ptDate(i.due_on)}`}</span>
                 </div>
+                {i.kind === 'pedido' && <ResendRequest id={i.id} sentAt={i.sent_at ?? null} sentTo={i.sent_to ?? null} />}
                 <MarkPaid inv={i} salon={byId.get(i.salon_id)} onDone={refresh} />
               </li>
             )

@@ -88,6 +88,7 @@ export default function MorePage() {
       <InstallCard always />
       {admin && <div className="card menu"><Link to="/admin"><Icon name="star" size={22} /><span>Administração CorteCerto<small>Assinaturas e faturas de todos os salões</small></span><span className="chev"><Icon name="chevronRight" size={18} /></span></Link></div>}
       <div className="card menu">
+        <Link to="/palavra-passe"><Icon name="shield" size={22} /><span>Palavra-passe<small>Escolher ou mudar a palavra-passe da conta</small></span><span className="chev"><Icon name="chevronRight" size={18} /></span></Link>
         <button onClick={() => supabase.auth.signOut().then(() => location.assign('/painel'))}><Icon name="logout" size={22} /><span>Sair da conta</span></button>
       </div>
     </main></div>

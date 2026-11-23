@@ -25,7 +25,8 @@ export interface MoneySummary {
 /** This month (of `today`) and the last 6 months. Cancelled invoices count nowhere. */
 export function moneySummary(invoices: Invoice[], salons: BillingFields[], today: string, monthsBack = 6): MoneySummary {
   const month = today.slice(0, 7)
-  const live = invoices.filter(i => (i.status ?? 'por_pagar') !== 'anulada')
+  // The legal invoice for a payment request that was already paid (request_id) is not counted again.
+  const live = invoices.filter(i => (i.status ?? 'por_pagar') !== 'anulada' && !i.request_id)
   const unpaid = live.filter(i => (i.status ?? 'por_pagar') === 'por_pagar')
   const late = unpaid.filter(i => daysLate(i, today) > 0)
   const sum = (xs: Invoice[]) => xs.reduce((t, i) => t + i.amount_cents, 0)

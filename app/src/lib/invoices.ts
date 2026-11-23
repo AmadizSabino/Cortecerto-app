@@ -7,6 +7,8 @@ export interface Invoice {
   // migration 0025
   status?: 'por_pagar' | 'paga' | 'anulada'; due_on?: string | null; paid_on?: string | null
   payment_method?: PaymentMethod | null; payment_ref?: string | null; note?: string | null
+  // migration 0026: monthly payment requests live here too
+  kind?: 'fatura' | 'pedido'; request_id?: string | null; period_month?: string | null; sent_at?: string | null; sent_to?: string | null
 }
 
 export type PaymentMethod = 'mbway' | 'transferencia' | 'multibanco' | 'numerario' | 'outro'

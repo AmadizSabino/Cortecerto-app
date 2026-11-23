@@ -426,4 +426,21 @@ reset role;
 set role service_role;
 select pg_temp.check(count(*) = 0, 'no automatic reminders while switched off') from reminders_due_auto();
 reset role;
+-- 0026: payment requests -----------------------------------------------------------
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+select pg_temp.check(count(*) = 1, 'a paying salon is due a request next month')
+  from admin_payment_requests_due((date_trunc('month', current_date) + interval '1 month')::date);
+select number as pp from admin_new_payment_request(:'salon', (date_trunc('month', current_date) + interval '1 month')::date, 'próximo mês', 2448,
+  current_date, current_date + 8, :'salon' || '/pp-1.pdf') \gset
+select pg_temp.check(:'pp' = 'PP ' || to_char(current_date, 'YYYY') || '/001', 'requests are numbered PP year/001');
+select pg_temp.check(count(*) = 0, 'a salon with a request for the month is not due again')
+  from admin_payment_requests_due((date_trunc('month', current_date) + interval '1 month')::date);
+do $$ begin perform admin_new_payment_request((select id from salons limit 1), (date_trunc('month', current_date) + interval '1 month')::date, 'x', 2448, current_date, current_date + 8, (select id from salons limit 1)::text || '/pp-2.pdf'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%invoices_one_request_per_month%' then raise; end if; end $$;
+select pg_temp.check(count(*) = 1 and min(number) = :'pp', 'the admin claims the request email')
+  from admin_claim_request_email((select id from invoices where number = :'pp'));
+select pg_temp.check(sent_at is not null and sent_to = 'faturas@x.pt', 'the request is sent to the billing email') from invoices where number = :'pp';
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+select pg_temp.check(count(*) = 1, 'the owner sees the request') from invoices where kind = 'pedido';
+do $$ begin perform admin_new_payment_request((select id from salons limit 1), current_date, 'x', 2448, current_date, current_date + 8, (select id from salons limit 1)::text || '/pp-3.pdf'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+reset role;
 \echo All database checks passed
