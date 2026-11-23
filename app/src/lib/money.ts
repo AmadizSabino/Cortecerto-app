@@ -1,5 +1,5 @@
 import { billingState, type BillingFields } from './billing'
-import type { Invoice } from './invoices'
+import { METHOD_LABEL, type Invoice } from './invoices'
 import { PLAN } from './plan'
 
 /** The admin's money numbers (migration 0025), from invoices and salons. Dates are YYYY-MM-DD. */
@@ -76,3 +76,45 @@ export function cleanIban(text: string): string | null {
   if (!t) return ''
   return /^PT\d{23}$/.test(t) ? t : null
 }
+
+export type DocFilter = 'todos' | 'pedidos' | 'faturas' | 'sem_fatura'
+
+/** One line of the document history: a payment request or an invoice, with its link to the other. */
+export interface DocRow {
+  inv: Invoice
+  kind: 'pedido' | 'fatura'
+  /** For a request: the legal invoice issued for it. For an invoice: the request it answers. */
+  linked: Invoice | null
+  /** A paid request whose legal invoice hasn't been uploaded yet. */
+  needsInvoice: boolean
+}
+
+/** Every request and invoice sent to salons, newest first, filtered. */
+export function documentRows(invoices: Invoice[], filter: DocFilter = 'todos', salonId?: string): DocRow[] {
+  const byId = new Map(invoices.map(i => [i.id, i]))
+  const invoiceFor = new Map(invoices.filter(i => i.request_id).map(i => [i.request_id!, i]))
+  return invoices
+    .filter(i => !salonId || i.salon_id === salonId)
+    .map(i => {
+      const kind = i.kind === 'pedido' ? 'pedido' as const : 'fatura' as const
+      const linked = kind === 'pedido' ? invoiceFor.get(i.id) ?? null : (i.request_id ? byId.get(i.request_id) ?? null : null)
+      return { inv: i, kind, linked, needsInvoice: kind === 'pedido' && i.status === 'paga' && !linked }
+    })
+    .filter(r => filter === 'todos' || (filter === 'pedidos' ? r.kind === 'pedido' : filter === 'faturas' ? r.kind === 'fatura' : r.needsInvoice))
+    .sort((a, b) => (b.inv.issued_on ?? '').localeCompare(a.inv.issued_on ?? '') || b.inv.number.localeCompare(a.inv.number))
+}
+
+const ptDate = (iso?: string | null) => iso ? new Date(iso.length === 10 ? iso + 'T12:00:00Z' : iso).toLocaleDateString('pt-PT') : '—'
+
+/** What the salon was sent, and what happened to it. One line under the number. */
+export function docDetail(r: DocRow): string {
+  const i = r.inv
+  const parts: string[] = []
+  if (r.kind === 'pedido') parts.push(i.sent_at ? `enviado a ${ptDate(i.sent_at)}${i.sent_to ? ` para ${i.sent_to}` : ''}` : 'ainda não enviado por email')
+  else parts.push('carregada no painel do salão')
+  if (i.status === 'paga') parts.push(`paga a ${ptDate(i.paid_on)}${i.payment_method ? ` por ${METHOD_LABEL[i.payment_method]}` : ''}`)
+  else if (i.status !== 'anulada' && i.due_on) parts.push(`vence ${ptDate(i.due_on)}`)
+  if (r.linked) parts.push(r.kind === 'pedido' ? `fatura ${r.linked.number}` : `do pedido ${r.linked.number}`)
+  return parts.join(' · ')
+}
+

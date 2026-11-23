@@ -478,3 +478,11 @@ button:disabled { opacity: .5; cursor: default; }
 .price-table td { vertical-align: middle; word-break: break-word; }
 .price-table input { width: 4.5em; min-width: 0; padding: 6px 8px; text-align: right; }
 .funnel + .money-table { margin-top: 14px; }
+
+/* Admin > Dinheiro: document history */
+.history.docs li { display: grid; grid-template-columns: 6.5em minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.history.docs li > span:nth-child(2) { text-align: left; }
+@media (max-width: 640px) {
+  .history.docs li { grid-template-columns: 1fr; gap: 4px; padding: 10px 0; }
+  .history.docs li > span:last-child { justify-content: flex-start !important; flex-wrap: wrap; }
+}

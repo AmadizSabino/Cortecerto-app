@@ -32,7 +32,7 @@ export async function listInvoices(salonId: string): Promise<Invoice[] | null> {
 
 /** Opens the PDF through a link valid for a minute (the bucket is private). */
 export async function openInvoice(inv: Invoice): Promise<boolean> {
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(inv.file_path, 60, { download: `Fatura ${inv.number.replace(/[\\/]/g, '-')}.pdf` })
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(inv.file_path, 60, { download: `${inv.kind === 'pedido' ? 'Pedido de pagamento' : 'Fatura'} ${inv.number.replace(/[\\/]/g, '-')}.pdf` })
   if (error || !data) return false
   location.assign(data.signedUrl)
   return true

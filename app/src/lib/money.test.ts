@@ -1,5 +1,5 @@
-import { expect, it } from 'vitest'
-import { cleanIban, daysLate, moneySummary, nextPaidUntil } from './money'
+import { describe, expect, it } from 'vitest'
+import { cleanIban, daysLate, documentRows, moneySummary, nextPaidUntil } from './money'
 import type { Invoice } from './invoices'
 
 let n = 0
@@ -42,4 +42,28 @@ it('checks a Portuguese IBAN', () => {
   expect(cleanIban('pt50 0002 0123 1234 5678 9015 4')).toBe('PT50000201231234567890154')
   expect(cleanIban('PT50 123')).toBeNull()
   expect(cleanIban('  ')).toBe('')
+})
+
+describe('documentRows', () => {
+  const base = { salon_id: 's1', period: null, file_path: 'x', amount_cents: 2448 }
+  const docs = [
+    { ...base, id: 'p1', number: 'PP 2026/001', issued_on: '2026-10-01', kind: 'pedido', status: 'paga' },
+    { ...base, id: 'f1', number: 'FT 2026/5', issued_on: '2026-10-05', kind: 'fatura', status: 'paga', request_id: 'p1' },
+    { ...base, id: 'p2', number: 'PP 2026/002', issued_on: '2026-11-01', kind: 'pedido', status: 'paga' },
+    { ...base, id: 'p3', number: 'PP 2026/003', issued_on: '2026-11-02', kind: 'pedido', status: 'por_pagar', salon_id: 's2' },
+    { ...base, id: 'f2', number: 'FT 2026/1', issued_on: '2026-09-01', status: 'paga' },
+  ] as Invoice[]
+  it('lists everything newest first and links requests to their invoices', () => {
+    const rows = documentRows(docs)
+    expect(rows.map(r => r.inv.id)).toEqual(['p3', 'p2', 'f1', 'p1', 'f2'])
+    expect(rows.find(r => r.inv.id === 'p1')?.linked?.number).toBe('FT 2026/5')
+    expect(rows.find(r => r.inv.id === 'f1')?.linked?.number).toBe('PP 2026/001')
+    expect(rows.find(r => r.inv.id === 'f2')?.kind).toBe('fatura')
+  })
+  it('filters by type, by salon, and finds paid requests still missing their invoice', () => {
+    expect(documentRows(docs, 'pedidos').map(r => r.inv.id)).toEqual(['p3', 'p2', 'p1'])
+    expect(documentRows(docs, 'faturas').map(r => r.inv.id)).toEqual(['f1', 'f2'])
+    expect(documentRows(docs, 'sem_fatura').map(r => r.inv.id)).toEqual(['p2'])
+    expect(documentRows(docs, 'todos', 's2').map(r => r.inv.id)).toEqual(['p3'])
+  })
 })

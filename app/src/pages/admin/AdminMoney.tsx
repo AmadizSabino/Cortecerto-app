@@ -3,6 +3,7 @@ import { euros, supabase } from '../../lib/supabase'
 import type { BillingFields } from '../../lib/billing'
 import { METHOD_LABEL, type Invoice, type PaymentMethod } from '../../lib/invoices'
 import { PaymentRequests } from './PaymentRequests'
+import { DocumentHistory } from './Documents'
 import { emailRequest } from '../../lib/paymentRequest'
 import { cleanIban, daysLate, moneySummary, nextPaidUntil, REMINDER_LABEL } from '../../lib/money'
 
@@ -192,6 +193,8 @@ export function AdminMoney({ salons, onOpen, onChanged }: { salons: SalonLite[];
           <p className="muted small">Em atraso: {m.ageing.filter(a => a.count).map(a => `${a.label}: ${euros(a.cents)}`).join(' · ')}</p>
         )}
       </section>
+
+      <DocumentHistory invoices={invoices} salons={salons} onOpen={onOpen} />
 
       <section className="card">
         <h2>Últimos 6 meses</h2>
