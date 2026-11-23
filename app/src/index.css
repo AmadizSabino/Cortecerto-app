@@ -419,7 +419,7 @@ button:disabled { opacity: .5; cursor: default; }
 
 /* Admin dashboard (/admin) */
 .admin-tabs { margin: 4px 0 8px; }
-.admin-tabs .chip, .page.wide .row .chips .chip { flex-direction: row; min-width: 0; padding: 8px 14px; }
+.admin-tabs .chip, .page.wide .row .chips .chip { flex-direction: row; min-width: 0; padding: 8px 12px; }
 .stats.kpis { grid-template-columns: repeat(2, 1fr); }
 @media (min-width: 640px) { .stats.kpis { grid-template-columns: repeat(4, 1fr); } }
 .stats.kpis .stat b { font-size: 1.3rem; }
@@ -452,3 +452,18 @@ button:disabled { opacity: .5; cursor: default; }
 .history.top-salons li { grid-template-columns: minmax(0, 1fr) auto auto; }
 .history.top-salons .link { text-align: left; }
 .todo li .muted { flex-basis: 100%; padding-left: 16px; margin-top: -4px; }
+/* Admin money (batch 2) */
+.history li.invoice-row { grid-template-columns: 6.5em 1fr; }
+.history li.invoice-row > .row { grid-column: 1 / -1; justify-content: flex-start; }
+.history li.invoice-row > .mark-paid, .history li.invoice-row > .link { grid-column: 1 / -1; justify-self: start; }
+.mark-paid { margin: 6px 0; display: grid; gap: 8px; }
+.unpaid { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.unpaid li { border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+.unpaid li:last-child { border-bottom: 0; }
+.small-btn { min-height: 32px; padding: 4px 12px; font-size: .85rem; }
+.money-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.money-table th, .money-table td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+.money-table td:not(:first-child), .money-table th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+.notes { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 8px; font-size: .9rem; }
+.notes li { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; }
+.notes li small { grid-column: 1 / -1; }

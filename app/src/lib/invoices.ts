@@ -4,6 +4,21 @@ import { supabase } from './supabase'
 export interface Invoice {
   id: string; salon_id: string; number: string; issued_on: string
   period: string | null; amount_cents: number; file_path: string
+  // migration 0025
+  status?: 'por_pagar' | 'paga' | 'anulada'; due_on?: string | null; paid_on?: string | null
+  payment_method?: PaymentMethod | null; payment_ref?: string | null; note?: string | null
+}
+
+export type PaymentMethod = 'mbway' | 'transferencia' | 'multibanco' | 'numerario' | 'outro'
+export const METHOD_LABEL: Record<PaymentMethod, string> = {
+  mbway: 'MB Way', transferencia: 'Transferência', multibanco: 'Multibanco', numerario: 'Numerário', outro: 'Outro',
+}
+export const STATUS_LABEL = { por_pagar: 'Por pagar', paga: 'Paga', anulada: 'Anulada' } as const
+
+/** Days an invoice has to be paid, unless the admin sets another due date. */
+export const DUE_DAYS = 8
+export function addDaysIso(iso: string, days: number): string {
+  const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10)
 }
 
 export const BUCKET = 'invoices'

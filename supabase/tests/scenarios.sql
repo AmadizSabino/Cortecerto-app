@@ -397,4 +397,33 @@ select pg_temp.check(source = 'salao', 'a booking made in the panel is the salon
 set role anon;
 do $$ begin perform admin_dashboard(); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%permission denied%' and sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
 reset role;
+-- 0025: money and control ---------------------------------------------------------
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+insert into invoices (salon_id, number, amount_cents, file_path, issued_on, due_on)
+  values (:'salon', 'FT 2026/9', 2448, :'salon' || '/ft-9.pdf', current_date - 14, current_date - 6) returning id as inv \gset
+select pg_temp.check(count(*) = 1, 'an invoice 6 days late is due a reminder') from admin_reminders_due() where invoice_id = :'inv' and kind = 'atraso_5';
+select pg_temp.check(count(*) = 1 and min(owner_email) = 'dono@x.pt', 'the admin claims the reminder') from claim_reminder(:'salon', 'atraso_5', :'inv');
+select pg_temp.check(count(*) = 0, 'the same reminder is not sent twice') from claim_reminder(:'salon', 'atraso_5', :'inv');
+select reminder_result((select id from reminder_log where invoice_id = :'inv'), true);
+select paid_until as before_paid from salons where id = :'salon' \gset
+select admin_mark_invoice_paid(:'inv', current_date, 'mbway', 'ref 1') \g /dev/null
+select pg_temp.check(status = 'paga' and paid_on = current_date and payment_method = 'mbway', 'invoice marked paid') from invoices where id = :'inv';
+select pg_temp.check(count(*) >= 2, 'payment and plan change are in the audit log') from admin_audit_recent(10) where action in ('fatura_paga', 'assinatura');
+select pg_temp.check(count(*) = 0, 'a paid invoice is not due a reminder') from admin_reminders_due() where invoice_id = :'inv';
+insert into admin_notes (salon_id, body) values (:'salon', 'Ligar na sexta');
+update platform_settings set value = '{"mbway": "912345678", "iban": "PT50000000000000000000000", "titular": "X", "nota": ""}' where key = 'pagamentos';
+reset role;
+select pg_temp.check(paid_until = :'before_paid'::timestamptz + interval '1 month' and subscription = 'ativa', 'paying moves Pago até one month on') from salons where id = :'salon';
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+do $$ begin perform admin_mark_invoice_paid((select id from invoices limit 1), current_date, 'mbway'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+do $$ begin perform * from admin_reminders_due(); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+do $$ begin perform * from claim_reminder((select id from salons limit 1), 'atraso_5', null); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+select pg_temp.check(count(*) = 0, 'owners cannot read the audit log, notes or settings')
+  from (select id::text from admin_audit union all select id::text from admin_notes union all select key from platform_settings) x;
+insert into salon_billing (salon_id, legal_name, nif, email) values (:'salon', 'Barb Lda', '123456789', 'faturas@x.pt');
+do $$ begin update salon_billing set nif = '12'; raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%violates check%' then raise; end if; end $$;
+reset role;
+set role service_role;
+select pg_temp.check(count(*) = 0, 'no automatic reminders while switched off') from reminders_due_auto();
+reset role;
 \echo All database checks passed

@@ -64,7 +64,7 @@ export default function BillingPage() {
         <div className="card menu">
           {invoices.map(inv => (
             <button key={inv.id} onClick={async () => { setOpenError(''); if (!await openInvoice(inv)) setOpenError('Não foi possível abrir a fatura. Tente de novo.') }}>
-              <span>{inv.number}{inv.period && ` · ${inv.period}`}<small>{new Date(inv.issued_on + 'T12:00:00Z').toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' })} · {euros(inv.amount_cents)}</small></span>
+              <span>{inv.number}{inv.period && ` · ${inv.period}`}<small>{new Date(inv.issued_on + 'T12:00:00Z').toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' })} · {euros(inv.amount_cents)}{inv.status === 'paga' ? ' · paga' : inv.status === 'por_pagar' && inv.due_on ? ` · por pagar, vence ${new Date(inv.due_on + 'T12:00:00Z').toLocaleDateString('pt-PT', { day: 'numeric', month: 'long' })}` : inv.status === 'anulada' ? ' · anulada' : ''}</small></span>
               <span className="chev">Descarregar</span>
             </button>
           ))}
