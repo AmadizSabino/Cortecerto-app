@@ -3,10 +3,12 @@ import { Navigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { euros, supabase } from '../lib/supabase'
 import { billingState, lockState, type BillingFields } from '../lib/billing'
-import { BUCKET, invoicePath, listInvoices, openInvoice, parseAmount, type Invoice } from '../lib/invoices'
+import { addDaysIso, BUCKET, DUE_DAYS, invoicePath, listInvoices, METHOD_LABEL, openInvoice, parseAmount, STATUS_LABEL, type Invoice } from '../lib/invoices'
 import { PLAN } from '../lib/plan'
 import { health, since, HEALTH_LABEL, HEALTH_TAG, type AdminSalonRow, type Dashboard } from '../lib/adminStats'
 import { AdminOverview, AdminSystem, SalonFacts } from './admin/AdminDashboard'
+import { AdminMoney, MarkPaid } from './admin/AdminMoney'
+import { AuditLog, BillingDetails, SalonNotes } from './admin/SalonExtras'
 
 interface AdminSalon extends BillingFields { id: string; name: string; slug: string; type: string; created_at: string }
 
@@ -19,7 +21,7 @@ const KIND_LABEL: Record<string, string> = {
 const dateOnly = (iso?: string | null) => iso ? iso.slice(0, 10) : ''
 const endOfDay = (d: string) => d ? new Date(d + 'T23:59:59').toISOString() : null
 const withVat = (Math.round(PLAN.priceCents * (1 + PLAN.vatRate)) / 100).toFixed(2).replace('.', ',')
-type Tab = 'resumo' | 'saloes' | 'sistema'
+type Tab = 'resumo' | 'dinheiro' | 'saloes' | 'sistema'
 type Filter = 'todos' | 'gratis' | 'ativos' | 'por_pagar' | 'risco'
 const FILTERS: [Filter, string][] = [['todos', 'Todos'], ['gratis', 'Grátis'], ['ativos', 'Ativos'], ['por_pagar', 'Por pagar'], ['risco', 'Em risco']]
 const thisMonth = () => new Date().toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })
@@ -82,7 +84,7 @@ export default function AdminPage() {
     <main className="page wide">
       <header className="row"><h1>Administração</h1><button className="link" onClick={() => supabase.auth.signOut().then(() => location.assign('/painel'))}>Sair</button></header>
       <div className="chips admin-tabs" role="tablist">
-        {([['resumo', 'Resumo'], ['saloes', `Salões (${salons.length})`], ['sistema', 'Sistema']] as [Tab, string][]).map(([k, label]) => (
+        {([['resumo', 'Resumo'], ['dinheiro', 'Dinheiro'], ['saloes', `Salões (${salons.length})`], ['sistema', 'Sistema']] as [Tab, string][]).map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} className={`chip${tab === k ? ' on' : ''}`} onClick={() => setTab(k)}>{label}</button>
         ))}
       </div>
@@ -96,7 +98,9 @@ export default function AdminPage() {
           <div className="stat"><b>{salons.filter(s => lockState(s).locked).length}</b><span>Bloqueadas</span></div>
         </div>
       )}
+      {tab === 'dinheiro' && <AdminMoney salons={salons} onOpen={openSalon} onChanged={load} />}
       {tab === 'sistema' && dash && <AdminSystem data={dash} />}
+      {tab === 'sistema' && <AuditLog />}
       {tab === 'saloes' && <>
       <label>Procurar<input type="search" value={q} placeholder="Nome, link ou email do dono" onChange={e => setQ(e.target.value)} /></label>
       <div className="row">
@@ -130,7 +134,7 @@ export default function AdminPage() {
               </span>
             </button>
             {open === s.id && r && <SalonFacts s={r} />}
-            {open === s.id && <SalonAdmin salon={s} onChanged={load} />}
+            {open === s.id && <SalonAdmin key={`${s.id}${s.subscription}${s.paid_until}${s.trial_ends_at}`} salon={s} onChanged={load} />}
           </section>
         )
       })}
@@ -144,7 +148,7 @@ function SalonAdmin({ salon, onChanged }: { salon: AdminSalon; onChanged: () => 
   const [plan, setPlan] = useState({ status: salon.subscription ?? 'experimental', paid: dateOnly(salon.paid_until), trial: dateOnly(salon.trial_ends_at) })
   const [planMsg, setPlanMsg] = useState<{ ok: boolean; text: string }>()
   const [invoices, setInvoices] = useState<Invoice[] | null>()
-  const [form, setForm] = useState({ number: '', issued: new Date().toISOString().slice(0, 10), period: thisMonth(), amount: withVat })
+  const [form, setForm] = useState({ number: '', issued: new Date().toISOString().slice(0, 10), due: addDaysIso(new Date().toISOString().slice(0, 10), DUE_DAYS), period: thisMonth(), amount: withVat })
   const [file, setFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
   const [invMsg, setInvMsg] = useState<{ ok: boolean; text: string }>()
@@ -174,13 +178,22 @@ function SalonAdmin({ salon, onChanged }: { salon: AdminSalon; onChanged: () => 
     const up = await supabase.storage.from(BUCKET).upload(path, file, { contentType: 'application/pdf' })
     if (up.error) { setBusy(false); return setInvMsg({ ok: false, text: 'Não foi possível enviar o ficheiro.' }) }
     const ins = await supabase.from('invoices').insert({
-      salon_id: salon.id, number: form.number.trim(), issued_on: form.issued, period: form.period.trim() || null, amount_cents: amount, file_path: path,
+      salon_id: salon.id, number: form.number.trim(), issued_on: form.issued, due_on: form.due || null, period: form.period.trim() || null, amount_cents: amount, file_path: path,
     })
     if (ins.error) await supabase.storage.from(BUCKET).remove([path]) // don't leave a file without its invoice
     setBusy(false)
     if (ins.error) return setInvMsg({ ok: false, text: 'Não foi possível guardar a fatura.' })
     setInvMsg({ ok: true, text: 'Fatura enviada. O salão já a vê em Assinatura.' })
     setForm(f => ({ ...f, number: '' })); setFile(null)
+    reload()
+  }
+
+  // Undo a payment or cancel an invoice. "Pago até" is not moved back: change it above if needed.
+  async function setStatus(inv: Invoice, status: 'por_pagar' | 'anulada') {
+    const { error } = await supabase.from('invoices').update(status === 'por_pagar'
+      ? { status, paid_on: null, payment_method: null, payment_ref: null } : { status }).eq('id', inv.id)
+    if (error) return setInvMsg({ ok: false, text: 'Não foi possível alterar a fatura.' })
+    setInvMsg({ ok: true, text: status === 'por_pagar' ? 'Pagamento desfeito. Verifique o "Pago até" acima.' : 'Fatura anulada.' })
     reload()
   }
 
@@ -214,23 +227,33 @@ function SalonAdmin({ salon, onChanged }: { salon: AdminSalon; onChanged: () => 
       {invoices?.length === 0 && <p className="muted">Ainda sem faturas.</p>}
       {invoices && invoices.length > 0 && (
         <ul className="history">
-          {invoices.map(inv => (
-            <li key={inv.id}>
+          {invoices.map(inv => {
+            const st = inv.status ?? 'por_pagar'
+            return (
+            <li key={inv.id} className="invoice-row">
               <span>{inv.issued_on}</span>
-              <span>{inv.number}{inv.period && ` · ${inv.period}`} · {euros(inv.amount_cents)}</span>
+              <span>{inv.number}{inv.period && ` · ${inv.period}`} · {euros(inv.amount_cents)}
+                <small className="muted">{st === 'paga'
+                  ? ` · paga a ${inv.paid_on}${inv.payment_method ? ` por ${METHOD_LABEL[inv.payment_method]}` : ''}`
+                  : inv.due_on ? ` · vence ${inv.due_on}` : ''}</small></span>
               <span className="row" style={{ gap: 10 }}>
+                <span className={`tag ${st === 'paga' ? 'concluida' : st === 'anulada' ? 'cancelada' : 'pendente'}`}>{STATUS_LABEL[st]}</span>
                 <button className="link" onClick={() => openInvoice(inv)}>Abrir</button>
+                {st === 'paga' && <button className="link" onClick={() => setStatus(inv, 'por_pagar')}>Desfazer</button>}
+                {st === 'por_pagar' && <button className="link" onClick={() => setStatus(inv, 'anulada')}>Anular</button>}
                 <button className="link danger-link" style={{ marginTop: 0 }} onClick={() => remove(inv)}>Apagar</button>
               </span>
+              {st === 'por_pagar' && <MarkPaid inv={inv} salon={salon} onDone={() => { reload(); onChanged() }} />}
             </li>
-          ))}
+          )})}
         </ul>
       )}
       <form onSubmit={upload} className="card soft">
         <strong>Enviar fatura</strong>
+        <label>Número<input value={form.number} placeholder="FT 2026/12" onChange={e => setForm({ ...form, number: e.target.value })} /></label>
         <div className="row" style={{ alignItems: 'flex-end' }}>
-          <label className="grow">Número<input value={form.number} placeholder="FT 2026/12" onChange={e => setForm({ ...form, number: e.target.value })} /></label>
-          <label className="grow">Data<input type="date" value={form.issued} onChange={e => setForm({ ...form, issued: e.target.value })} /></label>
+          <label className="grow">Data<input type="date" value={form.issued} onChange={e => setForm({ ...form, issued: e.target.value, due: addDaysIso(e.target.value, DUE_DAYS) })} /></label>
+          <label className="grow">Vence a<input type="date" value={form.due} onChange={e => setForm({ ...form, due: e.target.value })} /></label>
         </div>
         <div className="row" style={{ alignItems: 'flex-end' }}>
           <label className="grow">Referente a<input value={form.period} onChange={e => setForm({ ...form, period: e.target.value })} /></label>
@@ -240,6 +263,8 @@ function SalonAdmin({ salon, onChanged }: { salon: AdminSalon; onChanged: () => 
         <button className="btn" disabled={busy}>{busy ? 'A enviar…' : 'Enviar fatura'}</button>
         {invMsg && <p className={invMsg.ok ? 'ok' : 'error'}>{invMsg.text}</p>}
       </form>
+      <BillingDetails salonId={salon.id} />
+      <SalonNotes salonId={salon.id} />
     </div>
   )
 }
