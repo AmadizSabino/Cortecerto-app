@@ -8,6 +8,7 @@ import { themeById, themeStyle } from '../lib/themes'
 import { loadMySalon, type Role } from '../lib/mySalon'
 import { can } from '../lib/access'
 import { commissions, payLabel, type Pay } from '../lib/commission'
+import HelpLink from '../HelpLink'
 
 const WEEKDAY_SHORT = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
 
@@ -87,7 +88,7 @@ export default function StatsPage() {
 
   return (
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page wide">
-      <header className="row"><h1>Estatísticas</h1><Link to="/mais">‹ Mais</Link></header>
+      <header className="row"><h1>Estatísticas<HelpLink /></h1><Link to="/mais">‹ Mais</Link></header>
       <div className="days">
         {PERIODS.map(p => <button key={p.id} className={p.id === period ? 'day on' : 'day'} onClick={() => setPeriod(p.id)}>{p.label}</button>)}
       </div>

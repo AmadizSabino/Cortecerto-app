@@ -10,6 +10,7 @@ import { benefitList, DEFAULT_CLUB, memberState, monthlyRevenue, renewedUntil, t
 import { dateInTz } from '../lib/time'
 import { themeById, themeStyle } from '../lib/themes'
 import { formatPhone, waLink, waNumber } from '../lib/whatsapp'
+import HelpLink from '../HelpLink'
 
 const STATE_LABEL = { pedido: 'Quer aderir', em_dia: 'Em dia', por_pagar: 'Mensalidade por pagar', cancelado: 'Cancelado' }
 
@@ -99,7 +100,7 @@ export default function ClubPage() {
 
   return (
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page">
-      <header className="row"><h1>Clube</h1><Link to="/mais">‹ Mais</Link></header>
+      <header className="row"><h1>Clube<HelpLink /></h1><Link to="/mais">‹ Mais</Link></header>
       {missing ? <p className="banner">Para usar o Clube, corra <code>supabase/migrations/0018_team_clients_club_ai.sql</code> no editor SQL do Supabase.</p> : <>
         <p className="muted">Uma mensalidade fixa: o cliente paga todos os meses diretamente ao salão (MB Way ou no balcão) e tem os benefícios que definir.</p>
         <div className="stats">

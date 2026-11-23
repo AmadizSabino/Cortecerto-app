@@ -8,6 +8,7 @@ import { groupByDay, weekDays, weekStart } from '../lib/week'
 import { themeById, themeStyle } from '../lib/themes'
 import { loadMySalon } from '../lib/mySalon'
 import { bookingPrice } from '../lib/pricing'
+import HelpLink from '../HelpLink'
 
 interface Off { id: string; professional_id: string | null; starts_at: string; ends_at: string; reason: string | null }
 
@@ -80,7 +81,7 @@ export default function WeekPage() {
 
   return (
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page wide">
-      <header className="row"><h1>Semana</h1></header>
+      <header className="row"><h1>Semana<HelpLink /></h1></header>
 
       <div className="daynav">
         <button className="icon-btn" onClick={() => setMonday(addDays(monday, -7))} aria-label="Semana anterior"><Icon name="chevronLeft" /></button>

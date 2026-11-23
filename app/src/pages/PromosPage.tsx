@@ -16,6 +16,7 @@ import { NO_HOURS, type SalonHours } from '../lib/schedule'
 import { quietPeriods, quietText, weekKey, weekPlan, type Quiet } from '../lib/socialPlan'
 import { themeById, themeStyle } from '../lib/themes'
 import { formatPhone, waLink, waNumber } from '../lib/whatsapp'
+import HelpLink from '../HelpLink'
 
 interface Form {
   id?: string; title: string; kind: Promo['kind']; value: string; gift: string
@@ -221,7 +222,7 @@ export default function PromosPage() {
   const preview = f ? asPromo(f) : null
   return (
     <div className="themed" style={themeStyle(theme)}><main className="page">
-      <header className="row"><h1>Social Media Manager</h1><Link to="/mais">‹ Mais</Link></header>
+      <header className="row"><h1>Social Media Manager<HelpLink /></h1><Link to="/mais">‹ Mais</Link></header>
       {missing && <p className="banner">Para usar promoções, corra <code>supabase/migrations/0020_promotions.sql</code> no editor SQL do Supabase.</p>}
       <p className="muted">Cada promoção tem o seu link de marcação: o desconto entra sozinho e vê quantas marcações trouxe. Partilhe o post no Instagram, Facebook ou Estado do WhatsApp num toque.</p>
 

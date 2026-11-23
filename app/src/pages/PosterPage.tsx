@@ -7,6 +7,7 @@ import { qrPath } from '../lib/qr'
 import { loadMarks, saveMarks } from '../lib/setup'
 import { themeById, themeStyle } from '../lib/themes'
 import { loadMySalon } from '../lib/mySalon'
+import HelpLink from '../HelpLink'
 
 /** A printable A4 poster with the salon's booking QR code, in the salon's theme. */
 export default function PosterPage() {
@@ -43,7 +44,7 @@ export default function PosterPage() {
   return (
     <div className="themed poster-wrap" style={themeStyle(themeById(salon.theme))}>
       <div className="page no-print">
-        <header className="row"><h1>{queue ? 'Poster da fila' : 'Poster com QR'}</h1><Link to={queue ? '/fila' : '/mais'}>‹ {queue ? 'Fila' : 'Mais'}</Link></header>
+        <header className="row"><h1>{queue ? 'Poster da fila' : 'Poster com QR'}<HelpLink screen={queue ? '/fila' : '/poster'} /></h1><Link to={queue ? '/fila' : '/mais'}>‹ {queue ? 'Fila' : 'Mais'}</Link></header>
         <p className="muted">{queue
           ? 'Imprima em A4 e ponha à entrada. Quem chega sem marcação lê o QR e entra na fila sem esperar ao balcão.'
           : 'Imprima em A4 e ponha no balcão, no espelho ou na montra. O QR abre a sua página de marcação.'}</p>

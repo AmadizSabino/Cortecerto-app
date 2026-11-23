@@ -8,6 +8,7 @@ import { WEEKDAYS } from '../lib/onboarding'
 import { emptyWeek, weekToRows, type DayForm, type SalonHours } from '../lib/schedule'
 import { loadHours } from '../lib/scheduleData'
 import { addDays, dateInTz, formatTime, zonedToUtc } from '../lib/time'
+import HelpLink from '../HelpLink'
 
 interface TimeOff { id: string; professional_id: string | null; starts_at: string; ends_at: string; reason: string | null }
 
@@ -114,7 +115,7 @@ export default function SchedulePage() {
 
   return (
     <main className="page">
-      <header className="row"><h1>Horários e folgas</h1><Link to="/mais">‹ Mais</Link></header>
+      <header className="row"><h1>Horários e folgas<HelpLink /></h1><Link to="/mais">‹ Mais</Link></header>
       {missing && <p className="banner">Para usar horários por profissional e folgas, corra <code>supabase/migrations/0009_schedules.sql</code> no editor SQL do Supabase.</p>}
       {msg && <p className={msg.ok ? 'ok' : 'error'}>{msg.text}</p>}
 

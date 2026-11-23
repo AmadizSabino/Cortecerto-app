@@ -15,6 +15,7 @@ import { AdminSite } from './admin/AdminSite'
 import { AdminOps } from './admin/AdminOps'
 import { DocTags } from './admin/Documents'
 import { docDetail, documentRows } from '../lib/money'
+import { AdminHelp, type AdminTab } from './admin/AdminHelp'
 
 interface AdminSalon extends BillingFields { id: string; name: string; slug: string; type: string; created_at: string; is_demo?: boolean; heard_from?: string | null; heard_detail?: string | null }
 
@@ -27,7 +28,7 @@ const KIND_LABEL: Record<string, string> = {
 const dateOnly = (iso?: string | null) => iso ? iso.slice(0, 10) : ''
 const endOfDay = (d: string) => d ? new Date(d + 'T23:59:59').toISOString() : null
 const withVat = (Math.round(PLAN.priceCents * (1 + PLAN.vatRate)) / 100).toFixed(2).replace('.', ',')
-type Tab = 'resumo' | 'dinheiro' | 'site' | 'contactos' | 'saloes' | 'sistema'
+type Tab = AdminTab
 type Filter = 'todos' | 'gratis' | 'ativos' | 'por_pagar' | 'risco'
 const FILTERS: [Filter, string][] = [['todos', 'Todos'], ['gratis', 'Grátis'], ['ativos', 'Ativos'], ['por_pagar', 'Por pagar'], ['risco', 'Em risco']]
 const thisMonth = () => new Date().toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })
@@ -103,6 +104,7 @@ export default function AdminPage() {
           <button key={k} role="tab" aria-selected={tab === k} className={`chip${tab === k ? ' on' : ''}`} onClick={() => setTab(k)}>{label}</button>
         ))}
       </div>
+      <AdminHelp tab={tab} />
       {dash === null && <p className="card warn small">O resumo precisa da migração 0024 (supabase/migrations/0024_admin_dashboard.sql). Corra-a no Supabase › SQL Editor. A lista de salões funciona sem ela.</p>}
       {tab === 'resumo' && dash && <AdminOverview data={{ ...dash, salons: dash.salons.filter(r => !demoIds.has(r.id)) }} onOpen={openSalon} />}
       {tab === 'resumo' && dash === null && (

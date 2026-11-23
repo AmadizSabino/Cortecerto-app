@@ -8,6 +8,7 @@ import { localSent, reminderMessage, saveLocalSent, wantsReminder } from '../lib
 import { themeById, themeStyle } from '../lib/themes'
 import { loadMySalon } from '../lib/mySalon'
 import { manageLink } from '../lib/clientChanges'
+import HelpLink from '../HelpLink'
 
 /** WhatsApp reminders for a day's bookings, tomorrow by default. */
 export default function RemindersPage() {
@@ -71,7 +72,7 @@ export default function RemindersPage() {
   return (
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page wide">
       <header className="row">
-        <h1>Lembretes</h1>
+        <h1>Lembretes<HelpLink /></h1>
         <Link to="/mais">‹ Mais</Link>
       </header>
       <p className="muted">Envie um lembrete por WhatsApp na véspera. Os clientes avisam quando não podem vir e a vaga não se perde.</p>

@@ -11,6 +11,7 @@ import { can } from '../lib/access'
 import AiTryOn from '../components/AiTryOn'
 import Icon from '../components/Icon'
 import { photoToDataUrl, runAi } from '../lib/ai'
+import HelpLink from '../HelpLink'
 
 const FILTERS: { id: ClientFilter; label: string }[] = [
   { id: 'todos', label: 'Todos' },
@@ -244,7 +245,7 @@ export default function ClientsPage() {
 
   return (
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page wide">
-      <header className="row"><h1>Clientes</h1>
+      <header className="row"><h1>Clientes<HelpLink /></h1>
         <span className="row">
           <Link className="btn ghost inline sm" to="/convidar"><Icon name="userPlus" size={16} />Convidar</Link>
           {registerReady && <button className="btn inline sm" onClick={() => setRegistering({ name: '', phone: '' })}><Icon name="plus" size={16} />Novo cliente</button>}

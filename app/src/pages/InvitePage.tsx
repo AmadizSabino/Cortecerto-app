@@ -8,6 +8,7 @@ import { can } from '../lib/access'
 import { canPickContacts, inviteText, pickContacts, type Picked } from '../lib/contacts'
 import { themeById, themeStyle } from '../lib/themes'
 import { formatPhone, waLink, waNumber } from '../lib/whatsapp'
+import HelpLink from '../HelpLink'
 
 interface Invited { phone_key: string; name: string; phone: string; invited_at: string | null; source: string }
 
@@ -74,7 +75,7 @@ export default function InvitePage() {
 
   return (
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page">
-      <header className="row"><h1>Convidar clientes</h1><Link to="/mais">‹ Mais</Link></header>
+      <header className="row"><h1>Convidar clientes<HelpLink /></h1><Link to="/mais">‹ Mais</Link></header>
       <p className="muted">Envie o link de marcação por WhatsApp. Cada convidado fica na sua lista de clientes.</p>
       {!ready && <p className="banner small">Para guardar os convidados na lista de clientes, corra <code>supabase/migrations/0018_team_clients_club_ai.sql</code>. O convite por WhatsApp já funciona.</p>}
 
