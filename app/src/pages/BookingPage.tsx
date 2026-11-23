@@ -72,6 +72,9 @@ function ClubOffer({ club, open, setOpen, form, setForm, state, onJoin }: {
 export default function BookingPage() {
   const { slug } = useParams()
   const [salon, setSalon] = useState<Salon | null>()
+  // Someone signed in to a salon panel (clients never sign in): show that this is the client's view.
+  const [previewer, setPreviewer] = useState(false)
+  useEffect(() => { supabase.auth.getSession().then(({ data }) => setPreviewer(Boolean(data.session))) }, [])
   const [services, setServices] = useState<Service[]>([])
   const [pros, setPros] = useState<Professional[]>([])
   const [hours, setHours] = useState<SalonHours>(NO_HOURS)
@@ -295,6 +298,12 @@ export default function BookingPage() {
 
   const header = (
     <>
+      {previewer && (
+        <div className="preview-bar no-print" role="note">
+          <span><b>Está a ver a página como um cliente.</b> Uma marcação feita aqui entra na agenda como se fosse de um cliente.</span>
+          <Link to="/mais" className="btn inline sm">Voltar ao painel</Link>
+        </div>
+      )}
       <div className="cover" style={salon.cover_path ? { backgroundImage: `url(${mediaUrl(salon.cover_path)})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined} />
       <div className="hero">
         <div className="row" style={{ alignItems: 'flex-end', justifyContent: 'flex-start', flexWrap: 'nowrap', gap: 14 }}>

@@ -151,7 +151,7 @@ export default function SettingsPage() {
       <p className="muted">Guardado logo ao escolher. É o estilo do painel e da sua página de marcação.</p>
       <ThemePicker value={info.theme} type={salon!.type} showAll={allThemes} onChange={chooseTheme} />
       {themeState === 'saving' && <p className="muted small">A guardar o estilo…</p>}
-      {themeState === 'saved' && <p className="ok small">Estilo guardado: {themeById(info.theme).name}. <a href={`/s/${salon!.slug}`} target="_blank" rel="noreferrer">Ver a página de marcação</a></p>}
+      {themeState === 'saved' && <p className="ok small">Estilo guardado: {themeById(info.theme).name}. <a href={`/s/${salon!.slug}`}>Ver a página de marcação</a></p>}
       {themeState === 'error' && <p className="error small">Não foi possível guardar o estilo. Tente de novo.</p>}
       <button type="button" className="link" onClick={() => setAllThemes(!allThemes)}>{allThemes ? 'Ver só os do meu tipo de salão' : 'Ver todos os estilos'}</button>
 

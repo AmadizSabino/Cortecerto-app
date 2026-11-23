@@ -119,7 +119,7 @@ export default function BrandPage() {
   return (
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page">
       <header className="row"><h1>Marca e galeria<HelpLink /></h1><Link to="/mais">‹ Mais</Link></header>
-      <p className="muted">O seu logótipo, uma foto de capa, um texto curto e fotos do seu trabalho. Aparecem na página de marcação, por cima do estilo que escolheu, e no poster com QR. <a href={`/s/${salon.slug}`} target="_blank" rel="noreferrer">Ver a página</a></p>
+      <p className="muted">O seu logótipo, uma foto de capa, um texto curto e fotos do seu trabalho. Aparecem na página de marcação, por cima do estilo que escolheu, e no poster com QR. <a href={`/s/${salon.slug}`}>Ver a página</a></p>
       {missing && <p className="banner small">Para usar a marca, corra <code>supabase/migrations/0019_free_slots_branding.sql</code> no editor SQL do Supabase.</p>}
       {msg && <p className={msg.ok ? 'ok' : 'error'} role="status">{msg.text}</p>}
 
