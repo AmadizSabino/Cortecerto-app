@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { METHOD_LABEL, type PaymentMethod } from '../../lib/invoices'
+import { HEARD_LABEL } from '../../lib/growth'
 
 interface Billing { legal_name: string; nif: string; address: string; postal_code: string; city: string; email: string }
 interface Note { id: string; body: string; created_at: string }
@@ -131,5 +132,42 @@ export function AuditLog() {
         ))}
       </ul>
     </section>
+  )
+}
+
+/** How the salon heard about CorteCerto, and the demo switch with sample bookings (migration 0028). */
+export function DemoAndHeard({ salon, onChanged }: { salon: { id: string; is_demo?: boolean; heard_from?: string | null; heard_detail?: string | null }; onChanged: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<{ ok: boolean; text: string }>()
+  const demo = salon.is_demo === true
+  async function run(fn: 'admin_set_demo' | 'admin_fill_demo' | 'admin_clear_demo', args: Record<string, unknown>, ok: (n: unknown) => string) {
+    setBusy(true); setMsg(undefined)
+    const { data, error } = await supabase.rpc(fn, { p_salon: salon.id, ...args })
+    setBusy(false)
+    if (error) {
+      const text = error.message.includes('sem_servicos') ? 'O salão precisa de pelo menos um serviço até 60 minutos.'
+        : error.message.includes('salao_bloqueado') ? 'O salão está bloqueado por falta de pagamento.'
+        : error.message.includes('nao_e_demo') ? 'Marque primeiro o salão como demonstração.' : 'Não foi possível. Precisa da migração 0028?'
+      return setMsg({ ok: false, text })
+    }
+    setMsg({ ok: true, text: ok(data) })
+    onChanged()
+  }
+  return (
+    <div className="card soft">
+      <strong>Como conheceu a CorteCerto</strong>
+      <p className="small">{salon.heard_from ? `${HEARD_LABEL[salon.heard_from] ?? salon.heard_from}${salon.heard_detail ? ` · ${salon.heard_detail}` : ''}` : <span className="muted">Sem resposta</span>}</p>
+      <strong>Salão de demonstração</strong>
+      <label className="check"><input type="checkbox" checked={demo} disabled={busy} onChange={e => run('admin_set_demo', { p_on: e.target.checked }, () => e.target.checked ? 'Marcado como demonstração.' : 'Já não é demonstração.')} />
+        <span>É um salão de demonstração (fica fora da receita e dos números de crescimento)</span></label>
+      {demo && (
+        <div className="row" style={{ justifyContent: 'flex-start' }}>
+          <button className="btn-inline" disabled={busy} onClick={() => run('admin_fill_demo', {}, n => `${n} marcações de exemplo criadas, nas últimas 4 semanas e na próxima.`)}>Encher com dados de exemplo</button>
+          <button className="link danger-link" disabled={busy} onClick={() => run('admin_clear_demo', {}, n => `${n} marcações de exemplo apagadas.`)}>Apagar dados de exemplo</button>
+        </div>
+      )}
+      <p className="muted small">Os clientes de exemplo têm nomes inventados e números 900 que não existem. Encher outra vez substitui o exemplo anterior; as marcações reais nunca são tocadas.</p>
+      {msg && <p className={msg.ok ? 'ok' : 'error'}>{msg.text}</p>}
+    </div>
   )
 }

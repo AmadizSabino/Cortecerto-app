@@ -25,7 +25,8 @@
     // Serve index.html for app routes such as /s/salon-name and /painel.
     "not_found_handling": "single-page-application",
     "binding": "ASSETS",
-    // Send /api/* to the Worker before the single-page fallback catches it.
-    "run_worker_first": ["/api/*"]
+    // Send /api/* to the Worker before the single-page fallback catches it, and the home page and
+    // salon booking pages too, so their link previews (WhatsApp, Instagram) are filled in (worker/meta.ts).
+    "run_worker_first": ["/api/*", "/", "/s/*"]
   }
 }

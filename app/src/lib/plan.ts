@@ -10,3 +10,6 @@ export const PLAN = {
   trialDays: 30,
   provisional: false,
 }
+
+/** A salon whose booking page the landing page shows as an example ("Ver um exemplo"). */
+export const EXAMPLE_SLUG = 'barba-e-beer'
