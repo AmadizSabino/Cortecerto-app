@@ -476,4 +476,41 @@ do $$ begin perform claim_admin_alert('resumo', 'x'); raise exception 'SHOULD HA
 select pg_temp.check(count(*) = 0, 'owners cannot read site events or uptime') from (select id from site_events union all select id from uptime_checks) x;
 reset role;
 select pg_temp.check((value->>'orcamento_eur')::int = 5, 'the admin changes the AI budget') from platform_settings where key = 'ia';
+-- 0028: prospects, how they heard, demo salons, admin two-step login ----------------------
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+update salons set heard_from = 'instagram', heard_detail = 'anúncio' where id = :'salon';
+reset role;
+select pg_temp.check(heard_from = 'instagram', 'the owner says how they heard') from salons where id = :'salon';
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+insert into prospects (name, city, phone, status, next_on) values ('Barbearia do Zé', 'Setúbal', '912000000', 'contactado', current_date + 2);
+select pg_temp.check(count(*) = 1, 'the admin keeps a prospect list') from prospects;
+do $$ begin perform admin_fill_demo((select id from salons limit 1)); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%nao_e_demo%' then raise; end if; end $$;
+select admin_set_demo(:'salon', true);
+select admin_fill_demo(:'salon') as demo_n \gset
+select pg_temp.check(:demo_n > 20, 'a demo salon is filled with sample bookings');
+reset role;
+select pg_temp.check(count(*) = :demo_n and count(*) filter (where status = 'concluida') > 0 and count(*) filter (where status = 'confirmada') > 0,
+  'sample bookings are marked demo, past ones done, future ones confirmed') from bookings where salon_id = :'salon' and demo;
+set role authenticated;
+select pg_temp.check(admin_fill_demo(:'salon') = :demo_n, 'filling again replaces the sample instead of adding to it');
+select pg_temp.check(admin_clear_demo(:'salon') = :demo_n, 'clearing removes only the sample bookings');
+reset role;
+select pg_temp.check(count(*) > 0, 'real bookings stay') from bookings where salon_id = :'salon' and not demo;
+set role authenticated;
+select pg_temp.check(count(*) = 0, 'demo salons are left out of how-they-heard') from admin_heard_from();
+select admin_set_demo(:'salon', false);
+select pg_temp.check(min(heard_from) = 'instagram', 'how they heard is counted') from admin_heard_from();
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+select pg_temp.check(count(*) = 0, 'owners cannot read prospects') from prospects;
+do $$ begin update salons set is_demo = true; raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+do $$ begin perform admin_fill_demo((select id from salons limit 1)); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+reset role;
+insert into auth.mfa_factors (user_id, status) values ('00000000-0000-0000-0000-00000000000c', 'verified');
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+select pg_temp.check(not is_platform_admin(), 'with an authenticator app, a session without the code is not admin');
+set request.jwt.claim.aal = 'aal2';
+select pg_temp.check(is_platform_admin(), 'with the code, the admin is admin');
+set request.jwt.claim.aal = '';
+reset role;
+delete from auth.mfa_factors;
 \echo All database checks passed

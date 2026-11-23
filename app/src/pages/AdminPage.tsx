@@ -8,13 +8,15 @@ import { PLAN } from '../lib/plan'
 import { health, since, HEALTH_LABEL, HEALTH_TAG, type AdminSalonRow, type Dashboard } from '../lib/adminStats'
 import { AdminOverview, AdminSystem, SalonFacts } from './admin/AdminDashboard'
 import { AdminMoney, MarkPaid } from './admin/AdminMoney'
-import { AuditLog, BillingDetails, SalonNotes } from './admin/SalonExtras'
+import { AuditLog, BillingDetails, DemoAndHeard, SalonNotes } from './admin/SalonExtras'
+import { AdminProspects } from './admin/Prospects'
+import { AdminSecurity, MfaPrompt } from './admin/AdminSecurity'
 import { AdminSite } from './admin/AdminSite'
 import { AdminOps } from './admin/AdminOps'
 import { DocTags } from './admin/Documents'
 import { docDetail, documentRows } from '../lib/money'
 
-interface AdminSalon extends BillingFields { id: string; name: string; slug: string; type: string; created_at: string }
+interface AdminSalon extends BillingFields { id: string; name: string; slug: string; type: string; created_at: string; is_demo?: boolean; heard_from?: string | null; heard_detail?: string | null }
 
 const STATUS: Record<NonNullable<BillingFields['subscription']>, string> = {
   experimental: 'Período grátis', ativa: 'Ativa', em_atraso: 'Em atraso', cancelada: 'Cancelada',
@@ -25,7 +27,7 @@ const KIND_LABEL: Record<string, string> = {
 const dateOnly = (iso?: string | null) => iso ? iso.slice(0, 10) : ''
 const endOfDay = (d: string) => d ? new Date(d + 'T23:59:59').toISOString() : null
 const withVat = (Math.round(PLAN.priceCents * (1 + PLAN.vatRate)) / 100).toFixed(2).replace('.', ',')
-type Tab = 'resumo' | 'dinheiro' | 'site' | 'saloes' | 'sistema'
+type Tab = 'resumo' | 'dinheiro' | 'site' | 'contactos' | 'saloes' | 'sistema'
 type Filter = 'todos' | 'gratis' | 'ativos' | 'por_pagar' | 'risco'
 const FILTERS: [Filter, string][] = [['todos', 'Todos'], ['gratis', 'Grátis'], ['ativos', 'Ativos'], ['por_pagar', 'Por pagar'], ['risco', 'Em risco']]
 const thisMonth = () => new Date().toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })
@@ -34,6 +36,7 @@ const thisMonth = () => new Date().toLocaleDateString('pt-PT', { month: 'long', 
 export default function AdminPage() {
   const [session, setSession] = useState<Session | null>()
   const [admin, setAdmin] = useState<boolean>()
+  const [needCode, setNeedCode] = useState(false)
   const [salons, setSalons] = useState<AdminSalon[]>([])
   const [q, setQ] = useState('')
   const [open, setOpen] = useState<string | null>(null)
@@ -44,24 +47,32 @@ export default function AdminPage() {
 
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setSession(data.session)) }, [])
   async function load() {
-    const { data } = await supabase.from('salons').select('id,name,slug,type,created_at,subscription,trial_ends_at,paid_until').order('created_at', { ascending: false })
-    setSalons(data ?? [])
+    const cols = 'id,name,slug,type,created_at,subscription,trial_ends_at,paid_until'
+    // is_demo and heard_from come with migration 0028; before it, the list loads without them.
+    const full = await supabase.from('salons').select(`${cols},is_demo,heard_from,heard_detail`).order('created_at', { ascending: false })
+    const data = full.error ? (await supabase.from('salons').select(cols).order('created_at', { ascending: false })).data : full.data
+    setSalons((data ?? []) as AdminSalon[])
     // admin_dashboard() comes with migration 0024; without it the list still works.
     const d = await supabase.rpc('admin_dashboard')
     setDash(d.error ? null : d.data as Dashboard)
   }
-  useEffect(() => {
-    if (!session) return
-    supabase.rpc('is_platform_admin').then(({ data, error }) => {
-      setAdmin(!error && data === true)
-      if (!error && data === true) load()
-    })
-  }, [session])
+  async function checkAdmin() {
+    // With an authenticator app set up, the code comes first: the database only counts admin sessions that used it.
+    const aal = await supabase.auth.mfa.getAuthenticatorAssuranceLevel().then(r => r.data, () => null)
+    if (aal && aal.nextLevel === 'aal2' && aal.currentLevel !== 'aal2') { setNeedCode(true); setAdmin(false); return }
+    setNeedCode(false)
+    const { data, error } = await supabase.rpc('is_platform_admin')
+    setAdmin(!error && data === true)
+    if (!error && data === true) load()
+  }
+  useEffect(() => { if (session) checkAdmin() }, [session]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (session === undefined || (session && admin === undefined)) return <main className="page">A carregar…</main>
   if (!session) return <Navigate to="/painel" replace />
+  if (needCode) return <MfaPrompt onDone={checkAdmin} />
   if (!admin) return <main className="page"><h1>Sem acesso</h1><p className="muted">Esta área é só para a equipa CorteCerto.</p></main>
 
+  const demoIds = new Set(salons.filter(s => s.is_demo).map(s => s.id))
   const rows = new Map<string, AdminSalonRow>((dash?.salons ?? []).map(r => [r.id, r]))
   const counts = salons.reduce<Record<string, number>>((c, s) => { const k = billingState(s).kind; c[k] = (c[k] ?? 0) + 1; return c }, {})
   const matches = (s: AdminSalon) => {
@@ -88,12 +99,12 @@ export default function AdminPage() {
     <main className="page wide">
       <header className="row"><h1>Administração</h1><button className="link" onClick={() => supabase.auth.signOut().then(() => location.assign('/painel'))}>Sair</button></header>
       <div className="chips admin-tabs" role="tablist">
-        {([['resumo', 'Resumo'], ['dinheiro', 'Dinheiro'], ['site', 'Site'], ['saloes', `Salões (${salons.length})`], ['sistema', 'Sistema']] as [Tab, string][]).map(([k, label]) => (
+        {([['resumo', 'Resumo'], ['dinheiro', 'Dinheiro'], ['site', 'Site'], ['contactos', 'Contactos'], ['saloes', `Salões (${salons.length})`], ['sistema', 'Sistema']] as [Tab, string][]).map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} className={`chip${tab === k ? ' on' : ''}`} onClick={() => setTab(k)}>{label}</button>
         ))}
       </div>
       {dash === null && <p className="card warn small">O resumo precisa da migração 0024 (supabase/migrations/0024_admin_dashboard.sql). Corra-a no Supabase › SQL Editor. A lista de salões funciona sem ela.</p>}
-      {tab === 'resumo' && dash && <AdminOverview data={dash} onOpen={openSalon} />}
+      {tab === 'resumo' && dash && <AdminOverview data={{ ...dash, salons: dash.salons.filter(r => !demoIds.has(r.id)) }} onOpen={openSalon} />}
       {tab === 'resumo' && dash === null && (
         <div className="stats" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
           <div className="stat"><b>{salons.length}</b><span>Salões</span></div>
@@ -104,6 +115,8 @@ export default function AdminPage() {
       )}
       {tab === 'dinheiro' && <AdminMoney salons={salons} onOpen={openSalon} onChanged={load} />}
       {tab === 'site' && <AdminSite onOpen={openSalon} />}
+      {tab === 'contactos' && <AdminProspects salons={salons} onOpen={openSalon} />}
+      {tab === 'sistema' && <AdminSecurity />}
       {tab === 'sistema' && <AdminOps />}
       {tab === 'sistema' && dash && <AdminSystem data={dash} />}
       {tab === 'sistema' && <AuditLog />}
@@ -133,6 +146,7 @@ export default function AdminPage() {
               <span><b>{s.name}</b><small className="muted">/s/{s.slug} · {s.created_at && `desde ${new Date(s.created_at).toLocaleDateString('pt-PT')}`}</small>
                 {r && <small className="muted">Login {since(r.last_sign_in_at)} · {r.bookings_30d} {r.bookings_30d === 1 ? 'marcação' : 'marcações'} em 30 d{r.bookings_30d > 0 && ` · ${Math.round(100 * r.online_30d / r.bookings_30d)}% online`}</small>}</span>
               <span className="tags">
+              {s.is_demo && <span className="tag cancelada">Demo</span>}
               {h && <span className={`tag ${HEALTH_TAG[h.level]}`}>{HEALTH_LABEL[h.level]}</span>}
               <span className={`tag ${b.kind === 'ativa' ? 'concluida' : b.kind === 'em_atraso' || b.kind === 'terminou' ? 'faltou' : 'pendente'}`}>
                 {locked ? 'Bloqueada' : KIND_LABEL[b.kind]}{!locked && b.kind === 'experimental' && ` · ${b.daysLeft} d`}
@@ -140,7 +154,7 @@ export default function AdminPage() {
               </span>
             </button>
             {open === s.id && r && <SalonFacts s={r} />}
-            {open === s.id && <SalonAdmin key={`${s.id}${s.subscription}${s.paid_until}${s.trial_ends_at}`} salon={s} onChanged={load} />}
+            {open === s.id && <SalonAdmin key={`${s.id}${s.subscription}${s.paid_until}${s.trial_ends_at}${s.is_demo}`} salon={s} onChanged={load} />}
           </section>
         )
       })}
@@ -282,6 +296,7 @@ function SalonAdmin({ salon, onChanged }: { salon: AdminSalon; onChanged: () => 
         <button className="btn" disabled={busy}>{busy ? 'A enviar…' : 'Enviar fatura'}</button>
         {invMsg && <p className={invMsg.ok ? 'ok' : 'error'}>{invMsg.text}</p>}
       </form>
+      <DemoAndHeard salon={salon} onChanged={onChanged} />
       <BillingDetails salonId={salon.id} />
       <SalonNotes salonId={salon.id} />
     </div>

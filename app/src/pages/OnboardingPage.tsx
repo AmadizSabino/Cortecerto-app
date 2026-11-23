@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { track } from '../lib/track'
+import { HEARD, type Heard } from '../lib/growth'
 import ThemePicker from '../ThemePicker'
 import { TYPE_DEFAULT } from '../lib/themes'
 import { REQUIRED } from '../lib/legal'
@@ -40,6 +41,8 @@ export default function OnboardingPage() {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [accepted, setAccepted] = useState<Record<string, boolean>>({})
+  const [heard, setHeard] = useState<Heard | ''>('')
+  const [heardDetail, setHeardDetail] = useState('')
 
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setSession(data.session)) }, [])
 
@@ -99,6 +102,8 @@ export default function OnboardingPage() {
     track('salao_criado', { page: 'registo', salon: typeof salonId === 'string' ? salonId : null })
     // The rest of the business profile (migration 0022). Best effort: the salon can change it in Definições.
     if (salonId) await supabase.from('salons').update({ areas: [...new Set([profile.type, ...profile.areas])], booking_mode: profile.booking_mode, work_place: profile.work_place }).eq('id', salonId)
+    // How they heard (migration 0028). Best effort, like the profile above.
+    if (salonId && heard) await supabase.from('salons').update({ heard_from: heard, heard_detail: heardDetail.trim() || null }).eq('id', salonId)
     // Before migration 0004 this fails quietly; the panel then asks again once it can record it.
     await recordAcceptance(REQUIRED, salonId ?? null)
     nav('/painel', { replace: true })
@@ -165,6 +170,13 @@ export default function OnboardingPage() {
           <label>Sinal por marcação (€, 0 para não pedir)<input inputMode="decimal" value={deposit} onChange={e => setDeposit(e.target.value)} /></label>
           <label>Número MB Way para receber o sinal<input inputMode="tel" value={mbway} onChange={e => setMbway(e.target.value)} placeholder="912 345 678" /></label>
           <p className="muted">O sinal vai diretamente para o MB Way do salão. A CorteCerto nunca recebe dinheiro dos clientes.</p>
+          <label>Como conheceu a CorteCerto? <small className="muted">(opcional)</small>
+            <select value={heard} onChange={e => setHeard(e.target.value as Heard | '')}>
+              <option value="">Escolher…</option>
+              {HEARD.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+            </select>
+          </label>
+          {(heard === 'amigo' || heard === 'outro') && <label>{heard === 'amigo' ? 'Quem lhe falou de nós?' : 'Onde?'}<input maxLength={120} value={heardDetail} onChange={e => setHeardDetail(e.target.value)} /></label>}
           <h2>Termos</h2>
           {REQUIRED.map(d => (
             <label key={d.id} className="check">

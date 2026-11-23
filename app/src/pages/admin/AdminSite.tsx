@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { siteFunnels, SOURCE_LABEL, type SiteStats } from '../../lib/siteStats'
 import { Bars } from './AdminDashboard'
+import { HEARD_LABEL } from '../../lib/growth'
 
 const pct = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)}%` : '—')
 
@@ -24,6 +25,8 @@ function Funnel({ steps }: { steps: { label: string; count: number }[] }) {
 export function AdminSite({ onOpen }: { onOpen: (salonId: string) => void }) {
   const [days, setDays] = useState(30)
   const [s, setS] = useState<SiteStats | null>()
+  const [heard, setHeard] = useState<{ heard_from: string; salons: number; paying: number }[]>([])
+  useEffect(() => { supabase.rpc('admin_heard_from').then(({ data }) => setHeard((data ?? []) as typeof heard)) }, [])
   useEffect(() => {
     setS(undefined)
     supabase.rpc('admin_site_stats', { p_days: days }).then(({ data, error }) => setS(error ? null : data as SiteStats))
@@ -88,6 +91,17 @@ export function AdminSite({ onOpen }: { onOpen: (salonId: string) => void }) {
         )}
         <p className="muted small">Para saber o que resulta, junte <code>?src=</code> aos links que partilha: por exemplo <code>/?src=instagram</code> na bio, <code>/?src=folheto</code> num folheto. O QR do cartaz de cada salão já leva <code>?src=cartaz</code>.</p>
       </section>
+
+      {heard.length > 0 && (
+        <section className="card">
+          <h2>Como os salões conheceram a CorteCerto</h2>
+          <table className="money-table">
+            <thead><tr><th>Resposta no registo</th><th>Salões</th><th>A pagar</th></tr></thead>
+            <tbody>{heard.map(h => <tr key={h.heard_from}><td>{HEARD_LABEL[h.heard_from] ?? h.heard_from}</td><td>{h.salons}</td><td>{h.paying}</td></tr>)}</tbody>
+          </table>
+          <p className="muted small">Perguntado no fim do registo, desde a migração 0028. Os salões de demonstração não contam.</p>
+        </section>
+      )}
 
       <section className="card">
         <h2>Das visitas às marcações</h2>

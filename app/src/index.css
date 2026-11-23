@@ -486,3 +486,6 @@ button:disabled { opacity: .5; cursor: default; }
   .history.docs li { grid-template-columns: 1fr; gap: 4px; padding: 10px 0; }
   .history.docs li > span:last-child { justify-content: flex-start !important; flex-wrap: wrap; }
 }
+.mfa-setup { display: grid; gap: 8px; justify-items: start; }
+.mfa-setup .mfa-qr { background: #fff; padding: 8px; border-radius: 8px; border: 1px solid var(--line); }
+.mfa-setup code { word-break: break-all; }
