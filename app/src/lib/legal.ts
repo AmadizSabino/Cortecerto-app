@@ -142,6 +142,7 @@ export const PRIVACY: LegalDoc = {
     ] },
     { heading: '6. Armazenamento no seu browser', paragraphs: [
       'Se escolher um estilo para a página de marcação, essa escolha fica guardada apenas no seu browser. A CorteCerto não usa cookies de publicidade nem de análise.',
+      'Para saber quantas pessoas visitam o site e as páginas de marcação, contamos visitas e cliques sem cookies e sem dados pessoais: guardamos a página, o site de onde veio (por exemplo Instagram), o tipo de aparelho e um código que muda todos os dias e não identifica ninguém. O endereço IP não é guardado. A origem da visita fica no browser só enquanto a aba estiver aberta. Se o browser pedir para não ser seguido (Do Not Track), nada é contado.',
     ] },
   ],
 }

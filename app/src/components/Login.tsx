@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { authError, MIN_PASSWORD } from '../lib/auth'
+import { track } from '../lib/track'
 
 type Mode = 'entrar' | 'criar' | 'link' | 'esqueci'
 /**
@@ -26,6 +27,7 @@ export default function Login() {
       : await supabase.auth.resetPasswordForEmail(email, { redirectTo: location.origin + '/palavra-passe' })
     setBusy(false)
     if (r.error) return setMsg({ ok: false, text: authError(r.error.message) })
+    if (mode === 'criar') track('conta_criada', { page: 'registo' })
     if (mode === 'entrar') return location.assign('/painel')
     if (mode === 'criar' && 'data' in r && r.data && 'session' in r.data && r.data.session) return location.assign('/painel')
     setMsg({ ok: true, text: {

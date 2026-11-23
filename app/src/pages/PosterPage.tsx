@@ -23,7 +23,8 @@ export default function PosterPage() {
   }, [session])
 
   const link = salon ? `${location.origin}/${queue ? 'f' : 's'}/${salon.slug}` : ''
-  const qr = useMemo(() => (link ? qrPath(link) : null), [link])
+  // The QR code carries ?src=cartaz, so /admin > Site counts visits that came from the poster.
+  const qr = useMemo(() => (link ? qrPath(`${link}?src=cartaz`) : null), [link])
 
   if (session === undefined) return <main className="page">A carregar…</main>
   if (!session) return <Navigate to="/painel" replace />

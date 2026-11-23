@@ -14,8 +14,9 @@
   },
   // Required by `wrangler preview`, which Cloudflare runs for non-main branches. Empty is fine.
   "previews": {},
-  // 08:00 UTC (8 or 9 in Lisbon): automatic payment reminders, sent only when switched on in /admin.
-  "triggers": { "crons": ["0 8 * * *"] },
+  // 08:00 UTC (8 or 9 in Lisbon): automatic payment reminders and the daily summary, each only when switched on in /admin.
+  // Every 5 minutes: uptime check and AI budget check (worker/ops.ts).
+  "triggers": { "crons": ["0 8 * * *", "*/5 * * * *"] },
   "build": {
     "command": "cd app && npm ci && npm run build"
   },

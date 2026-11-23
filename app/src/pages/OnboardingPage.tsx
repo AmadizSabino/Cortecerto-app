@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { track } from '../lib/track'
 import ThemePicker from '../ThemePicker'
 import { TYPE_DEFAULT } from '../lib/themes'
 import { REQUIRED } from '../lib/legal'
@@ -95,6 +96,7 @@ export default function OnboardingPage() {
       if (error.message.includes('slug_ocupado')) setStep(1)
       return
     }
+    track('salao_criado', { page: 'registo', salon: typeof salonId === 'string' ? salonId : null })
     // The rest of the business profile (migration 0022). Best effort: the salon can change it in Definições.
     if (salonId) await supabase.from('salons').update({ areas: [...new Set([profile.type, ...profile.areas])], booking_mode: profile.booking_mode, work_place: profile.work_place }).eq('id', salonId)
     // Before migration 0004 this fails quietly; the panel then asks again once it can record it.

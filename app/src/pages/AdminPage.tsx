@@ -9,6 +9,8 @@ import { health, since, HEALTH_LABEL, HEALTH_TAG, type AdminSalonRow, type Dashb
 import { AdminOverview, AdminSystem, SalonFacts } from './admin/AdminDashboard'
 import { AdminMoney, MarkPaid } from './admin/AdminMoney'
 import { AuditLog, BillingDetails, SalonNotes } from './admin/SalonExtras'
+import { AdminSite } from './admin/AdminSite'
+import { AdminOps } from './admin/AdminOps'
 
 interface AdminSalon extends BillingFields { id: string; name: string; slug: string; type: string; created_at: string }
 
@@ -21,7 +23,7 @@ const KIND_LABEL: Record<string, string> = {
 const dateOnly = (iso?: string | null) => iso ? iso.slice(0, 10) : ''
 const endOfDay = (d: string) => d ? new Date(d + 'T23:59:59').toISOString() : null
 const withVat = (Math.round(PLAN.priceCents * (1 + PLAN.vatRate)) / 100).toFixed(2).replace('.', ',')
-type Tab = 'resumo' | 'dinheiro' | 'saloes' | 'sistema'
+type Tab = 'resumo' | 'dinheiro' | 'site' | 'saloes' | 'sistema'
 type Filter = 'todos' | 'gratis' | 'ativos' | 'por_pagar' | 'risco'
 const FILTERS: [Filter, string][] = [['todos', 'Todos'], ['gratis', 'Grátis'], ['ativos', 'Ativos'], ['por_pagar', 'Por pagar'], ['risco', 'Em risco']]
 const thisMonth = () => new Date().toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })
@@ -84,7 +86,7 @@ export default function AdminPage() {
     <main className="page wide">
       <header className="row"><h1>Administração</h1><button className="link" onClick={() => supabase.auth.signOut().then(() => location.assign('/painel'))}>Sair</button></header>
       <div className="chips admin-tabs" role="tablist">
-        {([['resumo', 'Resumo'], ['dinheiro', 'Dinheiro'], ['saloes', `Salões (${salons.length})`], ['sistema', 'Sistema']] as [Tab, string][]).map(([k, label]) => (
+        {([['resumo', 'Resumo'], ['dinheiro', 'Dinheiro'], ['site', 'Site'], ['saloes', `Salões (${salons.length})`], ['sistema', 'Sistema']] as [Tab, string][]).map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} className={`chip${tab === k ? ' on' : ''}`} onClick={() => setTab(k)}>{label}</button>
         ))}
       </div>
@@ -99,6 +101,8 @@ export default function AdminPage() {
         </div>
       )}
       {tab === 'dinheiro' && <AdminMoney salons={salons} onOpen={openSalon} onChanged={load} />}
+      {tab === 'site' && <AdminSite onOpen={openSalon} />}
+      {tab === 'sistema' && <AdminOps />}
       {tab === 'sistema' && dash && <AdminSystem data={dash} />}
       {tab === 'sistema' && <AuditLog />}
       {tab === 'saloes' && <>
