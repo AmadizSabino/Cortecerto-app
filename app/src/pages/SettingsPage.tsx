@@ -10,6 +10,7 @@ import { themeById, themeStyle } from '../lib/themes'
 import { CHANGE_OPTIONS } from '../lib/clientChanges'
 import { exportBookings, exportClients } from '../lib/exportData'
 import { loadMySalon } from '../lib/mySalon'
+import HelpLink from '../HelpLink'
 
 interface SvcRow { id?: string; name: string; duration: string; price: string; active: boolean }
 interface DayRow { open: boolean; opens: string; closes: string }
@@ -120,7 +121,7 @@ export default function SettingsPage() {
 
   return (
     <div className="themed" style={themeStyle(themeById(info.theme))}><main className="page">
-      <header className="row"><h1>Definições</h1><Link to="/mais">‹ Mais</Link></header>
+      <header className="row"><h1>Definições<HelpLink /></h1><Link to="/mais">‹ Mais</Link></header>
 
       <h2>Salão</h2>
       <label>Nome<input value={info.name} onChange={e => setInfo({ ...info, name: e.target.value })} /></label>

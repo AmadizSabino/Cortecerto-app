@@ -11,6 +11,7 @@ import { comboTotals, depositFor, MODES, priceLabel, type Package, type PackageI
 import { dateInTz, zonedToUtc } from '../lib/time'
 import { themeById, themeStyle } from '../lib/themes'
 import { formatPhone, waLink } from '../lib/whatsapp'
+import HelpLink from '../HelpLink'
 
 interface Req {
   id: string; package_id: string; client_name: string; client_phone: string; event_date: string; event_time: string | null
@@ -220,7 +221,7 @@ export default function PackagesPage() {
 
   return (
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page">
-      <header className="row"><h1>Pacotes</h1><Link to="/mais">‹ Mais</Link></header>
+      <header className="row"><h1>Pacotes<HelpLink /></h1><Link to="/mais">‹ Mais</Link></header>
       {missing ? <p className="banner">Para usar pacotes, corra <code>supabase/migrations/0022_business_home_packages.sql</code> no editor SQL do Supabase.</p> : <>
         <div className="seg">
           <button className={tab === 'pacotes' ? 'on' : ''} onClick={() => setTab('pacotes')}>Pacotes</button>

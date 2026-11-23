@@ -7,6 +7,7 @@ import { euros, supabase, type Professional, type Salon, type Service } from '..
 import { parseEuros } from '../lib/onboarding'
 import { overrideKey, type Overrides } from '../lib/pricing'
 import { loadOverrides } from '../lib/pricingData'
+import HelpLink from '../HelpLink'
 
 interface Cell { offered: boolean; price: string; duration: string }
 const centsToText = (c: number) => (c / 100).toFixed(2).replace('.', ',')
@@ -91,7 +92,7 @@ export default function PricesPage() {
 
   return (
     <main className="page">
-      <header className="row"><h1>Preços por profissional</h1><Link to="/mais">‹ Mais</Link></header>
+      <header className="row"><h1>Preços por profissional<HelpLink /></h1><Link to="/mais">‹ Mais</Link></header>
       {!ready ? <p className="banner">Para usar preços por profissional, corra <code>supabase/migrations/0011_professional_prices.sql</code> no editor SQL do Supabase.</p> : <>
         <p className="muted">Deixe em branco para usar o preço e a duração do serviço. Desmarque quem não faz o serviço: deixa de aparecer na marcação.</p>
         {pros.length < 2 && <p className="muted">Com um só profissional, basta o preço do serviço nas <Link to="/definicoes">Definições</Link>.</p>}

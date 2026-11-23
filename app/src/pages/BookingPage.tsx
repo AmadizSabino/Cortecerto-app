@@ -326,6 +326,20 @@ export default function BookingPage() {
 
   const footer = (
     <footer className="foot">
+      <details className="help-note how-booking">
+        <summary>Como funciona a marcação</summary>
+        <ol>
+          <li>Escolha o serviço, com quem e o dia e a hora que lhe dão jeito. Só aparecem horários livres.</li>
+          <li>Escreva o nome e o telemóvel. Não precisa de criar conta nem de palavra-passe.</li>
+          {salon.deposit_cents > 0 && salon.mbway_number
+            ? <li>Envie o sinal de {euros(salon.deposit_cents)} por MB Way para o número que aparece no fim. A marcação fica confirmada quando o salão o receber.</li>
+            : <li>A marcação fica feita logo. O salão pode confirmá-la por WhatsApp.</li>}
+          <li>Na véspera, o salão pode enviar-lhe um lembrete por WhatsApp.</li>
+          {salon.client_change_hours != null
+            ? <li>Precisa de mudar ou cancelar? Use o link que aparece no fim da marcação e no lembrete{salon.client_change_hours > 0 ? `, até ${salon.client_change_hours} h antes` : ''}.</li>
+            : <li>Precisa de mudar ou cancelar? Fale com o salão{salon.whatsapp ? ' por WhatsApp' : ''}.</li>}
+        </ol>
+      </details>
       {picking ? <div className="stack" style={{ textAlign: 'left' }}>
         <p className="muted">Escolha um estilo só para si. O salão não vê esta escolha.</p>
         <ThemePicker value={theme.id} type={salon.type} showAll onChange={id => chooseTheme(id)} />

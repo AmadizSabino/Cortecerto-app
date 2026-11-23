@@ -34,6 +34,7 @@ import RequestPage from './pages/RequestPage'
 import BillingPage from './pages/BillingPage'
 import PasswordPage from './pages/PasswordPage'
 import LegalPage from './pages/LegalPage'
+import HelpPage from './pages/HelpPage'
 import { LEGAL_DOCS } from './lib/legal'
 
 export default function App() {
@@ -66,6 +67,7 @@ export default function App() {
         <Route path="/horarios" element={<SchedulePage />} />
         <Route path="/semana" element={<WeekPage />} />
         <Route path="/mais" element={<MorePage />} />
+        <Route path="/ajuda" element={<HelpPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/precos" element={<PricesPage />} />
         <Route path="/estatisticas" element={<StatsPage />} />

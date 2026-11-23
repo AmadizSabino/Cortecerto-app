@@ -7,6 +7,7 @@ import { loadMySalon, type Role } from '../lib/mySalon'
 import { can, levelLabel, NEED } from '../lib/access'
 import InstallCard from '../InstallCard'
 import { themeById, themeStyle } from '../lib/themes'
+import HelpLink from '../HelpLink'
 
 interface Item { to: string; icon: string; label: string; hint: string; need: keyof typeof NEED; show?: (s: Salon) => boolean }
 const GROUPS: { title: string; items: Item[] }[] = [
@@ -55,7 +56,7 @@ export default function MorePage() {
   return (
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page">
       <div className="greet">
-        <div><p className="eyebrow">Painel · acesso {levelLabel(role)}</p><h1>{salon.name}</h1></div>
+        <div><p className="eyebrow">Painel · acesso {levelLabel(role)}</p><h1>{salon.name}<HelpLink /></h1></div>
         <span className="avatar">{initials(salon.name)}</span>
       </div>
       <div className="card soft">
@@ -84,6 +85,10 @@ export default function MorePage() {
           </section>
         )
       })}
+      <h2>Ajuda</h2>
+      <div className="card menu">
+        <Link to="/ajuda"><Icon name="help" size={22} /><span>Ajuda e como fazer<small>Passo a passo para cada parte da app</small></span><span className="chev"><Icon name="chevronRight" size={18} /></span></Link>
+      </div>
       <h2>App no telemóvel</h2>
       <InstallCard always />
       {admin && <div className="card menu"><Link to="/admin"><Icon name="star" size={22} /><span>Administração CorteCerto<small>Assinaturas e faturas de todos os salões</small></span><span className="chev"><Icon name="chevronRight" size={18} /></span></Link></div>}

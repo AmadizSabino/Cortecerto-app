@@ -26,6 +26,7 @@ import type { LegalDoc } from '../lib/legal'
 import { manageLink } from '../lib/clientChanges'
 import { bookingPrice } from '../lib/pricing'
 import Login from '../components/Login'
+import HelpLink from '../HelpLink'
 
 const STATUS_LABEL: Record<Booking['status'], string> = {
   pendente: 'Pendente', confirmada: 'Confirmada', concluida: 'Concluída', faltou: 'Faltou', cancelada: 'Cancelada',
@@ -213,7 +214,7 @@ export default function AgendaPage() {
       <header className="greet">
         <div>
           <p className="eyebrow">{salon.name} · {new Date().toLocaleDateString('pt-PT', { timeZone: tz, day: 'numeric', month: 'short' }).replace('.', '')}</p>
-          <h1>{greeting}</h1>
+          <h1>{greeting}<HelpLink screen="/painel" /></h1>
         </div>
         <span className="avatar">{initials(salon.name)}</span>
       </header>

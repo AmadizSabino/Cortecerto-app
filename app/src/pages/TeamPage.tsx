@@ -7,6 +7,7 @@ import { atLeast, can, LEVELS, levelLabel, type Level } from '../lib/access'
 import { NO_PAY, parsePay, payLabel, type Pay } from '../lib/commission'
 import { themeById, themeStyle } from '../lib/themes'
 import { waLink } from '../lib/whatsapp'
+import HelpLink from '../HelpLink'
 
 interface Pro { id?: string; name: string; active: boolean }
 interface Member { user_id: string; email: string; professional_id: string | null; created_at: string; access?: Level }
@@ -166,7 +167,7 @@ export default function TeamPage() {
 
   return (
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page">
-      <header className="row"><h1>Equipa</h1><Link to="/mais">‹ Mais</Link></header>
+      <header className="row"><h1>Equipa<HelpLink /></h1><Link to="/mais">‹ Mais</Link></header>
 
       <h2>Profissionais e comissões</h2>
       {!payReady && <p className="banner small">Para registar comissões, corra <code>supabase/migrations/0018_team_clients_club_ai.sql</code> no editor SQL do Supabase.</p>}

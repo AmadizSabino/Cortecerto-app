@@ -7,6 +7,7 @@ import { can } from '../lib/access'
 import { parseEuros } from '../lib/onboarding'
 import { FEE_RULES, type HomeFee, type HomeSettings, type Zone } from '../lib/home'
 import { themeById, themeStyle } from '../lib/themes'
+import HelpLink from '../HelpLink'
 
 interface Row { id: string; name: string; at_home: boolean }
 const cents = (c: number) => (c / 100).toFixed(2).replace('.', ',')
@@ -107,7 +108,7 @@ export default function HomeSettingsPage() {
   const newId = () => `novo-${Math.random().toString(36).slice(2)}`
   return (
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page">
-      <header className="row"><h1>Ao domicílio</h1><Link to="/mais">‹ Mais</Link></header>
+      <header className="row"><h1>Ao domicílio<HelpLink /></h1><Link to="/mais">‹ Mais</Link></header>
       {missing ? <p className="banner">Para usar visitas ao domicílio, corra <code>supabase/migrations/0022_business_home_packages.sql</code> no editor SQL do Supabase.</p> : <>
         <p className="muted">O cliente vê o preço total antes de marcar: serviço + deslocação da zona + taxas que ligar. O tempo de viagem fica bloqueado na agenda, antes e depois da visita.</p>
         <label className="check card"><input type="checkbox" checked={settings.active} onChange={e => setSettings({ ...settings, active: e.target.checked })} /><b>Aceitar marcações ao domicílio</b></label>

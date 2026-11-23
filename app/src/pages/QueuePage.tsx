@@ -7,6 +7,7 @@ import { formatTime } from '../lib/time'
 import { formatPhone, waLink } from '../lib/whatsapp'
 import { themeById, themeStyle } from '../lib/themes'
 import { loadMySalon } from '../lib/mySalon'
+import HelpLink from '../HelpLink'
 
 /** The salon's walk-in queue: open or close it, call people by WhatsApp, add people at the counter. */
 export default function QueuePage() {
@@ -81,7 +82,7 @@ export default function QueuePage() {
   return (
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page wide">
       <header className="row">
-        <h1>Fila de espera</h1>
+        <h1>Fila de espera<HelpLink /></h1>
         <Link to="/mais">‹ Mais</Link>
       </header>
 

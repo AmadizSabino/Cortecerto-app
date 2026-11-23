@@ -7,6 +7,7 @@ import { billingState, type BillingFields } from '../lib/billing'
 import { PLAN } from '../lib/plan'
 import { listInvoices, openInvoice, type Invoice } from '../lib/invoices'
 import { themeById, themeStyle } from '../lib/themes'
+import HelpLink from '../HelpLink'
 
 const fmt = (iso: string) => new Date(iso).toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' })
 
@@ -45,7 +46,7 @@ export default function BillingPage() {
 
   return (
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page">
-      <header className="row"><h1>Assinatura</h1><Link to="/mais">‹ Mais</Link></header>
+      <header className="row"><h1>Assinatura<HelpLink /></h1><Link to="/mais">‹ Mais</Link></header>
       <section className="card">
         <strong>{status}</strong>
         {b.kind === 'experimental' && salon.trial_ends_at && <p className="muted">Até {fmt(salon.trial_ends_at)}. Até lá pode usar tudo, sem pagar nada.</p>}

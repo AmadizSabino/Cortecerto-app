@@ -9,6 +9,7 @@ import { AI_FEATURES, runAi, type AiFeature, type AiResult } from '../lib/ai'
 import { computeStats } from '../lib/stats'
 import { addDays, dateInTz, zonedToUtc } from '../lib/time'
 import { themeById, themeStyle } from '../lib/themes'
+import HelpLink from '../HelpLink'
 
 /** A text feature: optional fields, a button, and the answer. */
 function TextTool({ feature, label, fields, build }: {
@@ -96,7 +97,7 @@ export default function AiPage() {
 
   return (
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page">
-      <header className="row"><h1>Assistente IA</h1><Link to="/mais">‹ Mais</Link></header>
+      <header className="row"><h1>Assistente IA<HelpLink /></h1><Link to="/mais">‹ Mais</Link></header>
       <p className="muted">As funcionalidades de IA da CorteCerto. Enquanto a IA não estiver ligada, aparecem como "Em breve".</p>
       {AI_FEATURES.map(f => (
         <section key={f.id} className="card">
