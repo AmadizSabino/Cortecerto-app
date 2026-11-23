@@ -382,4 +382,19 @@ set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
 with u as (update salons set theme = 'b2' where id = :'salon' returning 1) select pg_temp.check((select count(*) from u) = 1, 'marking the salon paid unlocks it');
 reset role;
 select pg_temp.check(client_name = 'Cliente apagado', 'forgetting a client works while locked') from bookings where id = :'lb';
+-- 0024: admin dashboard ---------------------------------------------------------
+select pg_temp.check(source = 'online', 'a client booking on the public page is online') from bookings where id = :'b1';
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+insert into bookings (salon_id, service_id, professional_id, starts_at, ends_at, client_name, client_phone, status)
+  values (:'salon', :'corte', :'ana', now() + interval '61 days 7 hours', now() + interval '61 days 7 hours 30 minutes', 'Ao telefone', '914000000', 'confirmada') returning id as pb \gset
+do $$ begin perform admin_dashboard(); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+select pg_temp.check(jsonb_array_length(d->'salons') = 1 and jsonb_array_length(d->'weeks') = 12
+  and (d->'salons'->0->>'owner_email') = 'dono@x.pt' and (d->'salons'->0->>'bookings')::int > 0, 'the admin gets the dashboard')
+  from (select admin_dashboard() as d) x;
+reset role;
+select pg_temp.check(source = 'salao', 'a booking made in the panel is the salon''s') from bookings where id = :'pb';
+set role anon;
+do $$ begin perform admin_dashboard(); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%permission denied%' and sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+reset role;
 \echo All database checks passed

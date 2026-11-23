@@ -5,6 +5,8 @@ import { euros, supabase } from '../lib/supabase'
 import { billingState, lockState, type BillingFields } from '../lib/billing'
 import { BUCKET, invoicePath, listInvoices, openInvoice, parseAmount, type Invoice } from '../lib/invoices'
 import { PLAN } from '../lib/plan'
+import { health, since, HEALTH_LABEL, HEALTH_TAG, type AdminSalonRow, type Dashboard } from '../lib/adminStats'
+import { AdminOverview, AdminSystem, SalonFacts } from './admin/AdminDashboard'
 
 interface AdminSalon extends BillingFields { id: string; name: string; slug: string; type: string; created_at: string }
 
@@ -17,6 +19,9 @@ const KIND_LABEL: Record<string, string> = {
 const dateOnly = (iso?: string | null) => iso ? iso.slice(0, 10) : ''
 const endOfDay = (d: string) => d ? new Date(d + 'T23:59:59').toISOString() : null
 const withVat = (Math.round(PLAN.priceCents * (1 + PLAN.vatRate)) / 100).toFixed(2).replace('.', ',')
+type Tab = 'resumo' | 'saloes' | 'sistema'
+type Filter = 'todos' | 'gratis' | 'ativos' | 'por_pagar' | 'risco'
+const FILTERS: [Filter, string][] = [['todos', 'Todos'], ['gratis', 'Grátis'], ['ativos', 'Ativos'], ['por_pagar', 'Por pagar'], ['risco', 'Em risco']]
 const thisMonth = () => new Date().toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })
 
 /** CorteCerto's own admin area: every salon's plan, and its invoices. */
@@ -26,11 +31,18 @@ export default function AdminPage() {
   const [salons, setSalons] = useState<AdminSalon[]>([])
   const [q, setQ] = useState('')
   const [open, setOpen] = useState<string | null>(null)
+  const [dash, setDash] = useState<Dashboard | null>()
+  const [tab, setTab] = useState<Tab>('resumo')
+  const [filter, setFilter] = useState<Filter>('todos')
+  const [sort, setSort] = useState<'recentes' | 'marcacoes' | 'login' | 'saude'>('recentes')
 
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setSession(data.session)) }, [])
   async function load() {
     const { data } = await supabase.from('salons').select('id,name,slug,type,created_at,subscription,trial_ends_at,paid_until').order('created_at', { ascending: false })
     setSalons(data ?? [])
+    // admin_dashboard() comes with migration 0024; without it the list still works.
+    const d = await supabase.rpc('admin_dashboard')
+    setDash(d.error ? null : d.data as Dashboard)
   }
   useEffect(() => {
     if (!session) return
@@ -44,35 +56,86 @@ export default function AdminPage() {
   if (!session) return <Navigate to="/painel" replace />
   if (!admin) return <main className="page"><h1>Sem acesso</h1><p className="muted">Esta área é só para a equipa CorteCerto.</p></main>
 
-  const shown = salons.filter(s => !q || `${s.name} ${s.slug}`.toLowerCase().includes(q.toLowerCase()))
+  const rows = new Map<string, AdminSalonRow>((dash?.salons ?? []).map(r => [r.id, r]))
   const counts = salons.reduce<Record<string, number>>((c, s) => { const k = billingState(s).kind; c[k] = (c[k] ?? 0) + 1; return c }, {})
+  const matches = (s: AdminSalon) => {
+    const k = billingState(s).kind, r = rows.get(s.id)
+    if (filter === 'gratis') return k === 'experimental'
+    if (filter === 'ativos') return k === 'ativa'
+    if (filter === 'por_pagar') return k === 'terminou' || k === 'em_atraso' || lockState(s).locked
+    if (filter === 'risco') return !!r && ['risco', 'atencao'].includes(health(r).level)
+    return true
+  }
+  const time = (iso?: string | null) => iso ? new Date(iso).getTime() : 0
+  const shown = salons
+    .filter(s => (!q || `${s.name} ${s.slug} ${rows.get(s.id)?.owner_email ?? ''}`.toLowerCase().includes(q.toLowerCase())) && matches(s))
+    .sort((a, b) => {
+      const ra = rows.get(a.id), rb = rows.get(b.id)
+      if (sort === 'marcacoes') return (rb?.bookings_30d ?? 0) - (ra?.bookings_30d ?? 0)
+      if (sort === 'login') return time(rb?.last_sign_in_at) - time(ra?.last_sign_in_at)
+      if (sort === 'saude') return (ra ? health(ra).score : 0) - (rb ? health(rb).score : 0)
+      return time(b.created_at) - time(a.created_at)
+    })
+  const openSalon = (id: string) => { setTab('saloes'); setFilter('todos'); setQ(''); setOpen(id) }
 
   return (
     <main className="page wide">
       <header className="row"><h1>Administração</h1><button className="link" onClick={() => supabase.auth.signOut().then(() => location.assign('/painel'))}>Sair</button></header>
-      <div className="stats" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
-        <div className="stat"><b>{salons.length}</b><span>Salões</span></div>
-        <div className="stat"><b>{counts.ativa ?? 0}</b><span>Ativos</span></div>
-        <div className="stat"><b>{(counts.terminou ?? 0) + (counts.em_atraso ?? 0)}</b><span>Por pagar</span></div>
-        <div className="stat"><b>{salons.filter(s => lockState(s).locked).length}</b><span>Bloqueadas</span></div>
+      <div className="chips admin-tabs" role="tablist">
+        {([['resumo', 'Resumo'], ['saloes', `Salões (${salons.length})`], ['sistema', 'Sistema']] as [Tab, string][]).map(([k, label]) => (
+          <button key={k} role="tab" aria-selected={tab === k} className={`chip${tab === k ? ' on' : ''}`} onClick={() => setTab(k)}>{label}</button>
+        ))}
       </div>
-      <label>Procurar<input type="search" value={q} placeholder="Nome ou link do salão" onChange={e => setQ(e.target.value)} /></label>
+      {dash === null && <p className="card warn small">O resumo precisa da migração 0024 (supabase/migrations/0024_admin_dashboard.sql). Corra-a no Supabase › SQL Editor. A lista de salões funciona sem ela.</p>}
+      {tab === 'resumo' && dash && <AdminOverview data={dash} onOpen={openSalon} />}
+      {tab === 'resumo' && dash === null && (
+        <div className="stats" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
+          <div className="stat"><b>{salons.length}</b><span>Salões</span></div>
+          <div className="stat"><b>{counts.ativa ?? 0}</b><span>Ativos</span></div>
+          <div className="stat"><b>{(counts.terminou ?? 0) + (counts.em_atraso ?? 0)}</b><span>Por pagar</span></div>
+          <div className="stat"><b>{salons.filter(s => lockState(s).locked).length}</b><span>Bloqueadas</span></div>
+        </div>
+      )}
+      {tab === 'sistema' && dash && <AdminSystem data={dash} />}
+      {tab === 'saloes' && <>
+      <label>Procurar<input type="search" value={q} placeholder="Nome, link ou email do dono" onChange={e => setQ(e.target.value)} /></label>
+      <div className="row">
+        <div className="chips">
+          {FILTERS.map(([k, label]) => <button key={k} className={`chip${filter === k ? ' on' : ''}`} onClick={() => setFilter(k)}>{label}</button>)}
+        </div>
+        <label className="sort">Ordenar
+          <select value={sort} onChange={e => setSort(e.target.value as typeof sort)}>
+            <option value="recentes">Mais recentes</option>
+            <option value="marcacoes">Mais marcações</option>
+            <option value="login">Último login</option>
+            <option value="saude">Saúde (pior primeiro)</option>
+          </select>
+        </label>
+      </div>
       {shown.map(s => {
         const b = billingState(s)
         const locked = lockState(s).locked
+        const r = rows.get(s.id)
+        const h = r ? health(r) : null
         return (
           <section key={s.id} className="card">
             <button className="client-head" onClick={() => setOpen(open === s.id ? null : s.id)} aria-expanded={open === s.id}>
-              <span><b>{s.name}</b><small className="muted">/s/{s.slug} · {s.created_at && `desde ${new Date(s.created_at).toLocaleDateString('pt-PT')}`}</small></span>
+              <span><b>{s.name}</b><small className="muted">/s/{s.slug} · {s.created_at && `desde ${new Date(s.created_at).toLocaleDateString('pt-PT')}`}</small>
+                {r && <small className="muted">Login {since(r.last_sign_in_at)} · {r.bookings_30d} {r.bookings_30d === 1 ? 'marcação' : 'marcações'} em 30 d{r.bookings_30d > 0 && ` · ${Math.round(100 * r.online_30d / r.bookings_30d)}% online`}</small>}</span>
+              <span className="tags">
+              {h && <span className={`tag ${HEALTH_TAG[h.level]}`}>{HEALTH_LABEL[h.level]}</span>}
               <span className={`tag ${b.kind === 'ativa' ? 'concluida' : b.kind === 'em_atraso' || b.kind === 'terminou' ? 'faltou' : 'pendente'}`}>
                 {locked ? 'Bloqueada' : KIND_LABEL[b.kind]}{!locked && b.kind === 'experimental' && ` · ${b.daysLeft} d`}
               </span>
+              </span>
             </button>
+            {open === s.id && r && <SalonFacts s={r} />}
             {open === s.id && <SalonAdmin salon={s} onChanged={load} />}
           </section>
         )
       })}
       {shown.length === 0 && <p className="muted">Nenhum salão encontrado.</p>}
+      </>}
     </main>
   )
 }
