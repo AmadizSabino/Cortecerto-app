@@ -10,8 +10,20 @@
   // Worker logs (including browser error reports) in Cloudflare > Workers > cortecerto-app > Logs.
   "observability": { "enabled": true },
   "vars": {
-    "SUPABASE_URL": "https://ahevsnyhcyyaojdzfgse.supabase.co"
+    "SUPABASE_URL": "https://ahevsnyhcyyaojdzfgse.supabase.co",
+    // The address in emails (booking notices, reminders, payment requests) and the uptime check.
+    "APP_URL": "https://cortecerto.pt"
   },
+  // cortecerto.pt is the address. The others (www, .com.pt, .eu) send people there (worker/index.ts).
+  // Each domain must be in this Cloudflare account (Websites > Add a domain) before this deploys.
+  "routes": [
+    { "pattern": "cortecerto.pt", "custom_domain": true },
+    { "pattern": "www.cortecerto.pt", "custom_domain": true },
+    { "pattern": "cortecerto.com.pt", "custom_domain": true },
+    { "pattern": "www.cortecerto.com.pt", "custom_domain": true },
+    { "pattern": "cortecerto.eu", "custom_domain": true },
+    { "pattern": "www.cortecerto.eu", "custom_domain": true }
+  ],
   // Required by `wrangler preview`, which Cloudflare runs for non-main branches. Empty is fine.
   "previews": {},
   // 08:00 UTC (8 or 9 in Lisbon): automatic payment reminders and the daily summary, each only when switched on in /admin.
