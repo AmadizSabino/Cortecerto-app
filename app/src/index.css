@@ -489,3 +489,30 @@ button:disabled { opacity: .5; cursor: default; }
 .mfa-setup { display: grid; gap: 8px; justify-items: start; }
 .mfa-setup .mfa-qr { background: #fff; padding: 8px; border-radius: 8px; border: 1px solid var(--line); }
 .mfa-setup code { word-break: break-all; }
+
+/* Landing: example link, no-show calculator, demo request, sticky CTA on phones */
+.lp-example { margin: 18px 0 0; }
+.lp-example a { color: var(--lp-rust); font-weight: 600; }
+.lp-calc { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 32px; align-items: stretch; }
+.lp-calc-inputs { display: grid; gap: 16px; align-content: start; }
+.lp-calc label, .lp-demo label { display: grid; gap: 6px; font-weight: 600; }
+.lp-calc input, .lp-demo input { font: inherit; font-weight: 400; padding: 12px 14px; border: 1.5px solid var(--lp-line); border-radius: 12px; background: #fff; color: var(--lp-ink); }
+.lp-calc input:focus-visible, .lp-demo input:focus-visible { outline: 3px solid var(--lp-rust); outline-offset: 1px; }
+.lp-calc-out { background: #fff; border: 1.5px solid var(--lp-line); border-radius: 20px; padding: 24px; }
+.lp-calc-out p { margin: 0 0 8px; line-height: 1.5; color: #4a413a; }
+.lp-calc-big { font-size: clamp(2.4rem, 6vw, 3.4rem); font-weight: 800; letter-spacing: -.03em; color: var(--lp-rust) !important; line-height: 1.1; }
+.lp-demo-section { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
+.lp-demo-section p { line-height: 1.55; color: #4a413a; max-width: 34em; }
+.lp-demo { display: grid; gap: 14px; background: #fff; border: 1.5px solid var(--lp-line); border-radius: 20px; padding: 24px; }
+.lp-demo .lp-cta { border: 0; cursor: pointer; justify-self: start; }
+.lp-demo .lp-cta:disabled { opacity: .6; }
+.lp-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.lp-demo-error { color: #b3261e; margin: 0; }
+.lp-demo-done { background: #fff; border: 1.5px solid var(--lp-line); border-radius: 20px; padding: 24px; font-weight: 600; margin: 0; }
+.lp-small-print { font-size: .85rem; color: #6d6259 !important; margin: 0; }
+.lp-sticky { display: none; }
+@media (max-width: 760px) {
+  .lp-calc, .lp-demo-section { grid-template-columns: 1fr; }
+  .lp-sticky { display: block; position: sticky; bottom: 0; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--lp-paper) 92%, transparent); backdrop-filter: blur(6px); border-top: 1px solid var(--lp-line); z-index: 5; }
+  .lp-sticky .lp-cta { display: block; text-align: center; }
+}

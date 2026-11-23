@@ -5,6 +5,7 @@
  * POST /api/notify-change { id } — emails the owner when a client cancels or moves it.
  * POST /api/admin/remind — a payment reminder email the admin sends from /admin (see reminders.ts).
  * POST /api/admin/send-request — emails a monthly payment request PDF to a salon (see requests.ts).
+ * POST /api/demo-request — "Pedir demonstração" on the landing page: a new contact in /admin and an email (see demo.ts).
  * POST /api/t — an anonymous visit or click, for /admin > Site (see track.ts).
  * Every 5 minutes (cron trigger): uptime check and AI budget check, with alert emails (see ops.ts).
  * Every morning (cron trigger): automatic payment reminders and the daily summary, each only when switched on in /admin.
@@ -25,6 +26,8 @@ import { handleAi } from './ai'
 import { remindNow, remindScheduled } from './reminders'
 import { sendRequest } from './requests'
 import { track } from './track'
+import { demoRequest } from './demo'
+import { withMeta } from './meta'
 import { opsDaily, opsEveryFiveMinutes } from './ops'
 
 interface Env {
@@ -62,9 +65,12 @@ export default {
     if (url.pathname === '/api/admin/remind') return remindNow(request, env, url.origin)
     if (url.pathname === '/api/admin/send-request') return sendRequest(request, env, url.origin)
     if (url.pathname === '/api/t') return track(request, env)
+    if (url.pathname === '/api/demo-request') return demoRequest(request, env, url.origin)
     if (url.pathname === '/api/manifest') return clientManifest(url)
     if (url.pathname.startsWith('/api/ai/')) return handleAi(request, env, url.pathname.slice('/api/ai/'.length))
     if (url.pathname.startsWith('/api/')) return new Response('Not found', { status: 404 })
+    // Only / and /s/* reach here (run_worker_first): their link previews are filled in (meta.ts).
+    if (url.pathname === '/' || url.pathname.startsWith('/s/')) return withMeta(request, env)
     return env.ASSETS.fetch(request)
   },
   async scheduled(event: { cron: string }, env: Env, ctx: { waitUntil(p: Promise<unknown>): void }): Promise<void> {
