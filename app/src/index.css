@@ -539,3 +539,6 @@ button:disabled { opacity: .5; cursor: default; }
 .help-topic .actions .btn { margin-top: 0; }
 .how-booking { text-align: left; max-width: 560px; margin: 0 auto 14px; }
 .how-booking summary { text-align: center; }
+/* The owner looking at their own booking page */
+.preview-bar { position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; padding: 10px 16px; background: #1d1b18; color: #fff; font-size: .9rem; line-height: 1.35; }
+.preview-bar .btn { margin: 0; background: #fff; color: #1d1b18 !important; border-color: #fff; }

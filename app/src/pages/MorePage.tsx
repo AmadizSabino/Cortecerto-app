@@ -63,7 +63,7 @@ export default function MorePage() {
         <p className="small muted" style={{ margin: 0 }}>Link de marcação</p>
         <p style={{ margin: '4px 0 10px', wordBreak: 'break-all', fontWeight: 600 }}>{link.replace(/^https?:\/\//, '')}</p>
         <div className="row" style={{ justifyContent: 'flex-start' }}>
-          <a className="btn inline sm" href={link} target="_blank" rel="noreferrer">Ver como cliente</a>
+          <Link className="btn inline sm" to={`/s/${salon.slug}`}>Ver como cliente</Link>
           <button className="sm" onClick={() => navigator.clipboard?.writeText(link)}><Icon name="copy" size={16} />Copiar</button>
         </div>
       </div>

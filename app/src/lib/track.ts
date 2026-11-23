@@ -36,8 +36,14 @@ export function pageOf(path: string): TrackPage {
 }
 
 /** Sends one event. `key` makes it count once per page load (e.g. one visit per page). */
+function signedIn(): boolean {
+  try { return Object.keys(localStorage).some(k => k.startsWith('sb-') && k.endsWith('-auth-token')) } catch { return false }
+}
+
 export function track(name: TrackEvent, opts: { page?: TrackPage; salon?: string | null; key?: string } = {}) {
   if (!import.meta.env.PROD) return
+  // Salon staff looking at their own booking page are not visitors.
+  if ((opts.page ?? pageOf(location.pathname)) === 'salao' && signedIn()) return
   if (opts.key) { if (once.has(opts.key)) return; once.add(opts.key) }
   const body = JSON.stringify({
     n: name, p: opts.page ?? pageOf(location.pathname), path: location.pathname,
