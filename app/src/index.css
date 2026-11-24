@@ -385,8 +385,8 @@ button:disabled { opacity: .5; cursor: default; }
 .back-link { font-weight: 600; text-decoration: none; color: var(--accent); }
 button.back-link { font-size: 1rem; padding: 6px 0; }
 .brand-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
-.brand-logo { width: 40px; height: 40px; object-fit: contain; border-radius: 10px; background: var(--card, #fff); }
-.hero .avatar.logo { object-fit: contain; background: var(--card, #fff); padding: 4px; box-sizing: border-box; }
+.brand-logo { width: 40px; height: 40px; object-fit: contain; border-radius: 10px; background: var(--card); }
+.hero .avatar.logo { object-fit: contain; background: var(--card); padding: 4px; box-sizing: border-box; }
 .about { margin: 8px 0; white-space: pre-line; }
 .gallery-strip { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 8px; scroll-snap-type: x mandatory; }
 .gallery-strip button { flex: 0 0 auto; padding: 0; border: 0; background: none; scroll-snap-align: start; }
@@ -535,7 +535,7 @@ button.back-link { font-size: 1rem; padding: 6px 0; }
 .help-search { position: relative; display: block; margin-bottom: 12px; color: var(--muted); }
 .help-search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; }
 .help-search input[type=search] { padding-left: 40px; }
-.help-topic { border: 1px solid var(--line); border-radius: 12px; background: var(--card, #fff); margin: 0 0 8px; }
+.help-topic { border: 1px solid var(--line); border-radius: 12px; background: var(--card); margin: 0 0 8px; }
 .help-topic summary { padding: 14px 16px; font-weight: 600; cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 10px; }
 .help-topic summary::-webkit-details-marker { display: none; }
 .help-topic summary::after { content: '+'; color: var(--muted); font-weight: 400; font-size: 1.2rem; line-height: 1; }
@@ -554,3 +554,13 @@ button.back-link { font-size: 1rem; padding: 6px 0; }
 /* The owner looking at their own booking page */
 .preview-bar { position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; padding: 10px 16px; background: #1d1b18; color: #fff; font-size: .9rem; line-height: 1.35; }
 .preview-bar .btn { margin: 0; background: #fff; color: #1d1b18 !important; border-color: #fff; }
+
+/* iPhone: the guided "Adicionar ao ecrã principal" (components/IosInstallGuide.tsx). */
+.ios-guide { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.55); display: flex; align-items: flex-end; justify-content: center; padding: 16px 16px calc(64px + env(safe-area-inset-bottom)); }
+.ios-sheet { background: var(--card); color: var(--fg); border-radius: 18px; padding: 20px; width: 100%; max-width: 440px; box-shadow: 0 10px 40px rgba(0,0,0,.3); }
+.ios-steps { list-style: none; padding: 0; margin: 0 0 16px; display: grid; gap: 14px; counter-reset: s; }
+.ios-steps li { display: grid; grid-template-columns: 48px 1fr; gap: 12px; align-items: center; }
+.ios-ico { width: 48px; height: 48px; border-radius: 12px; background: color-mix(in srgb, var(--fg) 7%, var(--card)); display: grid; place-items: center; color: #0a84ff; font-size: .8rem; }
+.ios-arrow { position: fixed; left: 50%; bottom: calc(8px + env(safe-area-inset-bottom)); transform: translateX(-50%); color: #fff; font-size: 2.4rem; line-height: 1; animation: ios-bounce 1s ease-in-out infinite; }
+@keyframes ios-bounce { 0%, 100% { transform: translate(-50%, 0) } 50% { transform: translate(-50%, 8px) } }
+@media (prefers-reduced-motion: reduce) { .ios-arrow { animation: none } }
