@@ -8,13 +8,15 @@ import { loadHours } from '../lib/scheduleData'
 import { dateInTz } from '../lib/time'
 
 const QUICK = ['Como é o meu dia hoje?', 'Que horas tenho livres amanhã?', 'Como está a semana?', 'Quanto faturei este mês?', 'Quem não vem há mais de 45 dias?']
+const MONEY_QUICK = 'Quanto faturei este mês?'
 
 /**
  * "Pergunte ao assistente": questions about the salon, answered by the AI. It starts from a summary
  * of the last 7 and next 7 days, and the Worker gives it read-only tools for anything else
  * (any day's diary, a client's history, free times, totals, clients who stopped coming). Never phones.
  */
-export default function AskAssistant({ salon, compact }: { salon: Salon; compact?: boolean }) {
+/** `owner`: money figures (takings, revenue) are only for the owner; the Worker enforces it too. */
+export default function AskAssistant({ salon, compact, owner }: { salon: Salon; compact?: boolean; owner: boolean }) {
   const [q, setQ] = useState('')
   const [res, setRes] = useState<AiResult | null>(null)
   const [busy, setBusy] = useState(false)
@@ -34,7 +36,7 @@ export default function AskAssistant({ salon, compact }: { salon: Salon; compact
       salonName: salon.name, salonType: salon.type, tz, now, today, hours: hours.salon,
       services: Object.fromEntries((sv.data ?? []).map(s => [s.id, s])),
       pros: Object.fromEntries((pr.data ?? []).map(p => [p.id, p])),
-      bookings: bk.data ?? [],
+      bookings: bk.data ?? [], money: owner,
     })
     setContext(text)
     return text
@@ -52,9 +54,9 @@ export default function AskAssistant({ salon, compact }: { salon: Salon; compact
       <div className="row" style={{ justifyContent: 'flex-start', flexWrap: 'nowrap' }}>
         <Icon name="spark" size={20} /><strong>Pergunte ao assistente</strong><span className="tag">IA</span>
       </div>
-      {!compact && <p className="muted small" style={{ margin: '6px 0 0' }}>Pergunte pela agenda, por um cliente, pelas horas livres ou pelo que faturou. Só lê, nunca marca nem cancela.</p>}
+      {!compact && <p className="muted small" style={{ margin: '6px 0 0' }}>Pergunte pela agenda, por um cliente, pelas horas livres{owner ? ' ou pelo que faturou' : ''}. Só lê, nunca marca nem cancela. Os nomes dos clientes são trocados por códigos antes de irem para a IA.</p>}
       <div className="chips">
-        {QUICK.map(t => <button key={t} type="button" className="chip" disabled={busy} onClick={() => ask(t)}>{t}</button>)}
+        {QUICK.filter(t => owner || t !== MONEY_QUICK).map(t => <button key={t} type="button" className="chip" disabled={busy} onClick={() => ask(t)}>{t}</button>)}
       </div>
       <form className="ask-row" onSubmit={e => { e.preventDefault(); ask(q) }}>
         <input value={q} maxLength={500} placeholder="Ex.: A Ana tem marcação para que dia?" onChange={e => setQ(e.target.value)} aria-label="Pergunta ao assistente" />

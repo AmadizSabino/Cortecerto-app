@@ -52,8 +52,8 @@ interface Feature {
 }
 
 export const DEFAULT_MODEL = 'claude-haiku-5-5'
-/** The owner's assistant may read client names (find_client, names in the diary). Never phones. */
-const ASSISTANT_SEES_NAMES = true
+/** Money figures (revenue, takings, what a client spent) only go to the owner, not to managers. */
+const noMoney = (text: string) => text.replace(/-?\d[\d.\s]*,\d{2}\s*€/g, '').replace(/€\s*-?\d[\d.,]*/g, '')
 const PT = 'Responde sempre em português de Portugal, com frases curtas e simples. Nunca inventes preços, horários ou dados que não te foram dados. Escreve texto simples, sem markdown: sem asteriscos, cardinais nem tabelas.'
 const str = (v: unknown, max = 2000) => typeof v === 'string' ? v.trim().slice(0, max) : ''
 
@@ -140,16 +140,18 @@ export async function handleAi(request: Request, env: AiEnv, name: string): Prom
   // Who is asking, and for which salon.
   let salonId = ''
   let userId: string | null = null
+  let role = ''
   if (feature.who === 'salon') {
     const who = await signedIn(request, env)
     if (!who) return json({ status: 'erro', message: 'Inicie sessão no painel.' }, 401)
     if ((RANK[who.role] ?? 0) < RANK[feature.need ?? 'agenda']) return json({ status: 'erro', message: 'O seu acesso não inclui esta funcionalidade.' }, 403)
-    salonId = who.salonId; userId = who.userId
+    salonId = who.salonId; userId = who.userId; role = who.role
   } else {
     salonId = String(body.salon ?? '')
     if (!UUID.test(salonId)) return json({ status: 'erro', message: 'Salão inválido.' }, 400)
   }
 
+  if (feature.who === 'salon' && role !== 'dono' && typeof input.context === 'string') input.context = noMoney(input.context)
   const prompt = feature.prompt(input)
   if (typeof prompt !== 'string') return json({ status: 'erro', message: prompt.error }, 400)
 
@@ -165,7 +167,7 @@ export async function handleAi(request: Request, env: AiEnv, name: string): Prom
 
   try {
     const r = name === 'owner-assistant' && env.SUPABASE_SERVICE_ROLE_KEY
-      ? await ownerAssistant(env, { salonId, system: feature.system!, question: str(input.question, 500), context: str(input.context, 20000), model: env.AI_MODEL || DEFAULT_MODEL, names: ASSISTANT_SEES_NAMES })
+      ? await ownerAssistant(env, { salonId, system: feature.system!, question: str(input.question, 500), context: str(input.context, 20000), model: env.AI_MODEL || DEFAULT_MODEL, money: role === 'dono' })
       : feature.kind === 'text' ? await askClaude(env, feature, prompt, str(input.image, 3_000_000)) : await editImage(env, name, input, prompt)
     await log(env, salonId, name, 'feito', userId, r.usage)
     return json({ status: 'feito', ...(feature.kind === 'text' ? { text: r.out } : { image: r.out }) })

@@ -234,7 +234,7 @@ export default function AgendaPage() {
       </div>
       <InstallCard />
       {!locked && <RemindersCard salon={salon} />}
-      {!locked && can(role, 'ia') && <AskAssistant salon={salon} compact />}
+      {!locked && can(role, 'ia') && <AskAssistant salon={salon} compact owner={role === 'dono'} />}
       {!locked && <SetupChecklist salon={salon} services={Object.keys(services).length} professionals={Object.keys(pros).length} />}
 
       <div className="daynav" id="agenda">

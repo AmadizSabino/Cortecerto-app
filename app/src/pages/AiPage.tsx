@@ -80,18 +80,18 @@ export default function AiPage() {
 
   const tz = salon.timezone
   const today = dateInTz(new Date(), tz)
-  // Only numbers go to the AI, never client names or phones.
+  // Only numbers go to the AI, never client names or phones; money figures only for the owner.
   const lastWeek = computeStats(recent, services, tz, addDays(today, -7), addDays(today, -1))
   const nextWeek = recent.filter(b => b.starts_at >= new Date().toISOString() && (b.status === 'pendente' || b.status === 'confirmada'))
   const context = [
     `Salão: ${salon.name} (${salon.type}).`,
-    `Últimos 7 dias: ${lastWeek.done} visitas, ${euros(lastWeek.revenue)} faturados, ${lastWeek.noShows} faltas, ${lastWeek.newClients} clientes novos.`,
+    `Últimos 7 dias: ${lastWeek.done} visitas, ${role === 'dono' ? `${euros(lastWeek.revenue)} faturados, ` : ''}${lastWeek.noShows} faltas, ${lastWeek.newClients} clientes novos.`,
     `Próximos 7 dias: ${nextWeek.length} marcações.`,
     `Serviços: ${Object.values(services).map(s => `${s.name} ${euros(s.price_cents)} (${s.duration_min} min)`).join('; ')}.`,
   ].join('\n')
 
   const tools: Partial<Record<AiFeature, React.ReactNode>> = {
-    'owner-assistant': <AskAssistant salon={salon} />,
+    'owner-assistant': <AskAssistant salon={salon} owner={role === 'dono'} />,
     'weekly-report': <TextTool feature="weekly-report" label="Fazer o relatório da semana" build={() => ({ context })} />,
     'review-reply': <TextTool feature="review-reply" label="Escrever resposta" fields={[{ key: 'stars', label: 'Estrelas (1 a 5)', placeholder: '5' }, { key: 'review', label: 'Texto da avaliação', rows: 4 }]} build={v => ({ review: v.review, stars: v.stars, salon: salon.name })} />,
     'before-after': <AiTryOn feature="before-after" title="Antes e depois" intro="Tire a foto do antes e mostre ao cliente como vai ficar. Também está em Hoje, em cada marcação."
@@ -115,7 +115,7 @@ export default function AiPage() {
             : `Usa-se em ${f.where}.`}</p>)}
         </section>
       ))}
-      <p className="muted small">Os telemóveis e emails dos clientes nunca são enviados à IA. O assistente pode ler a agenda e os nomes dos clientes para responder às suas perguntas. As fotos não são guardadas.</p>
+      <p className="muted small">Os telemóveis e emails dos clientes nunca são enviados à IA, e os nomes são trocados por códigos antes de saírem da CorteCerto. Os valores em euros só são usados quando pergunta o dono. As fotos não são guardadas.</p>
     </main></div>
   )
 }
