@@ -14,6 +14,9 @@ import './landing/landing.css'
 /** Who the app is for. Photos are AI-generated atmosphere (no faces); swap by replacing public/landing/tipo-*.webp. */
 const TYPES: [string, string, string][] = [['scissors', 'Barbearias', 'barbearia'], ['spark', 'Cabeleireiros', 'cabeleireiro'], ['star', 'Unhas', 'unhas'], ['crown', 'Estética e depilação', 'estetica']]
 
+/** Before/after examples in the AI section: [file key, style as picked in the app]. Fictional people; the "after" is real app output (scripts in PR). */
+const BEFORE_AFTER: [string, string][] = [['barba', 'Barba curta desenhada'], ['fade', 'Mid fade'], ['bob', 'Long bob']]
+
 const TRUST: string[] = ['Sem cartão', 'Sem fidelização', 'Pronto em 15 minutos', 'Dados guardados na UE']
 
 const STEPS: [string, string, string][] = [
@@ -327,6 +330,16 @@ export default function LandingPage() {
             <span className="lp-ai-tag">Antes e depois</span>
             <h3>Mostre o resultado antes de pegar na tesoura</h3>
             <p>Tire uma foto ao cliente na cadeira, escolha o estilo e em cerca de 10 segundos vê o novo visual ao lado da foto original. Fades, barba, cor ou unhas. Menos dúvidas, clientes mais seguros, e serviços extra que se vendem sozinhos.</p>
+          </div>
+          <div className="lp-ba">
+            <ul>{BEFORE_AFTER.map(([k, style]) => (
+              <li key={k}>
+                <figure><img src={`/landing/ia-${k}-antes.webp`} alt={`Antes: ${style}`} width={400} height={500} loading="lazy" decoding="async" /><figcaption>Antes</figcaption></figure>
+                <figure><img src={`/landing/ia-${k}-depois.webp`} alt={`Depois: ${style}, imagem feita pela app`} width={400} height={500} loading="lazy" decoding="async" /><figcaption>Depois</figcaption></figure>
+                <p>{style}</p>
+              </li>
+            ))}</ul>
+            <p className="lp-ba-note">Pessoas fictícias, criadas por IA. Cada "depois" foi feito pela funcionalidade da app, a partir da foto "antes" e do estilo indicado.</p>
           </div>
         </article>
         <ul className="lp-ai-more">

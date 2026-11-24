@@ -508,3 +508,15 @@
   .lp-types ul { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .lp-types li span { padding: 32px 12px 10px; font-size: .95rem; }
 }
+
+/* AI section: before/after examples */
+.lp-ba { min-width: 0; }
+.lp-ba ul { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.lp-ba li { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.lp-ba figure { position: relative; margin: 0; border-radius: 14px; overflow: hidden; aspect-ratio: 4 / 5; background: rgba(255,255,255,.08); }
+.lp-ba img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lp-ba figcaption { position: absolute; left: 8px; top: 8px; padding: 3px 9px; border-radius: 999px; background: rgba(29,27,24,.7); color: #fff; font-size: .75rem; font-weight: 700; }
+.lp-ba figure + figure figcaption { background: var(--rust); }
+.lp-ba li > p { grid-column: 1 / -1; margin: 4px 0 0; font-weight: 700; font-size: .95rem; text-align: center; }
+.lp-ba-note { margin: 14px 0 0; font-size: .85rem; opacity: .75; }
+@media (max-width: 800px) { .lp-ba ul { grid-template-columns: 1fr; gap: 16px; } }
