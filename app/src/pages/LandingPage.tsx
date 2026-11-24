@@ -89,6 +89,12 @@ const WORKS: [string, string, string][] = [
   ['download', 'Contabilidade', 'Marcações com valores exportadas para Excel. A fatura ao cliente continua no seu programa certificado.'],
 ]
 
+/** Announced but not built yet (Francisco chose to show them as "Em breve", 2026-11-24). Remove the badge when they ship. */
+const SOON: [string, string, string][] = [
+  ['card', 'Ligação ao seu programa de faturação', 'A marcação concluída passa para o seu programa de faturação certificado. Será um extra opcional.'],
+  ['phone', 'Assistente de WhatsApp', 'Responde aos clientes a qualquer hora e marca, muda ou cancela na agenda real.'],
+]
+
 const AI_MORE: [string, string, string][] = [
   ['camera', 'Experimente antes de marcar', 'Na sua página, o cliente tira uma selfie e vê o estilo antes de escolher.'],
   ['scissors', 'Sugestões de corte', 'Ideias do seu catálogo para o cliente, com base no que procura.'],
@@ -108,7 +114,7 @@ const FAQ: [string, string][] = [
   ['Tenho de dar o cartão para experimentar?', 'Não. Cria o salão só com o email. Ao fim dos 30 dias decide se continua.'],
   ['E se eu quiser cancelar?', 'Cancela quando quiser, sem fidelização e sem multas. Antes disso descarrega os seus clientes e marcações em Excel. Ficam seus.'],
   ['Já tenho clientes num caderno ou noutro programa.', 'Não precisa de passar tudo de uma vez. Cada cliente que marca online entra sozinho na lista, e os de telefone ou balcão adiciona em segundos. Ao fim de umas semanas tem os clientes habituais todos na app.'],
-  ['A CorteCerto passa faturas aos meus clientes?', 'Não. Continue a usar o seu programa de faturação certificado. A CorteCerto trata das marcações, dos clientes, da agenda e da promoção do salão, e exporta as marcações com valores para Excel.'],
+  ['A CorteCerto passa faturas aos meus clientes?', 'Não. Continue a usar o seu programa de faturação certificado. Hoje a CorteCerto exporta as marcações com valores para Excel; em breve vai poder ligá-la ao seu programa de faturação, como extra opcional.'],
   ['A IA publica nas minhas redes sozinha?', 'Não. A IA dá as ideias, escreve a legenda e a app faz a imagem com o seu logótipo e as suas fotos. Você revê e publica com um toque no Instagram, no Facebook ou no Estado do WhatsApp.'],
   ['A IA vê os dados dos meus clientes?', 'Só o necessário para responder a uma pergunta sua. Os telemóveis e emails nunca são enviados, os nomes são trocados por códigos antes de saírem da CorteCerto e as fotos não são guardadas. Os fornecedores de IA não usam estes dados para treinar modelos.'],
   ['A IA tem custo extra?', 'Não. As ferramentas de IA estão incluídas no preço, com um limite mensal por ferramenta que chega para o dia a dia de um salão.'],
@@ -343,6 +349,7 @@ export default function LandingPage() {
             <h3 className="lp-works-title">E funciona com o que já usa</h3>
             <ul className="lp-works">
               {WORKS.map(([i, t, d]) => <li key={t}><span className={`lp-ico ${i === 'whatsapp' ? 'wa-ico' : ''}`}>{i === 'whatsapp' ? <WhatsAppIcon size={20} /> : <Icon name={i} size={20} />}</span><span><b>{t}</b><span>{d}</span></span></li>)}
+              {SOON.map(([i, t, d]) => <li key={t} className="soon"><span className="lp-ico"><Icon name={i} size={20} /></span><span><b>{t} <em className="lp-soon">Em breve</em></b><span>{d}</span></span></li>)}
             </ul>
           </div>
         </div>

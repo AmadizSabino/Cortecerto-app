@@ -437,3 +437,5 @@
 .lp-ai-wide { grid-template-columns: 1fr; margin-bottom: 24px; background: linear-gradient(120deg, rgba(198,180,255,.12), rgba(255,138,106,.1)); }
 .lp-ai-wide p { max-width: 52em; }
 .lp-works-title { margin: 0 0 16px; }
+.lp-works li.soon { background: transparent; border-style: dashed; }
+.lp-soon { font-style: normal; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 3px 8px; border-radius: 999px; background: #efe9ff; color: #5b3fc4; margin-left: 6px; vertical-align: 2px; white-space: nowrap; }
