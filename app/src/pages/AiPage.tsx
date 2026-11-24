@@ -115,7 +115,7 @@ export default function AiPage() {
             : `Usa-se em ${f.where}.`}</p>)}
         </section>
       ))}
-      <p className="muted small">Só números e nomes de serviços são enviados à IA, nunca nomes ou telemóveis de clientes. As fotos não são guardadas.</p>
+      <p className="muted small">Os telemóveis e emails dos clientes nunca são enviados à IA. O assistente pode ler a agenda e os nomes dos clientes para responder às suas perguntas. As fotos não são guardadas.</p>
     </main></div>
   )
 }

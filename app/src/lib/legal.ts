@@ -77,7 +77,7 @@ export const DPA: LegalDoc = {
   path: '/tratamento-dados',
   title: 'Acordo de tratamento de dados',
   withArticle: 'o acordo de tratamento de dados',
-  version: '2026-11-21',
+  version: '2026-11-24',
   intro: `Este acordo, previsto no artigo 28.º do Regulamento Geral sobre a Proteção de Dados (RGPD), aplica-se aos dados dos clientes que o salão ("responsável pelo tratamento") guarda na CorteCerto, operada por ${COMPANY} ("subcontratante").`,
   sections: [
     { heading: '1. Objeto', paragraphs: [
@@ -93,7 +93,8 @@ export const DPA: LegalDoc = {
       'Os dados são guardados em centros de dados na União Europeia, com ligações cifradas, acesso por conta e regras na base de dados que impedem um salão de ver dados de outro.',
     ] },
     { heading: '4. Subcontratantes', paragraphs: [
-      'O salão autoriza a CorteCerto a usar os seguintes subcontratantes: Supabase (base de dados e autenticação, região UE) e Cloudflare (alojamento da aplicação). Outros serviços, como envio de email, só são acrescentados com aviso prévio ao salão, que pode opor-se.',
+      'O salão autoriza a CorteCerto a usar os seguintes subcontratantes: Supabase (base de dados e autenticação, região UE), Cloudflare (alojamento da aplicação) e Resend (envio de emails sobre marcações). Outros serviços só são acrescentados com aviso prévio ao salão, que pode opor-se.',
+      'Funções de inteligência artificial, só quando o salão as usa: Anthropic (assistente de texto) e Google (edição de fotos). O assistente do salão pode ler, para responder a uma pergunta do próprio salão, a agenda, os nomes dos clientes, o histórico de visitas e as notas, mas nunca números de telemóvel nem emails. Estes fornecedores tratam os dados apenas para dar a resposta, não os usam para treinar modelos e podem tratá-los fora da União Europeia, ao abrigo das cláusulas contratuais-tipo da Comissão Europeia. As fotos não são guardadas.',
       'A CorteCerto impõe a esses subcontratantes obrigações de proteção de dados equivalentes às deste acordo.',
     ] },
     { heading: '5. Direitos dos titulares e apoio ao salão', paragraphs: [
@@ -116,7 +117,7 @@ export const PRIVACY: LegalDoc = {
   path: '/privacidade',
   title: 'Política de privacidade',
   withArticle: 'a política de privacidade',
-  version: '2026-11-21',
+  version: '2026-11-24',
   intro: 'Esta política explica que dados são tratados quando marca uma visita através da CorteCerto ou quando um salão usa a aplicação.',
   sections: [
     { heading: '1. Quem é responsável', paragraphs: [
@@ -130,7 +131,8 @@ export const PRIVACY: LegalDoc = {
       'O salão pode guardar notas sobre os serviços que fez e o dia e mês do seu aniversário, para o atender melhor.',
     ] },
     { heading: '3. Com quem partilhamos', paragraphs: [
-      'Os seus dados são vistos apenas pelo salão onde marcou. A CorteCerto usa a Supabase (base de dados, União Europeia) e a Cloudflare (alojamento). Não vendemos dados nem os usamos para publicidade.',
+      'Os seus dados são vistos apenas pelo salão onde marcou. A CorteCerto usa a Supabase (base de dados, União Europeia), a Cloudflare (alojamento) e a Resend (emails sobre a marcação). Não vendemos dados nem os usamos para publicidade.',
+      'Se o salão usar o assistente de inteligência artificial, o seu nome e o histórico das suas visitas podem ser lidos pela Anthropic, só para responder a uma pergunta do salão, sem o seu telemóvel e sem serem usados para treinar modelos. Se experimentar um visual com uma foto, a foto é enviada à Google para criar a imagem e não é guardada.',
       'As mensagens de WhatsApp são enviadas pelo próprio salão, a partir do seu telemóvel. O WhatsApp tem a sua própria política de privacidade.',
     ] },
     { heading: '4. Durante quanto tempo', paragraphs: [

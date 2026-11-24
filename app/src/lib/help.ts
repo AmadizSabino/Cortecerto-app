@@ -258,7 +258,7 @@ export const HELP: HelpTopic[] = [
       'Toque na função que quer usar e siga os passos no ecrã.',
       'Toque em Copiar para usar o resultado numa mensagem ou num post.',
     ],
-    tip: 'Os nomes e os telemóveis dos clientes nunca são enviados à IA.',
+    tip: 'Os telemóveis e emails dos clientes nunca são enviados à IA. O assistente pode ler a agenda e os nomes dos clientes, só para responder às suas perguntas.',
   },
 
   // Gestão do salão
