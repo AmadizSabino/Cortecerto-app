@@ -368,7 +368,7 @@ export default function BookingPage() {
           <button className="link" onClick={() => setPicking(false)}>Feito</button>
         </div>
       </div> : <button className="link" onClick={() => setPicking(true)}>Mudar o estilo da página</button>}
-      <p className="muted" style={{ marginTop: 10 }}>Feito com CorteCerto · <a href="/privacidade">Privacidade</a></p>
+      <p className="muted" style={{ marginTop: 10 }}>Marcações com <a href="/?src=salao">CorteCerto</a> · <a href="/privacidade">Privacidade</a></p>
     </footer>
   )
 

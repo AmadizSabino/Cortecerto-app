@@ -1,7 +1,7 @@
 /**
  * Link previews. WhatsApp, Facebook and Instagram read the page's <meta> tags without running the app,
  * so the Worker fills them in on the way out:
- *   /          the share image as a full URL (they ignore relative ones).
+ *   /          the pre-rendered landing page, and the share image as a full URL (they ignore relative ones).
  *   /s/<slug>  the salon's own name and a "Marque online" line, so a salon sharing its booking link
  *              shows its name, not CorteCerto's sales pitch. Salon names are cached for an hour.
  */
@@ -40,14 +40,28 @@ async function salonName(env: MetaEnv, slug: string): Promise<{ name: string; ad
   return row
 }
 
+/**
+ * The page to serve. "/" gets the pre-rendered landing page (app/scripts/prerender.mjs writes
+ * dist/landing.html, served by the assets as /landing), so crawlers read its text; every other
+ * route gets the app shell. Falls back to the shell if the build has no landing.html.
+ */
+async function page(request: Request, env: MetaEnv): Promise<Response> {
+  if (new URL(request.url).pathname === '/') {
+    const landing = await env.ASSETS.fetch(new Request(new URL('/landing', request.url), request))
+    if (landing.ok) return landing
+  }
+  return env.ASSETS.fetch(request)
+}
+
 /** Serves the app's page with its preview tags filled in. */
 export async function withMeta(request: Request, env: MetaEnv): Promise<Response> {
-  const res = await env.ASSETS.fetch(request)
+  const res = await page(request, env)
   if (!(res.headers.get('content-type') ?? '').includes('text/html')) return res
   const url = new URL(request.url)
   const image = `${url.origin}/og-image.png`
   let rw = new HTMLRewriter()
     .on('meta[property="og:image"]', { element: el => el.setAttribute('content', image) })
+    .on('meta[name="twitter:image"]', { element: el => el.setAttribute('content', image) })
   const m = SLUG.exec(url.pathname)
   const salon = m ? await salonName(env, m[1]) : null
   if (salon) {
@@ -58,6 +72,8 @@ export async function withMeta(request: Request, env: MetaEnv): Promise<Response
       .on('meta[name="description"]', { element: el => el.setAttribute('content', meta.description) })
       .on('meta[property="og:title"]', { element: el => el.setAttribute('content', meta.title) })
       .on('meta[property="og:description"]', { element: el => el.setAttribute('content', meta.description) })
+      .on('meta[name="twitter:title"]', { element: el => el.setAttribute('content', meta.title) })
+      .on('meta[name="twitter:description"]', { element: el => el.setAttribute('content', meta.description) })
   }
   return rw.transform(res)
 }

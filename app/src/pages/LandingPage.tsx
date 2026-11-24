@@ -7,7 +7,8 @@ import { noShowCost, parseNumber } from '../lib/landing'
 import { track } from '../lib/track'
 import { FOUNDER, FOUNDERS, TESTIMONIALS } from '../lib/landingContent'
 import Icon, { WhatsAppIcon } from '../components/Icon'
-import { MockAssistant, MockBooking, MockChat, MockClient, MockReminders, MockSocial, MockToday } from './landing/Mockups'
+import { MockAssistant, MockChat, Shot } from './landing/Mockups'
+import ReminderDemo from './landing/ReminderDemo'
 import './landing/landing.css'
 
 const TYPES: [string, string][] = [['scissors', 'Barbearias'], ['spark', 'Cabeleireiros'], ['star', 'Unhas'], ['crown', 'Estética e depilação']]
@@ -26,25 +27,25 @@ const TOUR: Tour[] = [
     kicker: 'Para os seus clientes', title: 'Uma página de marcação com o nome e as cores do salão',
     text: 'O cliente escolhe o serviço, o profissional e a hora livre. Não instala nada e não precisa de conta.',
     points: ['Marcações às 23h, com o salão fechado e o telefone calado', 'Preços e duração de cada serviço à vista', 'Sinal por MB Way, direto para o salão, quando quiser pedir'],
-    mock: <MockBooking />,
+    mock: <Shot src="marcacao-2" label="Página de marcação real de um salão, com os serviços e preços" />,
   },
   {
     kicker: 'O seu dia', title: 'O dia inteiro num ecrã, no bolso',
     text: 'Abra o ecrã Hoje entre dois cortes: quem vem, a que horas, o que vai fazer e quanto vai faturar.',
     points: ['Confirmar, concluir e registar faltas com um toque', 'Marcações de telefone ou ao balcão em segundos', 'Horário, pausas e folgas de cada profissional'],
-    mock: <MockToday />,
+    mock: <Shot src="hoje" label="Ecrã Hoje da app: marcações do dia, lembretes e assistente" />,
   },
   {
     kicker: 'Menos faltas', title: 'Os lembretes de amanhã em dois minutos',
     text: 'Toque em cada cliente e o seu WhatsApp abre com a mensagem já escrita. É só carregar em enviar. Sai do seu número, por isso o cliente sabe quem é e responde.',
     points: ['Sem custo por mensagem: usa o WhatsApp do salão', 'O cliente muda a hora sozinho pelo link da mensagem', 'A vaga que fica livre pode ser oferecida a outro cliente'],
-    mock: <MockReminders />,
+    mock: <Shot src="lembretes" label="Ecrã Lembretes da app: um toque por cliente" />,
   },
   {
     kicker: 'Clientes que voltam', title: 'Lembra-se de cada cliente, mesmo dos que vêm uma vez por mês',
     text: 'Cada marcação fica na ficha do cliente. Antes de pegar na máquina, já sabe o que ele gosta.',
     points: ['Histórico de visitas e notas de cada corte', 'Aniversários da semana e quem não vem há mais de 45 dias', 'Próxima visita sugerida ao fechar o corte'],
-    mock: <MockClient />,
+    mock: <Shot src="cliente" label="Ficha de um cliente na app: visitas, notas e aniversário" />,
   },
 ]
 
@@ -132,14 +133,16 @@ function NoShowCalculator() {
   return (
     <div className="lp-calc">
       <div className="lp-calc-inputs">
-        <label>Faltas por semana<input inputMode="decimal" value={perWeek} onChange={e => setPerWeek(e.target.value)} /></label>
-        <label>Preço médio de um serviço (€)<input inputMode="decimal" value={avg} onChange={e => setAvg(e.target.value)} /></label>
-        <p className="lp-small-print">Faça a conta com os números do seu salão. Fica só no seu ecrã, não guardamos nada.</p>
+        <label className="lp-slider"><span className="lp-slider-top">Faltas por semana<output>{perWeek}</output></span>
+          <input type="range" min={0} max={15} step={1} value={perWeek} onChange={e => setPerWeek(e.target.value)} /></label>
+        <label className="lp-slider"><span className="lp-slider-top">Preço médio de um serviço<output>{avg} €</output></span>
+          <input type="range" min={5} max={80} step={1} value={avg} onChange={e => setAvg(e.target.value)} /></label>
+        <p className="lp-small-print">Arraste para os números do seu salão. Fica só no seu ecrã, não guardamos nada.</p>
       </div>
       <div className="lp-calc-out" aria-live="polite">
         {valid ? <>
           <p>Por mês, as faltas custam-lhe cerca de</p>
-          <p className="lp-calc-big">{euros(r.lostCents)}</p>
+          <p className="lp-calc-big huge">{euros(r.lostCents)}</p>
           <p className="lp-calc-year">ou {euros(r.lostCents * 12)} por ano.</p>
           <p>Se os lembretes e a troca de horário evitarem metade, recupera <strong>{euros(r.savedCents)}</strong> por mês{r.paysFor >= 1 ? `, ${r.paysFor >= 2 ? `${Math.floor(r.paysFor)} vezes` : 'mais do que'} o que custa a CorteCerto (${euros(WITH_VAT)} com IVA).` : '.'}</p>
           <Link to="/painel" className="lp-cta">Quero recuperar este dinheiro</Link>
@@ -222,13 +225,13 @@ export default function LandingPage() {
           <p className="lp-lead">A app completa para o seu salão: os clientes marcam online a qualquer hora, recebem o lembrete no WhatsApp e mudam a hora sozinhos, e a IA ajuda-o a encher as horas calmas. Você corta, a CorteCerto trata do resto.</p>
           <div className="lp-cta-row">
             <Link to="/painel" className="lp-cta lg" id="lp-hero-cta">{trial}</Link>
-            <a href={`/s/${EXAMPLE_SLUG}?src=site-exemplo`} target="_blank" rel="noreferrer" className="lp-ghost">Ver um salão a funcionar ›</a>
+            <a href={`/s/${EXAMPLE_SLUG}?src=site-exemplo`} target="_blank" rel="noreferrer" className="lp-ghost">Ver uma página de marcação a funcionar ›</a>
           </div>
           <ul className="lp-trust">{TRUST.map(t => <li key={t}><Check />{t}</li>)}</ul>
         </div>
         <div className="lp-hero-art">
           <div className="lp-blob" aria-hidden="true" />
-          <MockBooking />
+          <Shot src="marcacao" label="Página de marcação de um salão na CorteCerto" />
           <MockChat />
           <p className="lp-float f1" aria-hidden="true"><span className="lp-dot" />Nova marcação · 23:47<small>Corte + barba, amanhã 10:00</small></p>
           <p className="lp-float f2" aria-hidden="true"><WhatsAppIcon size={16} />Lembrete enviado<small>do WhatsApp do salão</small></p>
@@ -236,8 +239,17 @@ export default function LandingPage() {
       </section>
 
       <section className="lp-types" aria-label="Para quem é">
-        <p>Feito para</p>
+        <p>Software de marcações para</p>
         <ul>{TYPES.map(([i, t]) => <li key={t}><Icon name={i} size={18} />{t}</li>)}</ul>
+      </section>
+
+      <section className="lp-section lp-demo-try" id="experimentar">
+        <div className="lp-head">
+          <p className="lp-kicker">Experimente aqui</p>
+          <h2>Veja o lembrete que o seu cliente recebe</h2>
+          <p className="lp-sub">Escolha o serviço e a hora. É este o texto que a CorteCerto escreve para cada cliente, com o link para mudar de hora se não puder vir.</p>
+        </div>
+        <ReminderDemo />
       </section>
 
       <section className="lp-section lp-problem">
@@ -287,7 +299,11 @@ export default function LandingPage() {
               <p>A IA vê as horas calmas da agenda e as datas que aí vêm, sugere a promoção certa e escreve a legenda. A app faz a imagem com o seu logótipo e as suas fotos.</p>
               <ul className="lp-points"><li><Check />Três ideias de posts por semana</li><li><Check />Cada promoção tem link próprio e conta as marcações que trouxe</li><li><Check />Você revê e publica num toque</li></ul>
             </div>
-            <MockSocial />
+            <figure className="lp-post">
+              <div className="lp-post-head"><span className="mk-av sm">BB</span>barbaebeer</div>
+              <img src="/landing/post.webp" alt="Imagem de promoção feita pela app para o Instagram" width={720} height={900} loading="lazy" />
+              <figcaption><b>barbaebeer</b>Terça de manhã com calma e 20% em corte + barba. Marque pelo link na bio ✂️</figcaption>
+            </figure>
           </article>
           <article className="lp-ai-card">
             <div>
