@@ -9,6 +9,7 @@ import { themeById, themeStyle } from '../lib/themes'
 import { loadMySalon, type Role } from '../lib/mySalon'
 import { can } from '../lib/access'
 import AiTryOn from '../components/AiTryOn'
+import { styleOptions } from '../lib/styles'
 import Icon from '../components/Icon'
 import { photoToDataUrl, runAi } from '../lib/ai'
 import HelpLink from '../HelpLink'
@@ -322,7 +323,7 @@ export default function ClientsPage() {
                   onSaved={n => setNotes(ns => ({ ...ns, [n.phone_key]: n }))} />}
                 {notesReady && <ReferenceNotes onUse={t => setNoteSeed(ns => ({ ...ns, [c.key]: [notes[c.key]?.notes, t].filter(Boolean).join('\n').slice(0, 2000) }))} />}
                 <AiTryOn feature="before-after" title="Antes e depois" intro="Tire a foto do antes e mostre ao cliente o resultado esperado do serviço."
-                  styles={Object.values(services).map(s => s.name)} />
+                  styles={styleOptions(salon.type, Object.values(services).map(s => s.name))} />
                 <h2>Histórico</h2>
                 <ul className="history">
                   {c.bookings.map(b => (

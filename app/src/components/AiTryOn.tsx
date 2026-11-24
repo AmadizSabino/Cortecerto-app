@@ -8,12 +8,15 @@ import { photoToDataUrl, runAi, type AiFeature } from '../lib/ai'
  * card (before-after). The photo stays in the browser and is sent only to the AI
  * for this one request; nothing is saved.
  */
-export default function AiTryOn({ feature, styles, salonId, title, intro }: {
+export default function AiTryOn({ feature, styles, salonId, title, intro, initialStyle }: {
   feature: Extract<AiFeature, 'try-on' | 'before-after'>
   styles: string[]; salonId?: string; title: string; intro: string
+  /** The style to start on, e.g. the booking's service. */
+  initialStyle?: string
 }) {
   const [photo, setPhoto] = useState('')
-  const [style, setStyle] = useState(styles[0] ?? '')
+  const [style, setStyle] = useState(initialStyle && styles.includes(initialStyle) ? initialStyle : styles[0] ?? '')
+  const [other, setOther] = useState(false)
   const [result, setResult] = useState('')
   const [state, setState] = useState<'' | 'a-gerar' | 'mensagem'>('')
   const [message, setMessage] = useState('')
@@ -51,15 +54,19 @@ export default function AiTryOn({ feature, styles, salonId, title, intro }: {
           </div>}
       {photo && !camera && <>
         <label>Estilo
-          <select value={style} onChange={e => { setStyle(e.target.value); setResult('') }}>
+          <select value={other ? OTHER : style} onChange={e => { const v = e.target.value; setResult(''); if (v === OTHER) { setOther(true); setStyle('') } else { setOther(false); setStyle(v) } }}>
             {styles.map(s => <option key={s}>{s}</option>)}
+            <option value={OTHER}>Outro (escrever)…</option>
           </select>
         </label>
+        {other && <label>Descreva o estilo
+          <input value={style} maxLength={80} placeholder="Ex.: fade baixo com franja curta" onChange={e => { setStyle(e.target.value); setResult('') }} />
+        </label>}
         <div className="ai-compare">
           <figure><img src={photo} alt="Antes" /><figcaption>Antes</figcaption></figure>
           <figure>{result ? <img src={result} alt={`Depois: ${style}`} /> : <div className="ai-empty">{state === 'a-gerar' ? 'A gerar…' : '?'}</div>}<figcaption>Depois</figcaption></figure>
         </div>
-        <button type="button" className="btn" onClick={generate} disabled={state === 'a-gerar' || !style}>{state === 'a-gerar' ? 'A gerar…' : 'Ver o depois'}</button>
+        <button type="button" className="btn" onClick={generate} disabled={state === 'a-gerar' || !style.trim()}>{state === 'a-gerar' ? 'A gerar…' : 'Ver o depois'}</button>
       </>}
       {state === 'mensagem' && <p className="muted small" role="status">{message}</p>}
       <p className="muted small" style={{ marginTop: 8 }}>A foto não é guardada. Serve só para esta pré-visualização.</p>
@@ -67,6 +74,7 @@ export default function AiTryOn({ feature, styles, salonId, title, intro }: {
   )
 }
 
+const OTHER = '__outro__'
 const hasCamera = () => typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia
 
 /** Takes the photo with the device's camera (the laptop's webcam, or the phone's front camera). */

@@ -14,7 +14,7 @@ export interface AiResult { status: 'feito' | 'indisponivel' | 'limite' | 'erro'
 
 export const AI_FEATURES: { id: AiFeature; title: string; where: string; what: string; kind: 'text' | 'image' }[] = [
   { id: 'try-on', title: 'Antes e depois para o cliente', where: 'Página de marcação', what: 'O cliente tira uma selfie e vê o corte, a cor ou as unhas antes de marcar.', kind: 'image' },
-  { id: 'before-after', title: 'Antes e depois no salão', where: 'Clientes > ficha do cliente', what: 'A partir da foto "antes", mostra ao cliente o resultado esperado do serviço.', kind: 'image' },
+  { id: 'before-after', title: 'Antes e depois no salão', where: 'Hoje, em cada marcação', what: 'A partir da foto "antes", mostra ao cliente o resultado esperado do serviço.', kind: 'image' },
   { id: 'cut-suggestions', title: 'Sugestões de corte', where: 'Página de marcação', what: 'Sugere estilos do seu catálogo ao cliente, com base no que procura.', kind: 'text' },
   { id: 'reference-notes', title: 'Notas a partir de uma foto', where: 'Clientes > ficha do cliente', what: 'O cliente mostra uma foto de referência e a IA escreve as notas técnicas para o profissional.', kind: 'text' },
   { id: 'owner-assistant', title: 'Assistente do salão', where: 'Mais > Assistente IA', what: 'Pergunte pelo seu dia, semana ou clientes, em português.', kind: 'text' },

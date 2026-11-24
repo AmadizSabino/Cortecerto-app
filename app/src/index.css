@@ -129,7 +129,8 @@ input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); f
 .booking .time small { display: block; font-family: inherit; font-weight: 400; font-size: .8rem; color: var(--muted); }
 .booking .who { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
 .booking .who b { font-size: 1.05rem; }
-.booking > .next-visit, .booking > .editor { grid-column: 1 / -1; }
+.booking > .next-visit, .booking > .editor, .booking > .ai-card { grid-column: 1 / -1; }
+.booking > .ai-card { margin: 4px 0 0; box-shadow: none; }
 .tag { display: inline-block; font-size: .75rem; font-weight: 600; padding: 3px 10px; border-radius: 99px; background: var(--line); color: var(--fg); white-space: nowrap; }
 .tag.pendente { background: color-mix(in srgb, var(--warn) 25%, var(--card)); }
 .tag.confirmada { background: color-mix(in srgb, var(--accent) 20%, var(--card)); }

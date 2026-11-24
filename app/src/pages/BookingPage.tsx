@@ -15,6 +15,7 @@ import { manageLink } from '../lib/clientChanges'
 import { effective, priceRange, type Overrides } from '../lib/pricing'
 import { loadOverrides } from '../lib/pricingData'
 import AiTryOn from '../components/AiTryOn'
+import { styleOptions } from '../lib/styles'
 import { benefitList, type Club } from '../lib/club'
 import { mediaUrl, type Photo } from '../lib/brand'
 import { applies, offerText, promoPrice, whenText, type Promo } from '../lib/promos'
@@ -521,7 +522,7 @@ export default function BookingPage() {
             </div>
           </>}
           {services.length > 0 && <AiTryOn feature="try-on" salonId={salon.id} title="Experimente antes de marcar"
-            intro="Tire uma selfie e veja como fica, antes e depois." styles={services.map(x => x.name)} />}
+            intro="Tire uma selfie e veja como fica, antes e depois." styles={styleOptions(salon.type, services.map(x => x.name))} />}
           </>}
         </>}
 

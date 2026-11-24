@@ -242,6 +242,16 @@ export const HELP: HelpTopic[] = [
     tip: 'Uma oferta só nas horas calmas vale mais do que descontos o tempo todo.',
   },
   {
+    id: 'antes-depois', group: 'Promoções e vendas', title: 'Mostrar ao cliente o antes e depois', screen: '/painel', need: 'clientes', words: 'antes depois ia foto estilo corte simular',
+    steps: [
+      'Em Hoje, na marcação do cliente, toque em "Antes e depois".',
+      'Toque em "Tirar foto" (ou "Escolher foto" para usar uma que já tem).',
+      'Escolha o estilo. Começa no serviço marcado; há também estilos como fades ou pompadour, ou "Outro" para escrever o que o cliente quer.',
+      'Toque em "Ver o depois". Em cerca de 10 segundos aparece a foto com o novo visual, ao lado da original.',
+    ],
+    tip: 'A foto não é guardada. Também pode usar em Mais › Assistente IA ou na ficha do cliente.',
+  },
+  {
     id: 'ia', group: 'Promoções e vendas', title: 'Usar o Assistente IA', screen: '/ia', need: 'ia', words: 'ia inteligência artificial antes depois relatório',
     steps: [
       'Abra Mais › Assistente IA.',
