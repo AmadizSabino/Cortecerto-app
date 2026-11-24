@@ -11,6 +11,7 @@ import { addDays, dateInTz, zonedToUtc } from '../lib/time'
 import { themeById, themeStyle } from '../lib/themes'
 import HelpLink from '../HelpLink'
 import AiTryOn from '../components/AiTryOn'
+import AskAssistant from '../components/AskAssistant'
 import { styleOptions } from '../lib/styles'
 
 /** A text feature: optional fields, a button, and the answer. */
@@ -50,7 +51,7 @@ export default function AiPage() {
   const [role, setRole] = useState<Role>('dono')
   const [services, setServices] = useState<Record<string, Service>>({})
   const [recent, setRecent] = useState<Booking[]>([])
-  const [open, setOpen] = useState<AiFeature | null>(null)
+  const [open, setOpen] = useState<AiFeature | null>('owner-assistant')
 
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setSession(data.session)) }, [])
   useEffect(() => {
@@ -90,7 +91,7 @@ export default function AiPage() {
   ].join('\n')
 
   const tools: Partial<Record<AiFeature, React.ReactNode>> = {
-    'owner-assistant': <TextTool feature="owner-assistant" label="Perguntar" fields={[{ key: 'q', label: 'Pergunta', rows: 2, placeholder: 'Ex.: Como correu a semana? Que dias tenho mais livres?' }]} build={v => ({ question: v.q, context })} />,
+    'owner-assistant': <AskAssistant salon={salon} />,
     'weekly-report': <TextTool feature="weekly-report" label="Fazer o relatório da semana" build={() => ({ context })} />,
     'review-reply': <TextTool feature="review-reply" label="Escrever resposta" fields={[{ key: 'stars', label: 'Estrelas (1 a 5)', placeholder: '5' }, { key: 'review', label: 'Texto da avaliação', rows: 4 }]} build={v => ({ review: v.review, stars: v.stars, salon: salon.name })} />,
     'before-after': <AiTryOn feature="before-after" title="Antes e depois" intro="Tire a foto do antes e mostre ao cliente como vai ficar. Também está em Hoje, em cada marcação."

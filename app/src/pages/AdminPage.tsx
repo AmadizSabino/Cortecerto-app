@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { euros, supabase } from '../lib/supabase'
 import { billingState, lockState, type BillingFields } from '../lib/billing'
@@ -98,7 +98,7 @@ export default function AdminPage() {
 
   return (
     <main className="page wide">
-      <header className="row"><h1>Administração</h1><button className="link" onClick={() => supabase.auth.signOut().then(() => location.assign('/painel'))}>Sair</button></header>
+      <header className="row"><h1>Administração</h1><span className="row" style={{ gap: 14 }}><Link to="/painel">‹ Painel do salão</Link><button className="link" onClick={() => supabase.auth.signOut().then(() => location.assign('/painel'))}>Sair</button></span></header>
       <div className="chips admin-tabs" role="tablist">
         {([['resumo', 'Resumo'], ['dinheiro', 'Dinheiro'], ['site', 'Site'], ['contactos', 'Contactos'], ['saloes', `Salões (${salons.length})`], ['sistema', 'Sistema']] as [Tab, string][]).map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} className={`chip${tab === k ? ' on' : ''}`} onClick={() => setTab(k)}>{label}</button>
