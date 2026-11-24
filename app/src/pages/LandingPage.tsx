@@ -230,7 +230,8 @@ export default function LandingPage() {
           <ul className="lp-trust">{TRUST.map(t => <li key={t}><Check />{t}</li>)}</ul>
         </div>
         <div className="lp-hero-art">
-          <div className="lp-blob" aria-hidden="true" />
+          {/* Atmosphere photo (AI-generated, no real people); to swap, replace public/landing/hero-salao.webp */}
+          <div className="lp-photo" aria-hidden="true" />
           <Shot src="marcacao" label="Página de marcação de um salão na CorteCerto" />
           <MockChat />
           <p className="lp-float f1" aria-hidden="true"><span className="lp-dot" />Nova marcação · 23:47<small>Corte + barba, amanhã 10:00</small></p>

@@ -482,3 +482,10 @@
 .lp-slider-top output { font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-size: 2rem; font-weight: 800; color: var(--rust); letter-spacing: -.02em; }
 .lp-slider input[type=range] { width: 100%; accent-color: var(--rust); height: 32px; padding: 0; border: 0; background: transparent; }
 .lp-calc-big.huge { font-size: clamp(3.4rem, 11vw, 5.6rem) !important; }
+
+/* Hero atmosphere photo behind the phones */
+.lp-photo { position: absolute; inset: 4% -3% 0 4%; border-radius: 32px; z-index: 0;
+  background: linear-gradient(180deg, rgba(29,27,24,.05), rgba(29,27,24,.35)), url(/landing/hero-salao.webp) center / cover no-repeat;
+  box-shadow: 0 30px 60px -30px rgba(29,27,24,.45); }
+.lp-hero-art > *:not(.lp-photo) { z-index: 1; }
+@media (max-width: 900px) { .lp-photo { inset: 8% -8px 0 -8px; border-radius: 24px; } }
