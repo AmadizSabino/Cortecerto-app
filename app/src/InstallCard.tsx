@@ -27,12 +27,13 @@ export default function InstallCard({ always = false }: { always?: boolean }) {
     <section className="card install-card">
       <img src="/icon-192.png" alt="" width={44} height={44} />
       <div>
-        <strong>Instale a CorteCerto no telemóvel</strong>
+        <strong>{inst.platform === 'desktop' ? 'Instale a CorteCerto neste computador' : 'Instale a CorteCerto no telemóvel'}</strong>
         <p className="muted small">{steps || (inst.platform === 'ios' && !inst.canPrompt)
           ? manualSteps(inst.platform)
           : 'Abre como uma app, sem barra do browser, e fica a um toque.'}</p>
         <div className="actions">
-          {!(inst.platform === 'ios' && !inst.canPrompt) && (
+          {/* No button when the browser can't install by itself (iPhone, private windows): only the steps. */}
+          {!steps && !(inst.platform === 'ios' && !inst.canPrompt) && (
             <button className="btn-inline" onClick={async () => {
               const opened = await inst.install()
               if (opened) track('instalar', { page: 'painel' })
