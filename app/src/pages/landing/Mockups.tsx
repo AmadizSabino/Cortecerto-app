@@ -106,3 +106,40 @@ export function MockChat() {
     </Phone>
   )
 }
+
+/** Mais > Assistente IA: the owner asks about the diary in plain Portuguese. */
+export function MockAssistant() {
+  return (
+    <Phone label="Assistente do salão: o dono pergunta e a IA responde com a agenda real">
+      <p className="mk-back">‹ Mais</p>
+      <p className="mk-h">Assistente IA</p>
+      <div className="mk-ai-body">
+        <p className="mk-q">Tenho buracos amanhã?</p>
+        <p className="mk-a"><b>Amanhã, terça:</b> 7 marcações.<br />Livre: 11:00–12:30 com o Rui e 15:30–17:00 com o Nuno.<br />Quer um texto para oferecer a vaga das 11h aos seus clientes?</p>
+        <p className="mk-q">Quem não vem há mais de 2 meses?</p>
+        <p className="mk-a">6 clientes habituais. Os primeiros: Hugo M. (78 dias), Pedro A. (71 dias), Duarte P. (64 dias). Quer uma mensagem para os convidar a voltar?</p>
+      </div>
+      <div className="mk-ai-input"><span>Pergunte pelo seu dia…</span><em><Icon name="spark" size={12} /></em></div>
+    </Phone>
+  )
+}
+
+/** Mais > Social Media Manager: the week's idea and the post the app makes. */
+export function MockSocial() {
+  return (
+    <Phone label="Social Media Manager: ideia da semana, imagem do post e legenda prontas a publicar">
+      <p className="mk-back">‹ Mais</p>
+      <p className="mk-h">Social Media</p>
+      <div className="mk-card mk-idea"><small><Icon name="spark" size={10} /> IDEIA PARA ESTA SEMANA</small>Terça de manhã está calma. Faça uma promoção só das 9h às 12h.</div>
+      <div className="mk-post">
+        <span className="mk-post-logo">BB</span>
+        <p className="mk-post-tag">Só terça de manhã</p>
+        <p className="mk-post-big">−20%</p>
+        <p className="mk-post-sub">em Corte + barba<br />das 9h às 12h</p>
+        <p className="mk-post-cta">Marque pelo link na bio</p>
+      </div>
+      <p className="mk-caption">Terça de manhã com calma e 20% de desconto em corte + barba ✂️ Marque já pelo link na bio. #barbearia #lisboa</p>
+      <div className="mk-row-btns"><em className="solid"><Icon name="download" size={11} />Publicar post</em></div>
+    </Phone>
+  )
+}

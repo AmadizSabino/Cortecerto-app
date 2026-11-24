@@ -7,7 +7,7 @@ import { noShowCost, parseNumber } from '../lib/landing'
 import { track } from '../lib/track'
 import { FOUNDER, FOUNDERS, TESTIMONIALS } from '../lib/landingContent'
 import Icon, { WhatsAppIcon } from '../components/Icon'
-import { MockBooking, MockChat, MockClient, MockReminders, MockToday } from './landing/Mockups'
+import { MockAssistant, MockBooking, MockChat, MockClient, MockReminders, MockSocial, MockToday } from './landing/Mockups'
 import './landing/landing.css'
 
 const TYPES: [string, string][] = [['scissors', 'Barbearias'], ['spark', 'Cabeleireiros'], ['star', 'Unhas'], ['crown', 'Estética e depilação']]
@@ -64,18 +64,38 @@ const FEATURES: [string, string, string][] = [
   ['week', 'Equipa e horários', 'Agenda de cada profissional, folgas, férias e preços próprios.'],
   ['chart', 'Números do mês', 'Faturado, valor médio, faltas e clientes novos.'],
   ['print', 'Poster com QR', 'Pronto a imprimir para o balcão e a montra.'],
-  ['camera', 'Antes e depois com IA', 'Mostre ao cliente como fica o corte, a partir de uma foto.'],
-  ['spark', 'Assistente do salão', 'Pergunte "quem não vem há dois meses?" e tem a resposta.'],
+  ['crown', 'Clube de clientes', 'Mensalidade com benefícios: receita certa todos os meses.'],
+  ['gift', 'Pacotes e packs', 'Combos, casamentos e eventos, packs de sessões.'],
   ['download', 'Os dados são seus', 'Exporte clientes e marcações para Excel quando quiser.'],
   ['shield', 'Seguro e legal', 'RGPD, servidores na União Europeia e acesso por conta.'],
 ]
 
-const COMPARE: [string, string, string][] = [
-  ['Marcar fora de horas', 'O telefone toca a meio do corte, ou ninguém atende', 'O cliente marca sozinho, a qualquer hora'],
-  ['Faltas', 'Descobre quando a cadeira fica vazia', 'Lembrete na véspera e link para mudar de hora'],
-  ['Saber o que o cliente quer', 'Depende da memória', 'Notas e histórico na ficha do cliente'],
-  ['Sem marcação', 'Fila à porta e "quanto tempo falta?"', 'Fila no telemóvel do cliente'],
-  ['Contas do mês', 'Caderno e calculadora', 'Números do mês num ecrã'],
+/** "Um só sítio": what the salon stops juggling. Every line exists in the app today. */
+const SWAP: [string, string][] = [
+  ['Agenda de papel', 'Agenda e página de marcação'],
+  ['Mensagens escritas à mão', 'Lembretes prontos, um toque cada'],
+  ['Canva e falta de ideias', 'Posts e legendas feitos com IA'],
+  ['Cartões de carimbos', 'Clube, packs e promoções com link'],
+  ['Fila à porta', 'Fila de espera no telemóvel'],
+  ['Folhas de Excel', 'Estatísticas e comissões da equipa'],
+]
+
+/** Tools the salon already uses, and how CorteCerto works with each. Only what is built. */
+const WORKS: [string, string, string][] = [
+  ['whatsapp', 'WhatsApp', 'Lembretes, confirmações e propostas saem do WhatsApp do salão, com a mensagem já escrita.'],
+  ['image', 'Instagram e Facebook', 'Link de marcação na bio e posts prontos a publicar num toque, também no Estado do WhatsApp.'],
+  ['euro', 'MB Way', 'Sinais, packs e mensalidades do Clube pagos diretamente para o MB Way do salão.'],
+  ['star', 'Google', 'Link de marcação no perfil do Google e respostas às avaliações escritas pela IA.'],
+  ['download', 'Contabilidade', 'Marcações com valores exportadas para Excel. A fatura ao cliente continua no seu programa certificado.'],
+]
+
+const AI_MORE: [string, string, string][] = [
+  ['camera', 'Experimente antes de marcar', 'Na sua página, o cliente tira uma selfie e vê o estilo antes de escolher.'],
+  ['scissors', 'Sugestões de corte', 'Ideias do seu catálogo para o cliente, com base no que procura.'],
+  ['image', 'Notas a partir de uma foto', 'O cliente mostra a referência e a IA escreve as notas técnicas.'],
+  ['star', 'Respostas a avaliações', 'Cole uma avaliação do Google e receba a resposta no tom do salão.'],
+  ['chart', 'Relatório semanal', 'Três números, o que correu bem e uma ação para a semana.'],
+  ['tag', 'Sugestões de preço', 'Intervalos indicativos para os seus serviços. O preço é sempre seu.'],
 ]
 
 const FAQ: [string, string][] = [
@@ -88,7 +108,10 @@ const FAQ: [string, string][] = [
   ['Tenho de dar o cartão para experimentar?', 'Não. Cria o salão só com o email. Ao fim dos 30 dias decide se continua.'],
   ['E se eu quiser cancelar?', 'Cancela quando quiser, sem fidelização e sem multas. Antes disso descarrega os seus clientes e marcações em Excel. Ficam seus.'],
   ['Já tenho clientes num caderno ou noutro programa.', 'Não precisa de passar tudo de uma vez. Cada cliente que marca online entra sozinho na lista, e os de telefone ou balcão adiciona em segundos. Ao fim de umas semanas tem os clientes habituais todos na app.'],
-  ['A CorteCerto passa faturas aos meus clientes?', 'Não. Continue a usar o seu programa de faturação certificado. A CorteCerto trata das marcações, dos clientes e da agenda.'],
+  ['A CorteCerto passa faturas aos meus clientes?', 'Não. Continue a usar o seu programa de faturação certificado. A CorteCerto trata das marcações, dos clientes, da agenda e da promoção do salão, e exporta as marcações com valores para Excel.'],
+  ['A IA publica nas minhas redes sozinha?', 'Não. A IA dá as ideias, escreve a legenda e a app faz a imagem com o seu logótipo e as suas fotos. Você revê e publica com um toque no Instagram, no Facebook ou no Estado do WhatsApp.'],
+  ['A IA vê os dados dos meus clientes?', 'Só o necessário para responder a uma pergunta sua. Os telemóveis e emails nunca são enviados, os nomes são trocados por códigos antes de saírem da CorteCerto e as fotos não são guardadas. Os fornecedores de IA não usam estes dados para treinar modelos.'],
+  ['A IA tem custo extra?', 'Não. As ferramentas de IA estão incluídas no preço, com um limite mensal por ferramenta que chega para o dia a dia de um salão.'],
   ['E se tiver uma dúvida?', 'Cada ecrã tem um "?" com a explicação passo a passo. E pode falar connosco por email ou pedir uma demonstração.'],
 ]
 
@@ -188,9 +211,9 @@ export default function LandingPage() {
 
       <section className="lp-hero">
         <div className="lp-hero-copy">
-          <p className="lp-pill"><span className="lp-flag" aria-hidden="true" />Feito em Portugal · {PLAN.trialDays} dias grátis</p>
+          <p className="lp-pill"><span className="lp-flag" aria-hidden="true" />Feito em Portugal · Com inteligência artificial</p>
           <h1>Menos faltas. <span>Mais cadeiras ocupadas.</span></h1>
-          <p className="lp-lead">Os seus clientes marcam online a qualquer hora, recebem o lembrete no WhatsApp e mudam a hora sozinhos. Você corta, a CorteCerto trata da agenda.</p>
+          <p className="lp-lead">A app completa para o seu salão: os clientes marcam online a qualquer hora, recebem o lembrete no WhatsApp e mudam a hora sozinhos, e a IA ajuda-o a encher as horas calmas. Você corta, a CorteCerto trata do resto.</p>
           <div className="lp-cta-row">
             <Link to="/painel" className="lp-cta lg" id="lp-hero-cta">{trial}</Link>
             <a href={`/s/${EXAMPLE_SLUG}?src=site-exemplo`} target="_blank" rel="noreferrer" className="lp-ghost">Ver um salão a funcionar ›</a>
@@ -244,6 +267,45 @@ export default function LandingPage() {
         </section>
       ))}
 
+      <section className="lp-section lp-ai" id="ia">
+        <div className="lp-head">
+          <p className="lp-kicker"><Icon name="spark" size={16} />Inteligência artificial incluída</p>
+          <h2>Um assistente que conhece o seu salão</h2>
+          <p className="lp-sub">Dez ferramentas de IA, em português, feitas para o dia a dia de um salão. Incluídas no preço, sem pagar à parte.</p>
+        </div>
+        <div className="lp-ai-grid">
+          <article className="lp-ai-card">
+            <div>
+              <span className="lp-ai-tag">Social Media Manager</span>
+              <h3>Os posts da semana, feitos consigo</h3>
+              <p>A IA vê as horas calmas da agenda e as datas que aí vêm, sugere a promoção certa e escreve a legenda. A app faz a imagem com o seu logótipo e as suas fotos.</p>
+              <ul className="lp-points"><li><Check />Três ideias de posts por semana</li><li><Check />Cada promoção tem link próprio e conta as marcações que trouxe</li><li><Check />Você revê e publica num toque</li></ul>
+            </div>
+            <MockSocial />
+          </article>
+          <article className="lp-ai-card">
+            <div>
+              <span className="lp-ai-tag">Assistente do salão</span>
+              <h3>Pergunte como perguntaria a um gerente</h3>
+              <p>"Tenho buracos amanhã?", "Quem não vem há dois meses?", "Como correu a semana?". A resposta vem da sua agenda real, em segundos.</p>
+              <ul className="lp-points"><li><Check />Horas livres por profissional</li><li><Check />Clientes que deixaram de vir</li><li><Check />Os valores em euros só aparecem ao dono</li></ul>
+            </div>
+            <MockAssistant />
+          </article>
+        </div>
+        <article className="lp-ai-card lp-ai-wide">
+          <div>
+            <span className="lp-ai-tag">Antes e depois</span>
+            <h3>Mostre o resultado antes de pegar na tesoura</h3>
+            <p>Tire uma foto ao cliente na cadeira, escolha o estilo e em cerca de 10 segundos vê o novo visual ao lado da foto original. Fades, barba, cor ou unhas. Menos dúvidas, clientes mais seguros, e serviços extra que se vendem sozinhos.</p>
+          </div>
+        </article>
+        <ul className="lp-ai-more">
+          {AI_MORE.map(([i, t, d]) => <li key={t}><span className="lp-ico"><Icon name={i} size={20} /></span><h3>{t}</h3><p>{d}</p></li>)}
+        </ul>
+        <p className="lp-ai-privacy"><Icon name="shield" size={18} />Os telemóveis e emails dos clientes nunca vão para a IA, os nomes são trocados por códigos e as fotos não são guardadas. Os dados não são usados para treinar modelos.</p>
+      </section>
+
       <section className="lp-section lp-dark">
         <div className="lp-head">
           <p className="lp-kicker">Um dia no salão</p>
@@ -266,20 +328,23 @@ export default function LandingPage() {
         </ul>
       </section>
 
-      <section className="lp-section">
+      <section className="lp-section" id="tudo">
         <div className="lp-head center">
-          <p className="lp-kicker">Antes e depois</p>
-          <h2>O caderno ou a CorteCerto?</h2>
+          <p className="lp-kicker">Uma só app</p>
+          <h2>Tudo o que o salão precisa, de ponta a ponta</h2>
+          <p className="lp-sub">Da marcação ao post no Instagram, do lembrete às contas do mês. Uma app, um login, um preço.</p>
         </div>
-        <div className="lp-compare" role="table" aria-label="Caderno e telefone comparado com a CorteCerto">
-          <div className="lp-cmp-row lp-cmp-head" role="row"><span role="columnheader" /><span role="columnheader">Caderno e telefone</span><span role="columnheader">Com a CorteCerto</span></div>
-          {COMPARE.map(([k, a, b]) => (
-            <div key={k} className="lp-cmp-row" role="row">
-              <b role="rowheader">{k}</b>
-              <span role="cell" className="old"><Icon name="x" size={14} />{a}</span>
-              <span role="cell" className="new"><Icon name="check" size={14} />{b}</span>
-            </div>
-          ))}
+        <div className="lp-all">
+          <div className="lp-swap">
+            <h3>Deixa de precisar de</h3>
+            <ul>{SWAP.map(([a, b]) => <li key={a}><span className="from">{a}</span><span className="arrow" aria-hidden="true">→</span><span className="to">{b}</span></li>)}</ul>
+          </div>
+          <div>
+            <h3 className="lp-works-title">E funciona com o que já usa</h3>
+            <ul className="lp-works">
+              {WORKS.map(([i, t, d]) => <li key={t}><span className={`lp-ico ${i === 'whatsapp' ? 'wa-ico' : ''}`}>{i === 'whatsapp' ? <WhatsAppIcon size={20} /> : <Icon name={i} size={20} />}</span><span><b>{t}</b><span>{d}</span></span></li>)}
+            </ul>
+          </div>
         </div>
       </section>
 
@@ -326,7 +391,7 @@ export default function LandingPage() {
           <p className="lp-amount"><strong>{price}</strong><span>+ IVA<br />por mês</span></p>
           <p className="lp-small">{PLAN.trialDays} dias grátis, sem cartão. Fatura todos os meses no painel.</p>
           <ul className="lp-points">
-            {['Marcações, clientes e profissionais sem limite', 'Página de marcação e poster com QR', 'Lembretes por WhatsApp sem custo por mensagem', 'Fila de espera, sinais por MB Way e estatísticas', 'Ferramentas de IA incluídas', 'Ajuda em português, por pessoas'].map(p => <li key={p}><Check />{p}</li>)}
+            {['Marcações, clientes e profissionais sem limite', 'Página de marcação e poster com QR', 'Lembretes por WhatsApp sem custo por mensagem', 'Fila de espera, sinais por MB Way e estatísticas', '10 ferramentas de IA incluídas', 'Ajuda em português, por pessoas'].map(p => <li key={p}><Check />{p}</li>)}
           </ul>
           <Link to="/painel" className="lp-cta lg block">Criar o meu salão grátis</Link>
           <p className="lp-guarantee"><Icon name="shield" size={16} />Sem fidelização. Cancela quando quiser e leva os seus dados.</p>
