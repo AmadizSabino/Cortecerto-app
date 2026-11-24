@@ -27,8 +27,11 @@ export function scheduleContext(o: {
   hours: OpeningHours[]; pros: Record<string, { name: string }>
   services: Record<string, { name: string; price_cents: number; duration_min: number }>
   bookings: CtxBooking[]
+  /** Money figures (takings per day) only for the owner. */
+  money?: boolean
 }): string {
   const { tz, today, services, pros } = o
+  const money = o.money !== false
   const dayOf = (b: CtxBooking) => new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date(b.starts_at))
   const label = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('pt-PT', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'numeric' })
   const proCount = Math.max(1, Object.keys(pros).length)
@@ -49,7 +52,7 @@ export function scheduleContext(o: {
     const busyMin = day.filter(live).reduce((s, b) => s + Math.round((Date.parse(b.ends_at) - Date.parse(b.starts_at)) / 60000), 0)
     const value = day.filter(b => b.status !== 'cancelada' && b.status !== 'faltou').reduce((s, b) => s + bookingPrice(b, services), 0)
     const opening = open.map(h => `${h.opens}–${h.closes}`).join(' e ')
-    out.push(`- ${head} (aberto ${opening || 'sem horário'}): ${day.filter(live).length} marcações, ${euros(value)}, livre cerca de ${hm(Math.max(0, openMin - busyMin))} no total da equipa.`)
+    out.push(`- ${head} (aberto ${opening || 'sem horário'}): ${day.filter(live).length} marcações, ${money ? `${euros(value)}, ` : ''}livre cerca de ${hm(Math.max(0, openMin - busyMin))} no total da equipa.`)
     for (const b of day) {
       const s = new Date(b.starts_at), e = new Date(b.ends_at)
       out.push(`  ${formatTime(s, tz)}–${formatTime(e, tz)} ${services[b.service_id]?.name ?? 'serviço'} com ${pros[b.professional_id]?.name ?? '?'}${b.location === 'domicilio' ? ' (ao domicílio)' : ''}, ${STATUS[b.status] ?? b.status}`)
@@ -61,7 +64,7 @@ export function scheduleContext(o: {
     const day = o.bookings.filter(b => dayOf(b) === d)
     if (!day.length) continue
     const done = day.filter(b => b.status === 'concluida')
-    out.push(`- ${label(d)}: ${done.length} feitas, ${day.filter(b => b.status === 'faltou').length} faltas, ${day.filter(b => b.status === 'cancelada').length} canceladas, ${euros(done.reduce((s, b) => s + bookingPrice(b, services), 0))}.`)
+    out.push(`- ${label(d)}: ${done.length} feitas, ${day.filter(b => b.status === 'faltou').length} faltas, ${day.filter(b => b.status === 'cancelada').length} canceladas${money ? `, ${euros(done.reduce((s, b) => s + bookingPrice(b, services), 0))}` : ''}.`)
   }
   return out.join('\n')
 }

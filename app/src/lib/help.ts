@@ -258,7 +258,7 @@ export const HELP: HelpTopic[] = [
       'Toque na função que quer usar e siga os passos no ecrã.',
       'Toque em Copiar para usar o resultado numa mensagem ou num post.',
     ],
-    tip: 'Os nomes e os telemóveis dos clientes nunca são enviados à IA.',
+    tip: 'Os telemóveis e emails dos clientes nunca são enviados à IA, e os nomes são trocados por códigos. Os valores em euros só aparecem ao dono.',
   },
 
   // Gestão do salão
@@ -296,7 +296,7 @@ export const HELP: HelpTopic[] = [
       'Abra Mais › Equipa.',
       'Toque em "+ Adicionar profissional", escreva o nome e, se quiser, a percentagem de comissão.',
       'Desligue Ativo para quem saiu: deixa de aparecer aos clientes, mas o histórico fica.',
-      'As comissões de cada mês estão em Estatísticas.',
+      'As comissões de cada mês estão em Estatísticas (só o dono vê).',
     ],
   },
   {

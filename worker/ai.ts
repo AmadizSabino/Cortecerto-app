@@ -21,6 +21,8 @@
  * Photos are sent to the provider for that one request and are not stored.
  */
 
+import { ownerAssistant } from './assistant'
+
 export interface AiEnv {
   SUPABASE_URL: string
   SUPABASE_SERVICE_ROLE_KEY?: string
@@ -50,6 +52,8 @@ interface Feature {
 }
 
 export const DEFAULT_MODEL = 'claude-haiku-5-5'
+/** Money figures (revenue, takings, what a client spent) only go to the owner, not to managers. */
+const noMoney = (text: string) => text.replace(/-?\d[\d.\s]*,\d{2}\s*€/g, '').replace(/€\s*-?\d[\d.,]*/g, '')
 const PT = 'Responde sempre em português de Portugal, com frases curtas e simples. Nunca inventes preços, horários ou dados que não te foram dados. Escreve texto simples, sem markdown: sem asteriscos, cardinais nem tabelas.'
 const str = (v: unknown, max = 2000) => typeof v === 'string' ? v.trim().slice(0, max) : ''
 
@@ -79,8 +83,8 @@ export const FEATURES: Record<string, Feature> = {
   // Salon: questions about the salon's own day ("quantas marcações tenho amanhã?").
   'owner-assistant': {
     kind: 'text', who: 'salon', need: 'gestor', monthly: 500,
-    system: `És o assistente de agenda de um salão: lês a agenda e explicas ao dono, como um bom rececionista. ${PT}
-Responde diretamente à pergunta, com horas, serviços e profissionais concretos tirados da agenda. Para horas livres, usa o horário de abertura e as marcações de cada profissional (as canceladas não ocupam tempo) e indica os intervalos livres, por exemplo "11:00–12:30 com o Miguel". Para um dia ou semana, diz primeiro o essencial (quantas marcações, quanto vai faturar, onde há buracos) e depois os detalhes. No máximo 8 linhas curtas. Não tens nomes de clientes: se perguntarem por um cliente, diz que essa informação está no ecrã Clientes. Se a agenda não tiver o que é pedido, diz o que falta numa frase.`,
+    system: `És o assistente de um salão: lês a agenda, os clientes e os números do salão e explicas ao dono, como um bom rececionista. ${PT}
+Responde diretamente à pergunta, com datas, horas, clientes, serviços e profissionais concretos. Para horas livres, usa a ferramenta free_slots e indica os intervalos, por exemplo "11:00–12:30 com o Miguel". Para um dia ou semana, diz primeiro o essencial (quantas marcações, quanto vai faturar, onde há buracos) e depois os detalhes. No máximo 8 linhas curtas. Nunca mostres números de telemóvel. Se os dados não tiverem o que é pedido, diz o que falta numa frase.`,
     prompt: i => str(i.question, 500) ? `${str(i.context, 20000)}\n\nPergunta do dono: ${str(i.question, 500)}` : { error: 'Escreva a pergunta.' },
   },
   // Salon: the WhatsApp receptionist that books, moves and cancels. Needs the WhatsApp Business API first.
@@ -136,16 +140,18 @@ export async function handleAi(request: Request, env: AiEnv, name: string): Prom
   // Who is asking, and for which salon.
   let salonId = ''
   let userId: string | null = null
+  let role = ''
   if (feature.who === 'salon') {
     const who = await signedIn(request, env)
     if (!who) return json({ status: 'erro', message: 'Inicie sessão no painel.' }, 401)
     if ((RANK[who.role] ?? 0) < RANK[feature.need ?? 'agenda']) return json({ status: 'erro', message: 'O seu acesso não inclui esta funcionalidade.' }, 403)
-    salonId = who.salonId; userId = who.userId
+    salonId = who.salonId; userId = who.userId; role = who.role
   } else {
     salonId = String(body.salon ?? '')
     if (!UUID.test(salonId)) return json({ status: 'erro', message: 'Salão inválido.' }, 400)
   }
 
+  if (feature.who === 'salon' && role !== 'dono' && typeof input.context === 'string') input.context = noMoney(input.context)
   const prompt = feature.prompt(input)
   if (typeof prompt !== 'string') return json({ status: 'erro', message: prompt.error }, 400)
 
@@ -160,7 +166,9 @@ export async function handleAi(request: Request, env: AiEnv, name: string): Prom
   }
 
   try {
-    const r = feature.kind === 'text' ? await askClaude(env, feature, prompt, str(input.image, 3_000_000)) : await editImage(env, name, input, prompt)
+    const r = name === 'owner-assistant' && env.SUPABASE_SERVICE_ROLE_KEY
+      ? await ownerAssistant(env, { salonId, system: feature.system!, question: str(input.question, 500), context: str(input.context, 20000), model: env.AI_MODEL || DEFAULT_MODEL, money: role === 'dono' })
+      : feature.kind === 'text' ? await askClaude(env, feature, prompt, str(input.image, 3_000_000)) : await editImage(env, name, input, prompt)
     await log(env, salonId, name, 'feito', userId, r.usage)
     return json({ status: 'feito', ...(feature.kind === 'text' ? { text: r.out } : { image: r.out }) })
   } catch (e) {
