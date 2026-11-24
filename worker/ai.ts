@@ -50,7 +50,7 @@ interface Feature {
 }
 
 export const DEFAULT_MODEL = 'claude-haiku-5-5'
-const PT = 'Responde sempre em português de Portugal, com frases curtas e simples. Nunca inventes preços, horários ou dados que não te foram dados.'
+const PT = 'Responde sempre em português de Portugal, com frases curtas e simples. Nunca inventes preços, horários ou dados que não te foram dados. Escreve texto simples, sem markdown: sem asteriscos, cardinais nem tabelas.'
 const str = (v: unknown, max = 2000) => typeof v === 'string' ? v.trim().slice(0, max) : ''
 
 export const FEATURES: Record<string, Feature> = {

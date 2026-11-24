@@ -80,7 +80,7 @@ export default function PackagePage() {
 
   return (
     <div className="themed" style={themeStyle(theme)}><main className="page">
-      <p><Link to={`/s/${slug}`}>‹ {salon.name}</Link></p>
+      <p><Link className="back-link" to={`/s/${slug}`}>‹ {salon.name}</Link></p>
       {cover && <img className="brand-preview cover" src={cover} alt="" />}
       <h1 style={{ marginBottom: 4 }}>{pkg.name}</h1>
       <p className="price-big"><b>{pkg.mode === 'combo' && totals ? euros(totals.price) : priceLabel(pkg, euros)}</b>

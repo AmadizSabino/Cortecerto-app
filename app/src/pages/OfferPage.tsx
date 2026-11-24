@@ -93,7 +93,7 @@ export default function OfferPage() {
     <div className="themed" style={themeStyle(theme)}><main className="page">
       <header className="brand-head">
         {logo && <img className="brand-logo" src={logo} alt="" />}
-        <p className="muted" style={{ margin: 0 }}>{offer.salon_name}</p>
+        <Link className="back-link" to={`/s/${offer.salon_slug}`}>‹ {offer.salon_name}</Link>
       </header>
 
       {done ? <>
