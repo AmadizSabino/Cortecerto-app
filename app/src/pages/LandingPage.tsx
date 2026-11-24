@@ -11,7 +11,8 @@ import { MockAssistant, MockChat, Shot } from './landing/Mockups'
 import ReminderDemo from './landing/ReminderDemo'
 import './landing/landing.css'
 
-const TYPES: [string, string][] = [['scissors', 'Barbearias'], ['spark', 'Cabeleireiros'], ['star', 'Unhas'], ['crown', 'Estética e depilação']]
+/** Who the app is for. Photos are AI-generated atmosphere (no faces); swap by replacing public/landing/tipo-*.webp. */
+const TYPES: [string, string, string][] = [['scissors', 'Barbearias', 'barbearia'], ['spark', 'Cabeleireiros', 'cabeleireiro'], ['star', 'Unhas', 'unhas'], ['crown', 'Estética e depilação', 'estetica']]
 
 const TRUST: string[] = ['Sem cartão', 'Sem fidelização', 'Pronto em 15 minutos', 'Dados guardados na UE']
 
@@ -241,7 +242,12 @@ export default function LandingPage() {
 
       <section className="lp-types" aria-label="Para quem é">
         <p>Software de marcações para</p>
-        <ul>{TYPES.map(([i, t]) => <li key={t}><Icon name={i} size={18} />{t}</li>)}</ul>
+        <ul>{TYPES.map(([i, t, img]) => (
+          <li key={t}>
+            <img src={`/landing/tipo-${img}.webp`} alt="" width={560} height={700} loading="lazy" decoding="async" />
+            <span><Icon name={i} size={18} />{t}</span>
+          </li>
+        ))}</ul>
       </section>
 
       <section className="lp-section lp-demo-try" id="experimentar">
