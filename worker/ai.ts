@@ -50,7 +50,7 @@ interface Feature {
 }
 
 export const DEFAULT_MODEL = 'claude-haiku-5-5'
-const PT = 'Responde sempre em português de Portugal, com frases curtas e simples. Nunca inventes preços, horários ou dados que não te foram dados.'
+const PT = 'Responde sempre em português de Portugal, com frases curtas e simples. Nunca inventes preços, horários ou dados que não te foram dados. Escreve texto simples, sem markdown: sem asteriscos, cardinais nem tabelas.'
 const str = (v: unknown, max = 2000) => typeof v === 'string' ? v.trim().slice(0, max) : ''
 
 export const FEATURES: Record<string, Feature> = {
@@ -219,12 +219,16 @@ async function askClaude(env: AiEnv, feature: Feature, prompt: string, image: st
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'x-api-key': env.ANTHROPIC_API_KEY!, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({ model, max_tokens: 800, system: feature.system, messages: [{ role: 'user', content }] }),
+    // Short, simple answers: thinking off keeps them fast and cheap, and keeps max_tokens for the answer
+    // (newer models think by default, and thinking counts against max_tokens).
+    body: JSON.stringify({ model, max_tokens: 1200, thinking: { type: 'disabled' }, system: feature.system, messages: [{ role: 'user', content }] }),
   })
-  if (!res.ok) throw new Error(`anthropic ${res.status}`)
-  const data = await res.json() as { content?: { type: string; text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number } }
+  if (!res.ok) throw new Error(`anthropic ${res.status} ${(await res.text()).slice(0, 200)}`)
+  const data = await res.json() as { content?: { type: string; text?: string }[]; stop_reason?: string; usage?: { input_tokens?: number; output_tokens?: number } }
+  const out = (data.content ?? []).filter(c => c.type === 'text').map(c => c.text).join('\n').trim()
+  if (data.stop_reason === 'refusal' || !out) throw new Error(`anthropic empty answer (${data.stop_reason})`)
   return {
-    out: (data.content ?? []).filter(c => c.type === 'text').map(c => c.text).join('\n').trim(),
+    out,
     usage: { model, input_tokens: data.usage?.input_tokens, output_tokens: data.usage?.output_tokens },
   }
 }

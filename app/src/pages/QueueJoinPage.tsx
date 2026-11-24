@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { supabase, type Salon } from '../lib/supabase'
 import { estimateWait, savedPlace, savePlace, waitText } from '../lib/queue'
 import { clientTheme, themeById, themeStyle } from '../lib/themes'
@@ -74,7 +74,7 @@ export default function QueueJoinPage() {
 
   return (
     <div className="themed" style={themeStyle(theme)}><main className="page">
-      <p className="muted">{salon.name}</p>
+      <p><Link className="back-link" to={`/s/${salon.slug}`}>‹ {salon.name}</Link></p>
       <h1>Fila de espera</h1>
 
       {!available && <p>A fila online ainda não está disponível neste salão.</p>}

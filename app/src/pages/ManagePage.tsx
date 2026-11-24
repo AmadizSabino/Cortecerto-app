@@ -132,7 +132,7 @@ export default function ManagePage() {
     <div className="themed" style={themeStyle(theme)}><main className="page">
       <header className="brand-head">
         {b.salon_logo && <img className="brand-logo" src={mediaUrl(b.salon_logo)!} alt="" />}
-        <p className="muted" style={{ margin: 0 }}>{b.salon_name}</p>
+        <Link className="back-link" to={`/s/${b.salon_slug}`}>‹ {b.salon_name}</Link>
       </header>
       <h1>A sua marcação</h1>
       {notice && <p className="ok">{notice}</p>}

@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import Icon, { WhatsAppIcon } from '../components/Icon'
 import ThemePicker from '../ThemePicker'
 import { summarizeHours } from '../lib/hours'
@@ -80,6 +80,15 @@ export default function BookingPage() {
   const [hours, setHours] = useState<SalonHours>(NO_HOURS)
   const [overrides, setOverrides] = useState<Overrides>({})
   const [step, setStep] = useState(1)
+  // Each step is its own entry in the browser history, so the phone's back button goes to the
+  // previous step instead of leaving the page.
+  const nav = useNavigate()
+  const here = useLocation()
+  const histStep = (here.state as { step?: number } | null)?.step ?? 1
+  const toStep = (s: number, replace = false) => nav(here.pathname + here.search, { replace, state: s > 1 ? { step: s } : null })
+  useEffect(() => { setStep(histStep) }, [histStep])
+  // Reopened on a later step (e.g. after a reload), the choices are gone: start again.
+  useEffect(() => { if (histStep > 1) toStep(1, true) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const [service, setService] = useState<Service>()
   const [proId, setProId] = useState<string>()
   const [date, setDate] = useState<string>()
@@ -233,8 +242,8 @@ export default function BookingPage() {
   useEffect(() => {
     if (done || !slot || slots.some(t => t.start.getTime() === slot.start.getTime())) return
     setSlot(undefined)
-    if (step === 4) { setStep(3); setError(ERRORS.horario_ocupado) }
-  }, [slots, slot, step, done])
+    if (step === 4) { toStep(3, true); setError(ERRORS.horario_ocupado) }
+  }, [slots, slot, step, done]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (salon === undefined) return <main className="page"><p className="muted">A carregar…</p></main>
   if (salon === null) return <main className="page"><h1>Salão não encontrado</h1><p className="muted">Confirme o link com o salão.</p></main>
@@ -272,7 +281,7 @@ export default function BookingPage() {
     setSubmitting(false)
     if (error) {
       setError(Object.entries(ERRORS).find(([k]) => error.message.includes(k))?.[1] ?? 'Não foi possível marcar. Tente de novo.')
-      if (error.message.includes('horario_ocupado')) { setSlot(undefined); setStep(3); setTick(t => t + 1) }
+      if (error.message.includes('horario_ocupado')) { setSlot(undefined); toStep(3, true); setTick(t => t + 1) }
       return
     }
     // Whether a deposit is really owed (members of the Club may book without one).
@@ -418,7 +427,7 @@ export default function BookingPage() {
             <p className="muted small" style={{ margin: '4px 0 8px' }}>Guarde este link. O salão também o envia no lembrete.</p>
             <p style={{ wordBreak: 'break-all', margin: 0 }}><a href={manage}>{manage.replace(/^https?:\/\//, '')}</a></p>
           </div>
-          <p style={{ textAlign: 'center' }}><button className="link" onClick={() => { setDone(null); setDoneDeposit(null); setStep(1); setService(undefined); setSlot(undefined); if (!skipPro) setProId(undefined) }}>Fazer outra marcação</button></p>
+          <button className="btn ghost" style={{ marginTop: 12 }} onClick={() => { setDone(null); setDoneDeposit(null); toStep(1, true); setService(undefined); setSlot(undefined); if (!skipPro) setProId(undefined); window.scrollTo({ top: 0 }) }}>‹ Voltar à página do salão</button>
           {footer}
         </main>
       </div>
@@ -427,12 +436,12 @@ export default function BookingPage() {
 
   const canNext = (step === 1 && service && (!atHome || zone)) || (step === 2 && proId) || (step === 3 && slot)
   const toSteps = () => requestAnimationFrame(() => document.getElementById('steps')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
-  const go = (s: number) => { setStep(s); toSteps() }
+  const go = (s: number) => { toStep(s); toSteps() }
   const next = () => {
     if (step === 1) track('marcacao_inicio', { page: 'salao', salon: salon?.id, key: `inicio-${salon?.id}` })
     go(step === 1 && skipPro ? 3 : step + 1)
   }
-  const back = (from: number) => go(from === 3 && skipPro ? 1 : from - 1)
+  const back = () => { nav(-1); toSteps() }
 
   return (
     <div className="themed" style={themeStyle(theme)}>
@@ -517,7 +526,7 @@ export default function BookingPage() {
         </>}
 
         {step === 2 && service && <>
-          <div className="step-title"><h2>Com quem?</h2><button className="link" onClick={() => back(2)}>Voltar</button></div>
+          <div className="step-title"><h2>Com quem?</h2><button className="link back-link" onClick={back}>‹ Voltar</button></div>
           {prosFor.length === 0 && <p className="muted">De momento ninguém faz este serviço. Escolha outro.</p>}
           <div className="choices">
             {prosFor.length > 1 && (
@@ -539,7 +548,7 @@ export default function BookingPage() {
         </>}
 
         {step === 3 && <>
-          <div className="step-title"><h2>Quando?</h2><button className="link" onClick={() => back(3)}>Voltar</button></div>
+          <div className="step-title"><h2>Quando?</h2><button className="link back-link" onClick={back}>‹ Voltar</button></div>
           {openDays.length === 0 && <p className="muted">Sem dias disponíveis nas próximas semanas.</p>}
           <div className="chips">
             {openDays.map(d => {
@@ -564,7 +573,7 @@ export default function BookingPage() {
 
         {step === 4 && slot && (
           <form onSubmit={submit}>
-            <div className="step-title"><h2>Os seus dados</h2><button type="button" className="link" onClick={() => back(4)}>Voltar</button></div>
+            <div className="step-title"><h2>Os seus dados</h2><button type="button" className="link back-link" onClick={back}>‹ Voltar</button></div>
             <div className="card" style={{ marginTop: 0 }}>
               <dl className="kv">
                 <dt>Serviço</dt><dd>{service!.name} · {priceText}</dd>
