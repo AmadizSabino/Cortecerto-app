@@ -79,8 +79,9 @@ export const FEATURES: Record<string, Feature> = {
   // Salon: questions about the salon's own day ("quantas marcações tenho amanhã?").
   'owner-assistant': {
     kind: 'text', who: 'salon', need: 'gestor', monthly: 500,
-    system: `És o assistente do dono de um salão. ${PT} Responde só com base nos dados fornecidos; se faltarem dados, diz o que falta.`,
-    prompt: i => str(i.question, 500) ? `Dados do salão:\n${str(i.context, 4000)}\n\nPergunta: ${str(i.question, 500)}` : { error: 'Escreva a pergunta.' },
+    system: `És o assistente de agenda de um salão: lês a agenda e explicas ao dono, como um bom rececionista. ${PT}
+Responde diretamente à pergunta, com horas, serviços e profissionais concretos tirados da agenda. Para horas livres, usa o horário de abertura e as marcações de cada profissional (as canceladas não ocupam tempo) e indica os intervalos livres, por exemplo "11:00–12:30 com o Miguel". Para um dia ou semana, diz primeiro o essencial (quantas marcações, quanto vai faturar, onde há buracos) e depois os detalhes. No máximo 8 linhas curtas. Não tens nomes de clientes: se perguntarem por um cliente, diz que essa informação está no ecrã Clientes. Se a agenda não tiver o que é pedido, diz o que falta numa frase.`,
+    prompt: i => str(i.question, 500) ? `${str(i.context, 20000)}\n\nPergunta do dono: ${str(i.question, 500)}` : { error: 'Escreva a pergunta.' },
   },
   // Salon: the WhatsApp receptionist that books, moves and cancels. Needs the WhatsApp Business API first.
   'whatsapp-assistant': {

@@ -28,6 +28,7 @@ import { bookingPrice } from '../lib/pricing'
 import Login from '../components/Login'
 import HelpLink from '../HelpLink'
 import AiTryOn from '../components/AiTryOn'
+import AskAssistant from '../components/AskAssistant'
 import { styleOptions } from '../lib/styles'
 
 const STATUS_LABEL: Record<Booking['status'], string> = {
@@ -233,6 +234,7 @@ export default function AgendaPage() {
       </div>
       <InstallCard />
       {!locked && <RemindersCard salon={salon} />}
+      {!locked && can(role, 'ia') && <AskAssistant salon={salon} compact />}
       {!locked && <SetupChecklist salon={salon} services={Object.keys(services).length} professionals={Object.keys(pros).length} />}
 
       <div className="daynav" id="agenda">
