@@ -217,7 +217,7 @@ export default function LandingPage() {
 
       <section className="lp-hero">
         <div className="lp-hero-copy">
-          <p className="lp-pill"><span className="lp-flag" aria-hidden="true" />Feito em Portugal · Com inteligência artificial</p>
+          <p className="lp-pill"><span className="lp-flag" aria-hidden="true" />Feito em Portugal · {PLAN.trialDays} dias grátis</p>
           <h1>Menos faltas. <span>Mais cadeiras ocupadas.</span></h1>
           <p className="lp-lead">A app completa para o seu salão: os clientes marcam online a qualquer hora, recebem o lembrete no WhatsApp e mudam a hora sozinhos, e a IA ajuda-o a encher as horas calmas. Você corta, a CorteCerto trata do resto.</p>
           <div className="lp-cta-row">
