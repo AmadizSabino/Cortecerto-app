@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { manualSteps, useInstall } from './lib/install'
+import IosInstallGuide from './components/IosInstallGuide'
 import { track } from './lib/track'
 
 const KEY = 'cortecerto-install-hidden'
@@ -15,6 +16,7 @@ export default function InstallCard({ always = false }: { always?: boolean }) {
   const inst = useInstall()
   const [show, setShow] = useState(() => always || !hidden())
   const [steps, setSteps] = useState(false)
+  const [guide, setGuide] = useState(false)
 
   function close() {
     try { localStorage.setItem(KEY, '1') } catch { /* private mode */ }
@@ -41,9 +43,11 @@ export default function InstallCard({ always = false }: { always?: boolean }) {
               else if (!always) close()
             }}>Instalar</button>
           )}
+          {inst.platform === 'ios' && !inst.canPrompt && <button className="btn-inline" onClick={() => setGuide(true)}>Mostrar como</button>}
           {!always && <button className="link" onClick={close}>Agora não</button>}
         </div>
       </div>
+      {guide && <IosInstallGuide name="a CorteCerto" onClose={() => setGuide(false)} />}
     </section>
   )
 }

@@ -1,3 +1,4 @@
+import SaveToHome from '../components/SaveToHome'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import Icon, { WhatsAppIcon } from '../components/Icon'
@@ -428,6 +429,7 @@ export default function BookingPage() {
             <p className="muted small" style={{ margin: '4px 0 8px' }}>Guarde este link. O salão também o envia no lembrete.</p>
             <p style={{ wordBreak: 'break-all', margin: 0 }}><a href={manage}>{manage.replace(/^https?:\/\//, '')}</a></p>
           </div>
+          <SaveToHome page="salao" name={salon.name} title={`Guardar ${salon.name} no ecrã`} text="Para marcar da próxima vez com um só toque, sem procurar o link." />
           <button className="btn ghost" style={{ marginTop: 12 }} onClick={() => { setDone(null); setDoneDeposit(null); toStep(1, true); setService(undefined); setSlot(undefined); if (!skipPro) setProId(undefined); window.scrollTo({ top: 0 }) }}>‹ Voltar à página do salão</button>
           {footer}
         </main>

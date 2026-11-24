@@ -67,3 +67,17 @@ export function useInstall() {
     },
   }
 }
+
+/**
+ * The CorteCerto app in the stores, once published (after the move to cortecerto.pt).
+ * Empty: not published yet, so /app shows the web install instead.
+ */
+export const STORES: Record<'ios' | 'android', string> = { ios: '', android: '' }
+
+/** iPhone Safari itself (not Chrome or another app's browser), where the Share button is in the bottom bar. */
+export const iphoneSafari = (ua = typeof navigator === 'undefined' ? '' : navigator.userAgent) =>
+  /iphone|ipod/i.test(ua) && /safari/i.test(ua) && !/crios|fxios|edgios|fbav|instagram|line\//i.test(ua)
+
+/** Opened inside Instagram, Facebook or another app's browser, which cannot install anything. */
+export const inAppBrowser = (ua = typeof navigator === 'undefined' ? '' : navigator.userAgent) =>
+  /fbav|fban|instagram|line\/|tiktok|musical_ly|; wv\)/i.test(ua)

@@ -40,7 +40,7 @@ export const HELP: HelpTopic[] = [
       'No Android (Chrome), confirme em Instalar. No iPhone (Safari), toque no botão Partilhar e depois em "Adicionar ao ecrã principal".',
       'A partir daí abra a CorteCerto pelo ícone, como qualquer outra app. Fica com a sessão iniciada.',
     ],
-    tip: 'No iPhone tem de ser no Safari: o Chrome do iPhone não deixa instalar.',
+    tip: 'Para a sua equipa, envie o link /app (por exemplo cortecerto.pt/app): mostra o passo certo para cada telemóvel. No iPhone, abra-o no Safari.',
   },
   {
     id: 'entrar', group: 'Começar', title: 'Entrar na conta e mudar a palavra-passe', screen: '/palavra-passe', need: 'agenda', words: 'login sessão esqueci password',
