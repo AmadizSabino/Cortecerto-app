@@ -27,6 +27,8 @@ import { manageLink } from '../lib/clientChanges'
 import { bookingPrice } from '../lib/pricing'
 import Login from '../components/Login'
 import HelpLink from '../HelpLink'
+import AiTryOn from '../components/AiTryOn'
+import { styleOptions } from '../lib/styles'
 
 const STATUS_LABEL: Record<Booking['status'], string> = {
   pendente: 'Pendente', confirmada: 'Confirmada', concluida: 'Concluída', faltou: 'Faltou', cancelada: 'Cancelada',
@@ -51,6 +53,7 @@ export default function AgendaPage() {
   const [actionError, setActionError] = useState('')
   const [notice, setNotice] = useState('')
   const [refresh, setRefresh] = useState(0)
+  const [trying, setTrying] = useState<string | null>(null) // booking id with the AI before/after open
   const [freeing, setFreeing] = useState<string | null>(null) // booking id whose freed time is being offered
   const reload = useCallback(() => setRefresh(r => r + 1), [])
   // Home visits, event packages and prepaid packs (migration 0022).
@@ -343,10 +346,16 @@ export default function AgendaPage() {
                 {b.status === 'concluida' && nextFor !== b.id && <button onClick={() => setNextFor(b.id)}>Próxima visita</button>}
                 {(b.status === 'cancelada' || b.status === 'faltou') && freeing !== b.id && usableWindow(new Date(b.starts_at), new Date(b.ends_at), new Date()) && <button className="btn-inline" onClick={() => setFreeing(b.id)}>Oferecer a vaga</button>}
                 {(b.status === 'pendente' || b.status === 'confirmada') && !b.proposed_starts_at && proposing !== b.id && <button onClick={() => setProposing(b.id)}>Sugerir outro horário</button>}
+                {b.status !== 'cancelada' && b.status !== 'faltou' && can(role, 'clientes') && <button onClick={() => setTrying(trying === b.id ? null : b.id)}><Icon name="camera" size={14} />Antes e depois</button>}
                 {(b.status === 'pendente' || b.status === 'confirmada') && <button className="link" onClick={() => setEditing(b.id)}>Editar</button>}
                 </>}
               </div>
             </div>
+            {trying === b.id && (
+              <AiTryOn feature="before-after" title={`Antes e depois · ${b.client_name.split(' ')[0]}`}
+                intro="Tire a foto do antes e mostre ao cliente como vai ficar."
+                styles={styleOptions(salon.type, Object.values(services).map(s => s.name))} initialStyle={svc?.name} />
+            )}
             {freeing === b.id && (
               <FreeSlot salon={salon} freed={b} proName={pros[b.professional_id]?.name ?? ''} onClose={() => setFreeing(null)} onFilled={reload} />
             )}

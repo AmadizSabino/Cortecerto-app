@@ -10,6 +10,8 @@ import { computeStats } from '../lib/stats'
 import { addDays, dateInTz, zonedToUtc } from '../lib/time'
 import { themeById, themeStyle } from '../lib/themes'
 import HelpLink from '../HelpLink'
+import AiTryOn from '../components/AiTryOn'
+import { styleOptions } from '../lib/styles'
 
 /** A text feature: optional fields, a button, and the answer. */
 function TextTool({ feature, label, fields, build }: {
@@ -91,6 +93,8 @@ export default function AiPage() {
     'owner-assistant': <TextTool feature="owner-assistant" label="Perguntar" fields={[{ key: 'q', label: 'Pergunta', rows: 2, placeholder: 'Ex.: Como correu a semana? Que dias tenho mais livres?' }]} build={v => ({ question: v.q, context })} />,
     'weekly-report': <TextTool feature="weekly-report" label="Fazer o relatório da semana" build={() => ({ context })} />,
     'review-reply': <TextTool feature="review-reply" label="Escrever resposta" fields={[{ key: 'stars', label: 'Estrelas (1 a 5)', placeholder: '5' }, { key: 'review', label: 'Texto da avaliação', rows: 4 }]} build={v => ({ review: v.review, stars: v.stars, salon: salon.name })} />,
+    'before-after': <AiTryOn feature="before-after" title="Antes e depois" intro="Tire a foto do antes e mostre ao cliente como vai ficar. Também está em Hoje, em cada marcação."
+      styles={styleOptions(salon.type, Object.values(services).map(s => s.name))} />,
     'price-suggestions': <TextTool feature="price-suggestions" label="Ver sugestões" fields={[{ key: 'city', label: 'Zona', placeholder: 'Ex.: Lisboa, Arroios' }]}
       build={v => ({ city: v.city || salon.address || '', type: salon.type, services: Object.values(services).map(s => `${s.name}: ${euros(s.price_cents)}, ${s.duration_min} min`).join('\n') })} />,
   }
