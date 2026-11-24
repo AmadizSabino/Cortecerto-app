@@ -109,7 +109,7 @@ export default function QueueJoinPage() {
         </form>
       ) : <p>A fila está fechada de momento. <a href={`/s/${salon.slug}`}>Marcar uma hora</a></p>)}
 
-      <footer className="foot"><p className="muted">Feito com CorteCerto · <a href="/privacidade">Privacidade</a></p></footer>
+      <footer className="foot"><p className="muted">Marcações com <a href="/?src=fila">CorteCerto</a> · <a href="/privacidade">Privacidade</a></p></footer>
     </main></div>
   )
 }

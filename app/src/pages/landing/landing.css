@@ -439,3 +439,72 @@
 .lp-works-title { margin: 0 0 16px; }
 .lp-works li.soon { background: transparent; border-style: dashed; }
 .lp-soon { font-style: normal; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 3px 8px; border-radius: 999px; background: #efe9ff; color: #5b3fc4; margin-left: 6px; vertical-align: 2px; white-space: nowrap; }
+/* Real screenshots in the phone frame */
+.mk-shot .mk-screen { padding: 34px 0 0; background: #0c0c0c; display: block; }
+.mk-shot .mk-status { color: #f4efe6; }
+.mk-shot img { display: block; width: 100%; height: auto; }
+.lp-post { margin: 0; width: 250px; border-radius: 16px; overflow: hidden; background: #fff; box-shadow: 0 30px 60px -25px rgba(0,0,0,.6); flex: none; }
+.lp-post-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; color: #111; font-size: .78rem; font-weight: 700; }
+.lp-post-head .mk-av { width: 24px; height: 24px; font-size: 9px; background: #cba468; color: #1a1612; }
+.lp-post img { display: block; width: 100%; height: auto; }
+.lp-post figcaption { padding: 8px 10px 10px; color: #222; font-size: .74rem; line-height: 1.4; }
+.lp-post figcaption b { margin-right: 4px; }
+
+/* Interactive reminder demo */
+.lp-demo-try { background: #fff; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); max-width: none; }
+.lp-demo-try > * { max-width: 1092px; margin-left: auto; margin-right: auto; }
+.rd { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+.rd-controls { display: grid; gap: 12px; }
+.rd-controls label { display: grid; gap: 6px; font-weight: 600; font-size: .95rem; }
+.rd-controls input { font: inherit; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); font-size: 1.05rem; }
+.rd-controls input:focus-visible { outline: 3px solid var(--rust); outline-offset: 1px; }
+.rd-label { margin: 6px 0 0; font-weight: 600; font-size: .95rem; }
+.rd-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.rd-chips button { font: inherit; font-weight: 600; padding: 10px 16px; border-radius: 999px; border: 1.5px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; min-height: 44px; }
+.rd-chips button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.rd-chips button:focus-visible { outline: 3px solid var(--rust); outline-offset: 2px; }
+.rd-out { display: grid; gap: 14px; }
+.rd-chat { background: #ece5dd; border-radius: 22px; overflow: hidden; box-shadow: 0 24px 50px -30px rgba(29,27,24,.5); }
+.rd-head { background: #075e54; color: #fff; padding: 12px 16px; display: flex; gap: 10px; align-items: center; }
+.rd-head span:last-child { display: grid; line-height: 1.25; }
+.rd-head small { color: #cfe9e4; font-size: .78rem; }
+.rd-msg { position: relative; margin: 18px 16px 22px; background: #d9fdd3; color: #111; padding: 12px 14px 22px; border-radius: 14px 2px 14px 14px; line-height: 1.5; font-size: 1rem; box-shadow: 0 1px 0 rgba(0,0,0,.08); word-break: break-word; }
+.rd-msg small { position: absolute; right: 10px; bottom: 5px; font-size: .72rem; color: #667781; }
+.rd-how { display: flex; gap: 10px; align-items: flex-start; margin: 0; color: var(--ink-2); line-height: 1.5; font-size: .95rem; }
+.rd-how svg { color: #1fa855; flex: none; margin-top: 3px; }
+.lp-cta.wa { background: #1fa855; box-shadow: 0 8px 20px -8px rgba(31,168,85,.6); }
+.lp-cta.wa:hover { background: #178a45; }
+@media (max-width: 860px) { .rd { grid-template-columns: 1fr; } }
+
+/* Calculator sliders */
+.lp-slider { display: grid; gap: 10px; }
+.lp-slider-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-weight: 600; }
+.lp-slider-top output { font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-size: 2rem; font-weight: 800; color: var(--rust); letter-spacing: -.02em; }
+.lp-slider input[type=range] { width: 100%; accent-color: var(--rust); height: 32px; padding: 0; border: 0; background: transparent; }
+.lp-calc-big.huge { font-size: clamp(3.4rem, 11vw, 5.6rem) !important; }
+
+/* Hero atmosphere photo: bleeds off the right edge and fades into the page */
+.lp-hero { position: relative; }
+.lp-hero > *:not(.lp-photo) { position: relative; z-index: 1; }
+.lp-photo { position: absolute; z-index: 0; top: 0; bottom: 0; right: calc(50% - 50vw); width: calc(50vw - 570px + 600px);
+  background: url(/landing/hero-salao.webp) right center / cover no-repeat;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 45%); mask-image: linear-gradient(90deg, transparent 0, #000 45%); }
+@media (max-width: 1240px) { .lp-photo { width: 58%; } }
+@media (max-width: 1000px) {
+  .lp-photo { top: auto; height: 540px; left: calc(50% - 50vw); right: calc(50% - 50vw); width: auto; background-position: 65% center;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 35%); mask-image: linear-gradient(180deg, transparent 0, #000 35%); }
+}
+
+/* "Para quem é": four photo cards, one per kind of salon */
+.lp-types { display: block; text-align: center; padding-top: 36px; padding-bottom: 40px; }
+.lp-types p { margin: 0 0 18px; }
+.lp-types ul { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; max-width: 1092px; margin: 0 auto; }
+.lp-types li { position: relative; display: block; border-radius: 18px; overflow: hidden; aspect-ratio: 4 / 5; background: var(--rust-soft); }
+.lp-types li img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.lp-types li span { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 8px; padding: 40px 16px 14px; color: #fff; text-align: left;
+  background: linear-gradient(180deg, transparent, rgba(29,27,24,.75)); }
+.lp-types li svg { color: #fff; flex: none; }
+@media (max-width: 700px) {
+  .lp-types ul { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .lp-types li span { padding: 32px 12px 10px; font-size: .95rem; }
+}

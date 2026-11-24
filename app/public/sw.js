@@ -1,9 +1,10 @@
 // CorteCerto service worker: opens the app without network and keeps it fast.
 // Pages: network first, the cached app as fallback. Built assets (hashed): cache first.
 // Supabase, the Worker API and other sites always go to the network.
-const VERSION = 'v1'
+const VERSION = 'v2'
 const CACHE = `cortecerto-${VERSION}`
-const SHELL = ['/', '/manifest.webmanifest', '/icon-192.png', '/favicon-32.png']
+// '/' is the pre-rendered landing page; every other route is the empty app shell, cached as '/painel'.
+const SHELL = ['/painel', '/manifest.webmanifest', '/icon-192.png', '/favicon-32.png']
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()))
@@ -22,12 +23,12 @@ self.addEventListener('fetch', event => {
   if (req.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/')) return
 
   if (req.mode === 'navigate') {
-    // Every route is the same single-page app, cached under '/'.
+    // Every route but '/' is the same single-page app shell, cached under '/painel'.
     event.respondWith(
       fetch(req).then(res => {
-        if (res.ok) caches.open(CACHE).then(c => c.put('/', res.clone()))
+        if (res.ok && url.pathname !== '/') caches.open(CACHE).then(c => c.put('/painel', res.clone()))
         return res
-      }).catch(() => caches.match('/').then(r => r || Response.error())),
+      }).catch(() => caches.match('/painel').then(r => r || Response.error())),
     )
     return
   }

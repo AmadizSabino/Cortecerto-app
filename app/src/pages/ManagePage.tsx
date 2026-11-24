@@ -223,7 +223,7 @@ export default function ManagePage() {
         <button className="link back" onClick={() => { setMode('ver'); setSlot(undefined) }}>Voltar</button>
       </>}
 
-      <footer className="foot"><p className="muted">Feito com CorteCerto · <a href="/privacidade">Privacidade</a></p></footer>
+      <footer className="foot"><p className="muted">Marcações com <a href="/?src=gerir">CorteCerto</a> · <a href="/privacidade">Privacidade</a></p></footer>
     </main></div>
   )
 }
