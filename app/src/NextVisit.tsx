@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { announceBooking } from './lib/push'
 import { supabase, type Booking, type Professional, type Salon, type Service } from './lib/supabase'
 import { freeSlots } from './lib/slots'
 import { hoursFor, type SalonHours } from './lib/schedule'
@@ -78,6 +79,7 @@ export default function NextVisit({ salon, booking, service, pro, onBooked, onCl
     // Booked at the counter with the client, so it's confirmed straight away.
     // If this fails the booking still exists, as pending; the agenda shows it either way.
     await supabase.from('bookings').update({ status: 'confirmada' }).eq('id', id)
+    announceBooking(String(id)) // a phone notification for the rest of the salon
     const { data: row } = await supabase.from('bookings').select('*').eq('id', id).maybeSingle()
     setSaving(false)
     if (row) { setBooked(row); onBooked(row) }

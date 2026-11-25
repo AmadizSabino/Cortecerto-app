@@ -11,6 +11,7 @@ import { CHANGE_OPTIONS } from '../lib/clientChanges'
 import { exportBookings, exportClients } from '../lib/exportData'
 import { loadMySalon } from '../lib/mySalon'
 import HelpLink from '../HelpLink'
+import PushToggle from '../components/PushToggle'
 
 interface SvcRow { id?: string; name: string; duration: string; price: string; active: boolean }
 interface DayRow { open: boolean; opens: string; closes: string }
@@ -184,6 +185,9 @@ export default function SettingsPage() {
 
       {msg && <p className={msg.ok ? 'ok' : 'error'}>{msg.text}</p>}
       <div className="sticky-cta" style={{ bottom: 'calc(64px + env(safe-area-inset-bottom))' }}><button className="btn" style={{ marginTop: 0 }} onClick={save} disabled={saving}>{saving ? 'A guardar…' : 'Guardar alterações'}</button></div>
+      <h2>Avisos no telemóvel</h2>
+      <PushToggle />
+
       <h2>Assinatura</h2>
       <p className="muted"><Link to="/assinatura">Ver o período grátis e a assinatura</Link></p>
 

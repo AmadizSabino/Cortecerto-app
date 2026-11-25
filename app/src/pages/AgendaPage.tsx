@@ -19,6 +19,7 @@ import RemindersCard from '../RemindersCard'
 import NextVisit from '../NextVisit'
 import BookingEditor from '../BookingEditor'
 import InstallCard from '../InstallCard'
+import { PushNudge } from '../components/PushToggle'
 import BillingNotice from '../BillingNotice'
 import { isLockedError, LOCKED_MESSAGE, lockState, type BillingFields } from '../lib/billing'
 import { pendingDocs } from '../lib/acceptance'
@@ -233,6 +234,7 @@ export default function AgendaPage() {
         <div className="stat"><b>{deposits}</b><span>Sinais por confirmar</span></div>
       </div>
       <InstallCard />
+      {!locked && <PushNudge />}
       {!locked && <RemindersCard salon={salon} />}
       {!locked && can(role, 'ia') && <AskAssistant salon={salon} compact owner={role === 'dono'} />}
       {!locked && <SetupChecklist salon={salon} services={Object.keys(services).length} professionals={Object.keys(pros).length} />}

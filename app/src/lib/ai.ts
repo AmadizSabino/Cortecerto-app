@@ -34,7 +34,7 @@ export async function runAi(feature: AiFeature, input: Record<string, unknown>, 
     const res = await fetch(`/api/ai/${feature}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      body: JSON.stringify({ salon: salonId, input }),
+      body: JSON.stringify({ salon: salonId, input, ...(token ? {} : { device: deviceId() }) }),
     })
     const body = await res.json().catch(() => null) as AiResult | null
     // An older Worker without /api/ai answers 404 without JSON: the feature is simply not there yet.
@@ -43,6 +43,21 @@ export async function runAi(feature: AiFeature, input: Record<string, unknown>, 
   } catch {
     return { status: 'erro', message: 'Sem ligação. Tente de novo.' }
   }
+}
+
+/**
+ * A random id this browser keeps, so the Worker can count a client's AI uses per day without
+ * knowing who they are (worker/ai.ts, daily limit). Without storage it changes each time.
+ */
+export function deviceId(): string {
+  const make = () => crypto.randomUUID()
+  try {
+    const saved = localStorage.getItem('cc-device')
+    if (saved && /^[\w-]{8,64}$/.test(saved)) return saved
+    const id = make()
+    localStorage.setItem('cc-device', id)
+    return id
+  } catch { return make() }
 }
 
 /** Shrinks a photo in the browser before sending it (JPEG, longest side `max` px). */

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { announceBooking } from './lib/push'
 import { supabase, type Booking, type Professional, type Salon, type Service } from './lib/supabase'
 import { freeSlots } from './lib/slots'
 import { hoursFor, NO_HOURS, type SalonHours } from './lib/schedule'
@@ -87,6 +88,7 @@ export default function BookingEditor({ salon, booking, defaultDate, onSaved, on
       : await supabase.from('bookings').insert({ ...fields, salon_id: salon.id, status: 'confirmada' }).select('*').single()
     setSaving(false)
     if (res.error) { setError(saveErrorText(res.error.message)); return }
+    if (!booking) announceBooking((res.data as Booking).id) // a phone notification for the rest of the salon
     onSaved(res.data as Booking)
   }
 

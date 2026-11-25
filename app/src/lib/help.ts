@@ -43,6 +43,16 @@ export const HELP: HelpTopic[] = [
     tip: 'Para a sua equipa, envie o link /app (por exemplo cortecerto.pt/app): mostra o passo certo para cada telemóvel. No iPhone, abra-o no Safari.',
   },
   {
+    id: 'avisos', group: 'Começar', title: 'Receber um aviso no telemóvel a cada marcação', screen: '/painel', need: 'agenda', words: 'notificação aviso alerta som telemóvel nova marcação',
+    steps: [
+      'No Hoje, toque em "Ligar avisos" no cartão "Saiba logo quando entra uma marcação". Também está em Mais > Definições > Avisos no telemóvel.',
+      'Quando o telemóvel perguntar, toque em Permitir.',
+      'A partir daí, cada marcação online, ou feita por alguém da equipa no painel, aparece no ecrã do telemóvel, com a contagem do dia. As que faz no seu próprio telemóvel não geram aviso.',
+      'Para desligar, volte a Definições > Avisos no telemóvel.',
+    ],
+    tip: 'No iPhone, os avisos só funcionam com a app no ecrã principal (iOS 16.4 ou mais recente). Os valores em euros só aparecem no aviso do dono. Cada pessoa da equipa liga os avisos no seu próprio telemóvel.',
+  },
+  {
     id: 'entrar', group: 'Começar', title: 'Entrar na conta e mudar a palavra-passe', screen: '/palavra-passe', need: 'agenda', words: 'login sessão esqueci password',
     steps: [
       'Abra a app ou o endereço do painel e escreva o email e a palavra-passe.',
