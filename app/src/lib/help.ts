@@ -131,6 +131,17 @@ export const HELP: HelpTopic[] = [
     ],
   },
   {
+    id: 'pedidos-horario', group: 'A agenda', title: 'Responder a um pedido de horário ocupado', screen: '/painel', need: 'agenda', words: 'pedido horário ocupado lista de espera trocar mudar cliente encaixar',
+    steps: [
+      'Na página de marcação, o cliente pode tocar em "Pedir um horário ocupado" e escolher a hora que quer (e uma 2.ª opção). Recebe um aviso no telemóvel e o pedido aparece no Hoje, em "Pedidos de horário".',
+      'Até lhe responder, o cliente fica na lista de espera. Em cada hora pedida vê quem lá está. Toque em "Pedir a … para mudar" para lhe perguntar por WhatsApp, ou em "Mudar … de hora" para lhe enviar um novo horário com link.',
+      'Quando a hora ficar livre, toque em "Dar 15:00 a …" e depois em "Enviar por WhatsApp" para o avisar. Fica marcado e confirmado.',
+      'Não dá? Toque em "Propor outro horário": o horário fica guardado para o cliente, que aceita com um toque no link. Se disser que não, volta à lista de espera.',
+      'Não consegue mesmo? Toque em Recusar e envie a mensagem.',
+    ],
+    tip: 'Se o cliente marcar outro horário nesse dia, o pedido sai sozinho da lista. As mensagens saem do seu WhatsApp: não há envios automáticos nem custos.',
+  },
+  {
     id: 'oferecer-vaga', group: 'A agenda', title: 'Preencher uma vaga que ficou livre', screen: '/painel', need: 'agenda', words: 'vaga livre cancelou faltou oferecer',
     steps: [
       'Numa marcação cancelada ou com falta, toque em "Oferecer a vaga".',
@@ -175,6 +186,15 @@ export const HELP: HelpTopic[] = [
       'Toque no separador Clientes e escreva o nome ou o telemóvel em Procurar.',
       'Toque no cliente para ver as visitas, as faltas e as notas.',
       'Toque em "Editar registo" para juntar notas (por exemplo, o corte que prefere) e o dia de anos.',
+    ],
+  },
+  {
+    id: 'tempo-cliente', group: 'Clientes', title: 'Dar mais tempo a um cliente que demora mais', screen: '/clientes', need: 'clientes', words: 'tempo duração minutos demora mais cabelo comprido cliente lento',
+    steps: [
+      'Em Clientes, toque no cliente e depois em "Definir", em "Tempo de …".',
+      'Escolha o serviço e quanto tempo esse cliente demora (por exemplo, Corte: 60 min). Ou escolha "Todos os serviços" e os minutos a mais.',
+      'Toque em Guardar. Quando ele marcar online, a agenda guarda esse tempo sozinha. O cliente continua a ver só o serviço.',
+      'Só para uma marcação? No Hoje, toque em Editar na marcação e mude a Duração.',
     ],
   },
   {

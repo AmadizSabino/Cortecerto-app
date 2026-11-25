@@ -27,9 +27,13 @@ import { comboTotals, priceLabel, type Package, type PackageItem } from '../lib/
 import { lockState, type BillingFields } from '../lib/billing'
 import { track } from '../lib/track'
 import { salonAt } from '../lib/salonAt'
+import { requestLink, shortWhen, takenTimes } from '../lib/slotRequests'
 
 const ERRORS: Record<string, string> = {
   horario_ocupado: 'Esse horário acabou de ser ocupado. Escolha outro, por favor.',
+  horario_curto: 'Para o seu serviço, o salão reserva um pouco mais de tempo, e a seguir a essa hora já está ocupado. Escolha outra hora, por favor.',
+  pedidos_a_mais: 'Já tem 3 pedidos à espera neste salão. Espere pela resposta ou fale com o salão.',
+  horario_longe: 'Só pode pedir horários até 90 dias.',
   horario_passado: 'Esse horário já passou.',
   dados_cliente: 'Indique o seu nome e um telemóvel válido.',
   domicilio_fechado: 'O salão não está a aceitar visitas ao domicílio agora.',
@@ -135,6 +139,13 @@ export default function BookingPage() {
   const [joining, setJoining] = useState(() => new URLSearchParams(location.search).has('clube'))
   const [joinForm, setJoinForm] = useState({ name: '', phone: '' })
   const [joinState, setJoinState] = useState<{ ok: boolean; text: string }>()
+  // "Pedir este horário" (migration 0031): the client asks for taken times (up to two) and waits on the salon's list.
+  const [asking, setAsking] = useState(false)
+  const [wish, setWish] = useState<Date[]>([])
+  const [askNote, setAskNote] = useState('')
+  const [requested, setRequested] = useState<string | null>(null) // request id once sent
+  // The salon may keep more time for this client (client_times, migration 0031): their own length, once their phone is known.
+  const [myMinutes, setMyMinutes] = useState<{ service: string; phone: string; minutes: number } | null>(null)
 
   useEffect(() => {
     (async () => {
@@ -235,11 +246,21 @@ export default function BookingPage() {
       if (!eff) continue
       // A home visit also needs the trip there and back free, around other bookings.
       const mine = busy.filter(b => b.professional_id === p.id)
-      const free = freeSlots({ date: day, tz, hours: hoursFor(hours, p.id), durationMin: eff.duration_min, busy: travel ? widen(mine, travel) : mine, now })
+      const dur = myMinutes && myMinutes.service === service.id ? Math.max(myMinutes.minutes, eff.duration_min) : eff.duration_min
+      const free = freeSlots({ date: day, tz, hours: hoursFor(hours, p.id), durationMin: dur, busy: travel ? widen(mine, travel) : mine, now })
       for (const t of free) if (!byTime.has(t.getTime())) byTime.set(t.getTime(), p.id)
     }
     return [...byTime.entries()].sort((a, b) => a[0] - b[0]).map(([t, id]) => ({ start: new Date(t), proId: id }))
-  }, [service, candidates, overrides, tz, hours, busy, tick, travel]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [service, candidates, overrides, tz, hours, busy, tick, travel, myMinutes]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Taken times on the chosen day, for "Pedir este horário" (not for home visits, combos or promotions' special flows).
+  const canAsk = Boolean(service) && !atHome && !combo
+  const taken = useMemo(() => {
+    if (!asking || !service || !date) return []
+    return takenTimes({ date, tz, now: new Date(), pros: candidates.flatMap(p => {
+      const eff = effective(service, p.id, overrides)
+      return eff ? [{ hours: hoursFor(hours, p.id), durationMin: eff.duration_min, busy: busy.filter(b => b.professional_id === p.id) }] : []
+    }) })
+  }, [asking, service, date, tz, candidates, overrides, hours, busy])
   const fullDays = useMemo(() => new Set(service ? openDays.filter(d => slotsOn(d).length === 0) : []), [service, openDays, slotsOn])
   const slots = useMemo(() => date ? slotsOn(date) : [], [date, slotsOn])
 
@@ -252,7 +273,7 @@ export default function BookingPage() {
   useEffect(() => {
     if (done || !slot || slots.some(t => t.start.getTime() === slot.start.getTime())) return
     setSlot(undefined)
-    if (step === 4) { toStep(3, true); setError(ERRORS.horario_ocupado) }
+    if (step === 4) { toStep(3, true); setError(myMinutes?.service === service?.id ? ERRORS.horario_curto : ERRORS.horario_ocupado) }
   }, [slots, slot, step, done]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (salon === undefined) return <main className="page"><p className="muted">A carregar…</p></main>
@@ -275,9 +296,38 @@ export default function BookingPage() {
   const styleCards = salon ? cardsFor(salonTypes(salon), salon.styles_hidden ?? []) : []
   const chosenStyle = cardById(styleId)
 
+  /** The client's own length for this service, if the salon set one (asked once per phone). */
+  async function lookUpMyTime(p = phone): Promise<number | null> {
+    if (!service || service.id.startsWith('pacote-') || p.replace(/\D/g, '').length < 9) return null
+    if (myMinutes && myMinutes.service === service.id && myMinutes.phone === p) return myMinutes.minutes
+    const pro = slot?.proId ?? (proId && proId !== ANY ? proId : candidates[0]?.id)
+    if (!pro) return null
+    const { data, error } = await supabase.rpc('client_duration', { p_salon: salon!.id, p_service: service.id, p_professional: pro, p_phone: p })
+    if (error || typeof data !== 'number') return null
+    const base = effective(service, pro, overrides)?.duration_min ?? service.duration_min
+    setMyMinutes(data > base ? { service: service.id, phone: p, minutes: data } : null)
+    return data
+  }
+
+  async function sendRequest() {
+    setError(''); setSubmitting(true)
+    const { data, error } = await supabase.rpc('request_slot', {
+      p_salon: salon!.id, p_service: service!.id, p_professional: proId && proId !== ANY ? proId : null,
+      p_starts_at: wish[0].toISOString(), p_alt_starts_at: wish[1]?.toISOString() ?? null,
+      p_client_name: name, p_client_phone: phone, p_consent: consent, p_note: askNote.trim() || null,
+    })
+    setSubmitting(false)
+    if (error) { setError(Object.entries(ERRORS).find(([k]) => error.message.includes(k))?.[1] ?? 'Não foi possível enviar o pedido. Tente de novo.'); return }
+    // A phone notification for the salon. Best effort: the request is already saved.
+    fetch('/api/notify-request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: data }), keepalive: true }).catch(() => {})
+    setRequested(String(data))
+    window.scrollTo(0, 0)
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (submitting) return // a second tap must not book twice
+    if (asking && wish.length) { sendRequest(); return }
     setError(''); setSubmitting(true)
     const args = {
       p_salon: salon!.id, p_service: service!.id, p_professional: slot!.proId, p_starts_at: slot!.start.toISOString(),
@@ -294,6 +344,8 @@ export default function BookingPage() {
     if (error) {
       setError(Object.entries(ERRORS).find(([k]) => error.message.includes(k))?.[1] ?? 'Não foi possível marcar. Tente de novo.')
       if (error.message.includes('horario_ocupado')) { setSlot(undefined); toStep(3, true); setTick(t => t + 1) }
+      // This client needs longer: the times shown now fit their own length.
+      if (error.message.includes('horario_curto')) { await lookUpMyTime(); setSlot(undefined); toStep(3, true); setTick(t => t + 1) }
       return
     }
     // Whether a deposit is really owed (members of the Club may book without one).
@@ -362,6 +414,7 @@ export default function BookingPage() {
         <summary>Como funciona a marcação</summary>
         <ol>
           <li>Escolha o serviço, com quem e o dia e a hora que lhe dão jeito. Só aparecem horários livres.</li>
+          <li>A hora que quer está ocupada? Toque em "Pedir um horário ocupado". Fica na lista de espera e o salão responde-lhe por WhatsApp.</li>
           <li>Escreva o nome e o telemóvel. Não precisa de criar conta nem de palavra-passe.</li>
           {salon.deposit_cents > 0 && salon.mbway_number
             ? <li>Envie o sinal de {euros(salon.deposit_cents)} por MB Way para o número que aparece no fim. A marcação fica confirmada quando o salão o receber.</li>
@@ -399,6 +452,35 @@ export default function BookingPage() {
       {footer}
     </div>
   )
+
+  if (requested) {
+    const link = requestLink(location.origin, requested)
+    return (
+      <div className="themed" style={themeStyle(theme)}>
+        {header}
+        <main className="page">
+          <div className="card raised" style={{ textAlign: 'center', marginTop: 20 }}>
+            <div className="done-mark wait"><Icon name="clock" size={34} /></div>
+            <h2 style={{ margin: 0 }}>Pedido enviado!</h2>
+            <p style={{ margin: '8px 0 0' }}>Está na <b>lista de espera</b> do {salon.name}. O salão vai ver se consegue arranjar o horário e responde-lhe por WhatsApp.</p>
+            <p className="muted small" style={{ margin: '6px 0 0' }}>Ainda não é uma marcação: só fica marcado quando o salão confirmar.</p>
+            <dl className="kv" style={{ textAlign: 'left', marginTop: 20 }}>
+              <dt>Serviço</dt><dd>{service!.name}</dd>
+              {proId && proId !== ANY && <><dt>Com</dt><dd>{proName(proId)}</dd></>}
+              {wish.map((w, i) => <Fragment key={w.getTime()}><dt>{wish.length > 1 ? `${i + 1}.ª escolha` : 'Pediu'}</dt><dd>{cap(longDate(w))}, {formatTime(w, tz)}</dd></Fragment>)}
+            </dl>
+          </div>
+          <div className="card">
+            <h3>Acompanhe o seu pedido</h3>
+            <p className="muted small" style={{ margin: '4px 0 8px' }}>Guarde este link. Mostra a resposta do salão, e é por ele que aceita um horário que o salão lhe proponha.</p>
+            <p style={{ wordBreak: 'break-all', margin: 0 }}><a href={link}>{link.replace(/^https?:\/\//, '')}</a></p>
+          </div>
+          <button className="btn ghost" style={{ marginTop: 12 }} onClick={() => { setRequested(null); setAsking(false); setWish([]); setAskNote(''); toStep(1, true); setService(undefined); setSlot(undefined); if (!skipPro) setProId(undefined); window.scrollTo({ top: 0 }) }}>‹ Voltar à página do salão</button>
+          {footer}
+        </main>
+      </div>
+    )
+  }
 
   if (done) {
     const msg = `Olá! Acabei de marcar ${service!.name} com ${proName(slot!.proId)} para ${longDate(slot!.start)} às ${formatTime(slot!.start, tz)}. Nome: ${name}.`
@@ -456,7 +538,7 @@ export default function BookingPage() {
     )
   }
 
-  const canNext = (step === 1 && service && (!atHome || zone)) || (step === 2 && proId) || (step === 3 && slot)
+  const canNext = (step === 1 && service && (!atHome || zone)) || (step === 2 && proId) || (step === 3 && (slot || (asking && wish.length > 0)))
   const toSteps = () => requestAnimationFrame(() => document.getElementById('steps')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   const go = (s: number) => { toStep(s); toSteps() }
   const next = () => {
@@ -606,24 +688,53 @@ export default function BookingPage() {
           <div className="slots">
             {slots.length === 0 && date && <p className="muted" style={{ gridColumn: '1 / -1' }}>Sem horários livres neste dia.{openDays.some(d => !fullDays.has(d)) ? ' Experimente outro dia.' : ' Fale com o salão por WhatsApp.'}</p>}
             {slots.map(t => (
-              <button key={t.start.getTime()} className={t.start.getTime() === slot?.start.getTime() ? 'slot on' : 'slot'} onClick={() => { setSlot(t); setError('') }}>{formatTime(t.start, tz)}</button>
+              <button key={t.start.getTime()} className={t.start.getTime() === slot?.start.getTime() ? 'slot on' : 'slot'} onClick={() => { setSlot(t); setError(''); setAsking(false); setWish([]) }}>{formatTime(t.start, tz)}</button>
             ))}
           </div>
           {error && <p className="error" role="alert">{error}</p>}
+          {canAsk && !asking && date && (
+            <div className="card soft ask-slot">
+              <span><b>O horário que quer está ocupado?</b><small className="muted">Peça-o ao salão. Fica na lista de espera e o salão responde-lhe por WhatsApp.</small></span>
+              <button className="btn ghost inline sm" onClick={() => { setAsking(true); setSlot(undefined); setError('') }}><Icon name="clock" size={16} />Pedir um horário ocupado</button>
+            </div>
+          )}
+          {canAsk && asking && (
+            <section className="card ask-slot open" aria-label="Pedir um horário ocupado">
+              <div className="between"><b>Pedir um horário ocupado</b><button className="link" onClick={() => { setAsking(false); setWish([]) }}>Fechar</button></div>
+              <p className="muted small" style={{ margin: '4px 0 0' }}>{wish.length === 0 ? 'Toque no horário que quer.' : wish.length === 1 ? 'Se quiser, escolha uma 2.ª opção (pode ser noutro dia).' : 'Já tem duas escolhas. Toque numa para a tirar.'}</p>
+              <div className="slots">
+                {taken.length === 0 && <p className="muted small" style={{ gridColumn: '1 / -1', margin: 0 }}>Neste dia não há horários ocupados. Escolha uma hora livre acima, ou outro dia.</p>}
+                {taken.map(t => {
+                  const i = wish.findIndex(w => w.getTime() === t.getTime())
+                  return <button key={t.getTime()} className={i >= 0 ? 'slot taken on' : 'slot taken'} aria-pressed={i >= 0} onClick={() => {
+                    setWish(ws => i >= 0 ? ws.filter((_, k) => k !== i) : ws.length < 2 ? [...ws, t] : [ws[0], t])
+                  }}>{formatTime(t, tz)}{i >= 0 && <small>{i + 1}.ª</small>}</button>
+                })}
+              </div>
+              {wish.length > 0 && (
+                <ol className="wish-list small">
+                  {wish.map((w, i) => <li key={w.getTime()}><span>{i + 1}.ª escolha: <b>{shortWhen(w, tz)}</b></span><button className="link" onClick={() => setWish(ws => ws.filter((_, k) => k !== i))}>Tirar</button></li>)}
+                </ol>
+              )}
+            </section>
+          )}
         </>}
 
-        {step === 4 && slot && (
+        {step === 4 && (slot || (asking && wish.length > 0)) && (
           <form onSubmit={submit}>
             <div className="step-title"><h2>Os seus dados</h2><button type="button" className="link back-link" onClick={back}>‹ Voltar</button></div>
             <div className="card" style={{ marginTop: 0 }}>
               <dl className="kv">
                 <dt>Serviço</dt><dd>{service!.name} · {priceText}</dd>
                 {chosenStyle && <><dt>Estilo</dt><dd>{chosenStyle.name}</dd></>}
-                <dt>Com</dt><dd>{proName(slot.proId)}</dd>
-                <dt>Quando</dt><dd>{cap(longDate(slot.start))}, {formatTime(slot.start, tz)}</dd>
+                <dt>Com</dt><dd>{slot ? proName(slot.proId) : proId && proId !== ANY ? proName(proId) : 'Qualquer um'}</dd>
+                {slot
+                  ? <><dt>Quando</dt><dd>{cap(longDate(slot.start))}, {formatTime(slot.start, tz)}</dd></>
+                  : wish.map((w, i) => <Fragment key={w.getTime()}><dt>{wish.length > 1 ? `${i + 1}.ª escolha` : 'Pede'}</dt><dd>{cap(longDate(w))}, {formatTime(w, tz)}</dd></Fragment>)}
                 {atHome && zone && <><dt>Onde</dt><dd>Em sua casa · {zone.name}</dd></>}
               </dl>
-              {atHome && zone && eff && (() => {
+              {!slot && <p className="ask-note small"><Icon name="clock" size={14} /> É um <b>pedido</b>, ainda não uma marcação. Fica na lista de espera do salão até o salão lhe responder por WhatsApp.</p>}
+              {atHome && zone && eff && slot && (() => {
                 const q = homeQuote({ servicesCents: eff.price_cents, zone, fees: home!.fees, start: slot.start, tz })
                 return <dl className="kv quote">{q.lines.map(l => <Fragment key={l.label}><dt>{l.label}</dt><dd>{euros(l.cents)}</dd></Fragment>)}<dt><b>Total</b></dt><dd><b>{euros(q.total)}</b></dd></dl>
               })()}
@@ -634,15 +745,16 @@ export default function BookingPage() {
               <p className="muted small">A morada só é vista por quem faz a visita e pela receção do salão.</p>
             </>}
             <label>Nome<input value={name} onChange={e => setName(e.target.value)} required autoComplete="name" /></label>
-            <label>Telemóvel<input value={phone} onChange={e => setPhone(e.target.value)} required inputMode="tel" autoComplete="tel" placeholder="912 345 678" /></label>
+            <label>Telemóvel<input value={phone} onChange={e => setPhone(e.target.value)} onBlur={() => { if (slot) lookUpMyTime() }} required inputMode="tel" autoComplete="tel" placeholder="912 345 678" /></label>
+            {!slot && <label><span>Mensagem para o salão <span className="muted">(opcional)</span></span><input value={askNote} maxLength={300} onChange={e => setAskNote(e.target.value)} placeholder="Ex.: Só consigo depois do trabalho." /></label>}
             <label className="check">
               <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />
               <span>Aceito receber novidades e promoções do salão por WhatsApp. <span className="muted">(opcional)</span></span>
             </label>
             <p className="muted small">O salão pode enviar-lhe um lembrete desta marcação por WhatsApp. Os seus dados são usados apenas para gerir a marcação. <a href="/privacidade" target="_blank" rel="noreferrer">Política de privacidade</a></p>
-            {salon.deposit_cents > 0 && salon.mbway_number && <p className="muted small">Esta marcação pede um sinal de {euros(salon.deposit_cents)} por MB Way, a enviar a seguir.</p>}
+            {slot && salon.deposit_cents > 0 && salon.mbway_number && <p className="muted small">Esta marcação pede um sinal de {euros(salon.deposit_cents)} por MB Way, a enviar a seguir.</p>}
             {error && <p className="error" role="alert">{error}</p>}
-            <div className="sticky-cta"><button className="btn" style={{ marginTop: 0 }} disabled={submitting}>{submitting ? 'A marcar…' : 'Confirmar marcação'}</button></div>
+            <div className="sticky-cta"><button className="btn" style={{ marginTop: 0 }} disabled={submitting}>{slot ? (submitting ? 'A marcar…' : 'Confirmar marcação') : (submitting ? 'A enviar…' : 'Enviar pedido')}</button></div>
           </form>
         )}
 
@@ -650,7 +762,7 @@ export default function BookingPage() {
           <div className="sticky-cta">
             <div className="summary">
               <span className="small grow" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                <b>{service?.name}</b>{step >= 3 && slot && <> · {formatTime(slot.start, tz)}</>} · {priceText}
+                <b>{service?.name}</b>{step >= 3 && slot && <> · {formatTime(slot.start, tz)}</>}{step === 3 && !slot && asking && wish.length > 0 && <> · pedir {wish.map(w => formatTime(w, tz)).join(' ou ')}</>} · {priceText}
               </span>
               <button onClick={next}>Continuar</button>
             </div>

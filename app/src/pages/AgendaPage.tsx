@@ -10,6 +10,7 @@ import { loadMySalon, type Role } from '../lib/mySalon'
 import { can } from '../lib/access'
 import ProposeTime from '../ProposeTime'
 import FreeSlot from '../FreeSlot'
+import SlotRequests from '../SlotRequests'
 import { usableWindow } from '../lib/freeSlot'
 import { onTheWay } from '../lib/home'
 import { proposalMessage } from '../lib/proposal'
@@ -235,6 +236,7 @@ export default function AgendaPage() {
           : <div className="stat"><b>{live.filter(b => b.status === 'pendente').length}</b><span>Por confirmar</span></div>}
         <div className="stat"><b>{deposits}</b><span>Sinais por confirmar</span></div>
       </div>
+      <SlotRequests salon={salon} services={services} pros={pros} locked={locked} refresh={refresh} onBooked={reload} />
       {!locked && <FirstBooking salon={salon} />}
       <InstallCard />
       {!locked && <PushNudge />}

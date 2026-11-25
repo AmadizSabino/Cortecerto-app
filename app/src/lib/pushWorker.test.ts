@@ -76,3 +76,16 @@ describe('the new-booking notification', () => {
     expect(bookingMessage({ ...b, made_today: 2, best_day_before: 1 }, false, now).title).toBe('🎉 Nova marcação online!')
   })
 })
+
+describe('request notification (migration 0031)', () => {
+  it('says who asks, for when, and who has the time', async () => {
+    const { requestMessage } = await import('../../../worker/push')
+    const m = requestMessage({
+      salon_id: 's', salon_timezone: 'Europe/Lisbon', client_name: 'Marta', service_name: 'Corte', professional_name: 'Rui',
+      starts_at: '2026-11-27T15:00:00Z', alt_starts_at: '2026-11-28T10:00:00Z', taken_by: 'João',
+    }, new Date('2026-11-26T09:00:00Z'))
+    expect(m.title).toBe('🙋 Pedido de horário')
+    expect(m.body).toMatch(/^Marta pede Corte com Rui amanhã às 15:00 \(ou s[^)]*28[^)]* às 10:00\)\. Nessa hora está João\.\nEstá na lista de espera: responda em Hoje\.$/)
+    expect(m.url).toBe('/painel#pedidos')
+  })
+})

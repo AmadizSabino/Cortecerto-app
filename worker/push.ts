@@ -54,6 +54,32 @@ export function bookingMessage(b: PushBooking, money: boolean, now = new Date())
   return { title, body: `${first}\n${count}${cash}`, url: '/painel', tag: 'marcacao' }
 }
 
+/** A client asked for a taken time ("Pedir este horário", migration 0031). */
+export interface PushRequest {
+  salon_id: string; salon_timezone: string; client_name: string; service_name: string; professional_name: string | null
+  starts_at: string; alt_starts_at: string | null; taken_by: string | null
+}
+
+export function requestMessage(r: PushRequest, now = new Date()): PushMessage {
+  const tz = r.salon_timezone || 'Europe/Lisbon'
+  const day = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: tz })
+  const at = (iso: string) => {
+    const d = new Date(iso)
+    const hour = d.toLocaleTimeString('pt-PT', { timeZone: tz, hour: '2-digit', minute: '2-digit' })
+    const tomorrow = new Date(now.getTime() + 86_400_000)
+    return day(d) === day(now) ? `hoje às ${hour}` : day(d) === day(tomorrow) ? `amanhã às ${hour}`
+      : `${d.toLocaleDateString('pt-PT', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '')} às ${hour}`
+  }
+  const who = r.professional_name ? ` com ${r.professional_name}` : ''
+  const alt = r.alt_starts_at ? ` (ou ${at(r.alt_starts_at)})` : ''
+  const taken = r.taken_by ? ` Nessa hora está ${r.taken_by}.` : ''
+  return {
+    title: '🙋 Pedido de horário',
+    body: `${r.client_name} pede ${r.service_name}${who} ${at(r.starts_at)}${alt}.${taken}\nEstá na lista de espera: responda em Hoje.`,
+    url: '/painel#pedidos', tag: 'pedido',
+  }
+}
+
 // ---------------------------------------------------------------------------- sending
 
 /** Tells everyone in the salon who switched notifications on, except the person who made the booking. */
@@ -71,6 +97,25 @@ export async function announceBooking(env: PushEnv, bookingId: string, by: strin
   if (!keys) return 0
   const sent = await Promise.all(subs.map(s => sendPush(env, keys, s, bookingMessage(b, s.user_id === b.owner_id))))
   return sent.filter(Boolean).length
+}
+
+/** POST /api/notify-request { id }: a new request for a taken time, from the booking page. Announced once (claim_slot_request_push). */
+export async function announceRequest(request: Request, env: PushEnv): Promise<Response> {
+  if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 })
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) return new Response(null, { status: 204 })
+  let id = ''
+  try { id = String(((await request.json()) as { id?: unknown }).id ?? '') } catch { /* bad body */ }
+  if (!UUID.test(id)) return new Response('Bad request', { status: 400 })
+  const claim = await rest(env, 'rpc/claim_slot_request_push', { method: 'POST', body: JSON.stringify({ p_request: id }) })
+  if (!claim.ok) return new Response(null, { status: 204 })
+  const r = ((await claim.json()) as PushRequest[])[0]
+  if (!r) return new Response(null, { status: 204 })
+  const res = await rest(env, `push_subscriptions?select=endpoint,p256dh,auth,user_id&salon_id=eq.${r.salon_id}`)
+  const keys = res.ok ? await vapidKeys(env) : null
+  if (!res.ok || !keys) return new Response(null, { status: 204 })
+  const msg = requestMessage(r)
+  const sent = await Promise.all(((await res.json()) as Subscription[]).map(s => sendPush(env, keys, s, msg)))
+  return new Response(null, { status: sent.some(Boolean) ? 202 : 204 })
 }
 
 /** POST /api/push/booking { id }: a booking made in the panel, by the signed-in person. */
