@@ -2,7 +2,7 @@
  * CorteCerto Worker: serves the app (static assets) and a small API.
  *
  * POST /api/notify-booking { id } — emails the salon owner about a new booking, and sends the phone notifications.
- * GET /api/push/key, POST /api/push/booking { id } — phone notifications for the salon (see push.ts).
+ * GET /api/push/key, POST /api/push/booking { id }, POST /api/push/test — phone notifications for the salon (see push.ts).
  * POST /api/notify-change { id } — emails the owner when a client cancels or moves it.
  * POST /api/admin/remind — a payment reminder email the admin sends from /admin (see reminders.ts).
  * POST /api/admin/send-request — emails a monthly payment request PDF to a salon (see requests.ts).
@@ -30,7 +30,7 @@ import { track } from './track'
 import { demoRequest } from './demo'
 import { withMeta } from './meta'
 import { opsDaily, opsEveryFiveMinutes } from './ops'
-import { announceBooking, pushFromPanel, pushKey } from './push'
+import { announceBooking, pushFromPanel, pushKey, pushTest } from './push'
 
 interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> }
@@ -64,6 +64,7 @@ export default {
     if (url.pathname === '/api/notify-booking') return notifyOwner<Claimed>(request, env, url.origin, 'claim_booking_notification', bookingEmail, id => announceBooking(env, id, null))
     if (url.pathname === '/api/push/key') return pushKey(env)
     if (url.pathname === '/api/push/booking') return pushFromPanel(request, env)
+    if (url.pathname === '/api/push/test') return pushTest(request, env)
     if (url.pathname === '/api/notify-change') return notifyOwner<ChangeClaimed>(request, env, url.origin, 'claim_client_change_notification', changeEmail)
     if (url.pathname === '/api/errors') return reportError(request, env)
     if (url.pathname === '/api/admin/remind') return remindNow(request, env, url.origin)
