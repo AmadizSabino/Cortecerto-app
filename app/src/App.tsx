@@ -8,6 +8,7 @@ import { supabaseConfigured } from './lib/supabase'
 import BookingPage from './pages/BookingPage'
 import AgendaPage from './pages/AgendaPage'
 import OnboardingPage from './pages/OnboardingPage'
+import LivePage from './pages/LivePage'
 import SettingsPage from './pages/SettingsPage'
 import ClientsPage from './pages/ClientsPage'
 import PosterPage from './pages/PosterPage'
@@ -55,6 +56,7 @@ export default function App() {
         <Route path="/pedido/:id" element={<RequestPage />} />
         <Route path="/painel" element={<AgendaPage />} />
         <Route path="/registar" element={<OnboardingPage />} />
+        <Route path="/no-ar" element={<LivePage />} />
         <Route path="/definicoes" element={<SettingsPage />} />
         <Route path="/clientes" element={<ClientsPage />} />
         <Route path="/poster" element={<PosterPage />} />

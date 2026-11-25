@@ -14,6 +14,7 @@ import { usableWindow } from '../lib/freeSlot'
 import { onTheWay } from '../lib/home'
 import { proposalMessage } from '../lib/proposal'
 import SetupChecklist from '../SetupChecklist'
+import FirstBooking from '../components/FirstBooking'
 import TermsGate from '../TermsGate'
 import RemindersCard from '../RemindersCard'
 import NextVisit from '../NextVisit'
@@ -234,6 +235,7 @@ export default function AgendaPage() {
           : <div className="stat"><b>{live.filter(b => b.status === 'pendente').length}</b><span>Por confirmar</span></div>}
         <div className="stat"><b>{deposits}</b><span>Sinais por confirmar</span></div>
       </div>
+      {!locked && <FirstBooking salon={salon} />}
       <InstallCard />
       {!locked && <PushNudge />}
       {!locked && <RemindersCard salon={salon} />}

@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { euros } from '../../lib/supabase'
+import { followUps, STAGE_LABEL, type FollowUp } from '../../lib/followUp'
 import { waLink } from '../../lib/whatsapp'
 import {
   attention, funnel, health, kpis, setupSteps, since, weeklySignups, HEALTH_LABEL, HEALTH_TAG,
@@ -27,6 +29,35 @@ export function Bars({ data, label, format = String, daily = false }: { data: { 
   )
 }
 
+const sentKey = (f: FollowUp) => `cc-follow-${f.salon.id}-${f.stage}`
+const wasSent = (f: FollowUp) => { try { return localStorage.getItem(sentKey(f)) === '1' } catch { return false } }
+
+/** Trial salons to message by hand today: a ready WhatsApp per salon, marked once sent (on this device). */
+function FollowUpCard({ list, onOpen }: { list: FollowUp[]; onOpen: (salonId: string) => void }) {
+  const [, redraw] = useState(0)
+  const todo = list.filter(f => !wasSent(f))
+  const markSent = (f: FollowUp) => { try { localStorage.setItem(sentKey(f), '1') } catch { /* private mode */ } redraw(n => n + 1) }
+  return (
+    <section className="card">
+      <h2>Acompanhar hoje</h2>
+      <p className="muted small">Salões em período grátis: boas-vindas, ajuda para a primeira marcação online e aviso antes de o período acabar. A mensagem abre no seu WhatsApp, pronta a enviar; nada sai sozinho.</p>
+      {todo.length === 0 && <p className="muted">Ninguém para contactar hoje.</p>}
+      <ul className="follow">
+        {todo.map(f => (
+          <li key={sentKey(f)}>
+            <div><button className="link" onClick={() => onOpen(f.salon.id)}>{f.salon.name}</button> <span className="tag">{STAGE_LABEL[f.stage]}</span> <span className="muted small">{f.why}</span></div>
+            <p className="small muted">{f.text}</p>
+            <div className="row">
+              <a className="btn inline sm" href={waLink(f.salon.whatsapp!, f.text)} target="_blank" rel="noreferrer" onClick={() => markSent(f)}>Enviar por WhatsApp</a>
+              <button className="link" onClick={() => markSent(f)}>Já falei</button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 /** The admin's home: headline numbers, what needs attention, growth and bookings. */
 export function AdminOverview({ data, onOpen }: { data: Dashboard; onOpen: (salonId: string) => void }) {
   const now = new Date()
@@ -51,6 +82,8 @@ export function AdminOverview({ data, onOpen }: { data: Dashboard; onOpen: (salo
         <div className="stat"><b>{pct(k.trialConversion)}</b><span>Grátis → pago</span></div>
         <div className="stat"><b>{k.activeOwners7} de {k.salons}</b><span>Donos ativos em 7 d</span></div>
       </div>
+
+      <FollowUpCard list={followUps(data.salons, location.origin, now)} onOpen={onOpen} />
 
       <section className="card">
         <h2>Precisa de atenção</h2>

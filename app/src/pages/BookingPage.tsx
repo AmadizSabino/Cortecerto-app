@@ -99,7 +99,8 @@ export default function BookingPage() {
   const [date, setDate] = useState<string>()
   const [busy, setBusy] = useState<{ professional_id: string; start: Date; end: Date }[]>([])
   const [slot, setSlot] = useState<{ start: Date; proId: string }>()
-  const [name, setName] = useState('')
+  // ?teste=1 comes from "Fazer uma marcação de teste" (/no-ar): the owner books as a client.
+  const [name, setName] = useState(() => new URLSearchParams(location.search).get('teste') ? 'Teste' : '')
   const [phone, setPhone] = useState('')
   const [consent, setConsent] = useState(false)
   const [error, setError] = useState('')
