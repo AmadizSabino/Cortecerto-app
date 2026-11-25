@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom'
 import { euros, supabase } from '../lib/supabase'
 import { COMPANY_DETAILS, LEGAL_DOCS } from '../lib/legal'
 import { EXAMPLE_SLUG, PLAN } from '../lib/plan'
+import { GRACE_DAYS } from '../lib/billing'
 import { noShowCost, parseNumber } from '../lib/landing'
 import { track } from '../lib/track'
 import { FOUNDER, FOUNDERS, TESTIMONIALS } from '../lib/landingContent'
@@ -16,6 +17,9 @@ const TYPES: [string, string, string][] = [['scissors', 'Barbearias', 'barbearia
 
 /** Before/after examples in the AI section: [file key, style as picked in the app]. Fictional people; the "after" is real app output (scripts in PR). */
 const BEFORE_AFTER: [string, string][] = [['barba', 'Barba curta desenhada'], ['fade', 'Mid fade'], ['bob', 'Long bob']]
+
+/** Every "start" button: the panel's login screen, opened on "Criar conta". */
+const SIGNUP = '/painel?conta=nova'
 
 const TRUST: string[] = ['Sem cartão', 'Sem fidelização', 'Pronto em 15 minutos', 'Dados guardados na UE']
 
@@ -51,13 +55,6 @@ const TOUR: Tour[] = [
     points: ['Histórico de visitas e notas de cada corte', 'Aniversários da semana e quem não vem há mais de 45 dias', 'Próxima visita sugerida ao fechar o corte'],
     mock: <Shot src="cliente" label="Ficha de um cliente na app: visitas, notas e aniversário" />,
   },
-]
-
-const DAY = [
-  { time: '09:00', title: 'Os lembretes de amanhã saem em dois minutos', text: 'Abre "Lembretes", toca em cada cliente e o WhatsApp abre com a mensagem pronta.' },
-  { time: '11:40', title: 'Quem não pode vir, muda a hora sozinho', text: 'O link do lembrete deixa o cliente escolher outro horário livre. A vaga fica disponível para outro.' },
-  { time: '15:15', title: 'Entra alguém sem marcação', text: 'Lê o QR à porta, entra na fila e vê quantas pessoas tem à frente. Chama-o por WhatsApp quando for a vez.' },
-  { time: '19:30', title: 'A próxima visita fica marcada antes de sair', text: 'Ao fechar um corte, a app sugere o mesmo serviço daqui a três semanas, à hora do costume.' },
 ]
 
 const FEATURES: [string, string, string][] = [
@@ -109,22 +106,24 @@ const AI_MORE: [string, string, string][] = [
   ['tag', 'Sugestões de preço', 'Intervalos indicativos para os seus serviços. O preço é sempre seu.'],
 ]
 
+/** The questions that decide a sign-up come first; the first FAQ_OPEN are open. */
 const FAQ: [string, string][] = [
-  ['Os lembretes são enviados automaticamente?', 'Não, e é de propósito. A CorteCerto prepara a lista de amanhã e escreve cada mensagem. Toca em cada cliente, o WhatsApp do salão abre com o texto pronto e carrega em enviar. Para um dia normal são cerca de dois minutos, e o cliente recebe a mensagem do número que já conhece.'],
   ['As mensagens de WhatsApp têm custo?', 'Não. As mensagens saem do WhatsApp do próprio salão, como se as escrevesse à mão. A CorteCerto não cobra nada por mensagem.'],
+  ['Tenho de dar o cartão para experimentar?', `Não. Cria o salão só com o email. Ao fim dos ${PLAN.trialDays} dias decide se continua: nada é cobrado sozinho.`],
   ['Os meus clientes precisam de instalar alguma coisa?', 'Não. Marcam numa página web, a partir do link ou do QR, sem criar conta. Só o salão pode, se quiser, instalar a CorteCerto no telemóvel como uma app.'],
+  ['E se eu quiser cancelar?', 'Cancela quando quiser, sem fidelização e sem multas. Antes disso descarrega os seus clientes e marcações em Excel. Ficam seus.'],
+  ['A CorteCerto passa faturas aos meus clientes?', 'Não. Continue a usar o seu programa de faturação certificado. Hoje a CorteCerto exporta as marcações com valores para Excel; em breve vai poder ligá-la ao seu programa de faturação, como extra opcional.'],
+  ['Os lembretes são enviados automaticamente?', 'Não, e é de propósito. A CorteCerto prepara a lista de amanhã e escreve cada mensagem. Toca em cada cliente, o WhatsApp do salão abre com o texto pronto e carrega em enviar. Para um dia normal são cerca de dois minutos, e o cliente recebe a mensagem do número que já conhece.'],
+  ['Quanto custa depois dos 30 dias?', `${euros(PLAN.priceCents)} + IVA por mês, com tudo incluído: sem limites de marcações, clientes ou profissionais. Recebe a fatura todos os meses no painel e paga por MB Way ou transferência.`],
   ['Preciso de computador?', 'Não. Tudo funciona no telemóvel, no tablet ou no computador do salão, ao mesmo tempo.'],
   ['Onde ficam os dados dos clientes?', 'Na União Europeia: a base de dados fica num centro de dados em Frankfurt, na Alemanha. Os dados são do salão. Pode exportá-los para Excel ou apagar os de um cliente que o peça, a qualquer momento. Cumprimos o RGPD e assinamos consigo o acordo de tratamento de dados.'],
-  ['Quanto custa depois dos 30 dias?', `${euros(PLAN.priceCents)} + IVA por mês, com tudo incluído: sem limites de marcações, clientes ou profissionais. Recebe a fatura todos os meses no painel e paga por MB Way ou transferência.`],
-  ['Tenho de dar o cartão para experimentar?', 'Não. Cria o salão só com o email. Ao fim dos 30 dias decide se continua.'],
-  ['E se eu quiser cancelar?', 'Cancela quando quiser, sem fidelização e sem multas. Antes disso descarrega os seus clientes e marcações em Excel. Ficam seus.'],
   ['Já tenho clientes num caderno ou noutro programa.', 'Não precisa de passar tudo de uma vez. Cada cliente que marca online entra sozinho na lista, e os de telefone ou balcão adiciona em segundos. Ao fim de umas semanas tem os clientes habituais todos na app.'],
-  ['A CorteCerto passa faturas aos meus clientes?', 'Não. Continue a usar o seu programa de faturação certificado. Hoje a CorteCerto exporta as marcações com valores para Excel; em breve vai poder ligá-la ao seu programa de faturação, como extra opcional.'],
-  ['A IA publica nas minhas redes sozinha?', 'Não. A IA dá as ideias, escreve a legenda e a app faz a imagem com o seu logótipo e as suas fotos. Você revê e publica com um toque no Instagram, no Facebook ou no Estado do WhatsApp.'],
+  ['A IA publica nas minhas redes sozinha?', 'Não. A IA dá as ideias, escreve a legenda e a app faz a imagem com o seu logótipo e as suas fotos. Revê e publica com um toque no Instagram, no Facebook ou no Estado do WhatsApp.'],
   ['A IA vê os dados dos meus clientes?', 'Só o necessário para responder a uma pergunta sua. Os telemóveis e emails nunca são enviados, os nomes são trocados por códigos antes de saírem da CorteCerto e as fotos não são guardadas. Os fornecedores de IA não usam estes dados para treinar modelos.'],
   ['A IA tem custo extra?', 'Não. As ferramentas de IA estão incluídas no preço, com um limite mensal por ferramenta que chega para o dia a dia de um salão.'],
   ['E se tiver uma dúvida?', 'Cada ecrã tem um "?" com a explicação passo a passo. E pode falar connosco por email ou pedir uma demonstração.'],
 ]
+const FAQ_OPEN = 3
 
 const WITH_VAT = Math.round(PLAN.priceCents * (1 + PLAN.vatRate))
 
@@ -149,7 +148,7 @@ function NoShowCalculator() {
           <p className="lp-calc-big huge">{euros(r.lostCents)}</p>
           <p className="lp-calc-year">ou {euros(r.lostCents * 12)} por ano.</p>
           <p>Se os lembretes e a troca de horário evitarem metade, recupera <strong>{euros(r.savedCents)}</strong> por mês{r.paysFor >= 1 ? `, ${r.paysFor >= 2 ? `${Math.floor(r.paysFor)} vezes` : 'mais do que'} o que custa a CorteCerto (${euros(WITH_VAT)} com IVA).` : '.'}</p>
-          <Link to="/painel" className="lp-cta">Quero recuperar este dinheiro</Link>
+          <Link to={SIGNUP} className="lp-cta">Quero recuperar este dinheiro</Link>
         </> : <p>Escreva dois números, por exemplo 3 faltas e 15 €.</p>}
       </div>
     </div>
@@ -173,10 +172,9 @@ function DemoRequest() {
     <label>{label}<input value={f[k]} onChange={e => setF({ ...f, [k]: e.target.value })} {...extra} /></label>
   return (
     <form className="lp-demo" onSubmit={send}>
-      {field('salon', 'Nome do salão', { required: true, maxLength: 120, autoComplete: 'organization' })}
       {field('name', 'O seu nome', { maxLength: 120, autoComplete: 'name' })}
-      {field('phone', 'Telemóvel', { required: true, inputMode: 'tel', autoComplete: 'tel', placeholder: '912 345 678' })}
-      {field('city', 'Localidade', { maxLength: 80, autoComplete: 'address-level2' })}
+      {field('phone', 'Telemóvel ou WhatsApp', { required: true, inputMode: 'tel', autoComplete: 'tel', placeholder: '912 345 678' })}
+      {field('salon', 'Salão e localidade', { required: true, maxLength: 120, placeholder: 'Ex.: Barbearia Central, Setúbal' })}
       <label className="lp-hp" aria-hidden="true">Website<input tabIndex={-1} autoComplete="off" value={f.website} onChange={e => setF({ ...f, website: e.target.value })} /></label>
       <button className="lp-cta" disabled={state === 'a_enviar'}>{state === 'a_enviar' ? 'A enviar…' : 'Pedir demonstração'}</button>
       {state && state !== 'a_enviar' && !state.ok && <p className="lp-demo-error">{state.text}</p>}
@@ -186,6 +184,89 @@ function DemoRequest() {
 }
 
 const Check = () => <span className="lp-tick"><Icon name="check" size={14} /></span>
+
+/** The four app screens as tabs: one screen high instead of four. */
+function TourTabs() {
+  const [i, setI] = useState(0)
+  const t = TOUR[i]
+  return (
+    <section className="lp-section lp-tour-tabs" id="app">
+      <div className="lp-head center">
+        <p className="lp-kicker">A app por dentro</p>
+        <h2>Ecrãs reais, como os vai usar</h2>
+      </div>
+      <div className="lp-tabs" role="tablist" aria-label="Ecrãs da app">
+        {TOUR.map((x, n) => <button key={x.kicker} type="button" role="tab" aria-selected={n === i} className={n === i ? 'sel' : ''} onClick={() => setI(n)}>{x.kicker}</button>)}
+      </div>
+      <div className="lp-tour" role="tabpanel">
+        <div className="lp-tour-copy">
+          <h3 className="lp-tour-title">{t.title}</h3>
+          <p className="lp-sub">{t.text}</p>
+          <ul className="lp-points">{t.points.map(p => <li key={p}><Check />{p}</li>)}</ul>
+        </div>
+        <div className="lp-tour-art"><div className="lp-blob" aria-hidden="true" />{t.mock}</div>
+      </div>
+    </section>
+  )
+}
+
+/** The three AI tools salons ask about first, as tabs. */
+function AiTabs() {
+  const [i, setI] = useState(0)
+  const tabs: [string, React.ReactNode][] = [
+    ['Antes e depois', (
+        <article className="lp-ai-card lp-ai-wide">
+          <div>
+            <span className="lp-ai-tag">Antes e depois</span>
+            <h3>Mostre o resultado antes de pegar na tesoura</h3>
+            <p>Tire uma foto ao cliente na cadeira, escolha o estilo e em cerca de 10 segundos vê o novo visual ao lado da foto original. Fades, barba, cor ou unhas. Menos dúvidas, clientes mais seguros, e serviços extra que se vendem sozinhos.</p>
+          </div>
+          <div className="lp-ba">
+            <ul>{BEFORE_AFTER.map(([k, style]) => (
+              <li key={k}>
+                <figure><img src={`/landing/ia-${k}-antes.webp`} alt={`Antes: ${style}`} width={400} height={500} loading="lazy" decoding="async" /><figcaption>Antes</figcaption></figure>
+                <figure><img src={`/landing/ia-${k}-depois.webp`} alt={`Depois: ${style}, imagem feita pela app`} width={400} height={500} loading="lazy" decoding="async" /><figcaption>Depois</figcaption></figure>
+                <p>{style}</p>
+              </li>
+            ))}</ul>
+            <p className="lp-ba-note">Pessoas fictícias, criadas por IA. Cada "depois" foi feito pela funcionalidade da app, a partir da foto "antes" e do estilo indicado.</p>
+          </div>
+        </article>
+    )],
+    ['Posts da semana', (
+          <article className="lp-ai-card">
+            <div>
+              <span className="lp-ai-tag">Social Media Manager</span>
+              <h3>Os posts da semana, feitos consigo</h3>
+              <p>A IA vê as horas calmas da agenda e as datas que aí vêm, sugere a promoção certa e escreve a legenda. A app faz a imagem com o seu logótipo e as suas fotos.</p>
+              <ul className="lp-points"><li><Check />Três ideias de posts por semana</li><li><Check />Cada promoção tem link próprio e conta as marcações que trouxe</li><li><Check />Revê e publica num toque</li></ul>
+            </div>
+            <figure className="lp-post">
+              <div className="lp-post-head"><span className="mk-av sm">BB</span>barbaebeer</div>
+              <img src="/landing/post.webp" alt="Imagem de promoção feita pela app para o Instagram" width={720} height={900} loading="lazy" />
+              <figcaption><b>barbaebeer</b>Terça de manhã com calma e 20% em corte + barba. Marque pelo link na bio ✂️</figcaption>
+            </figure>
+          </article>
+    )],
+    ['Assistente', (
+          <article className="lp-ai-card">
+            <div>
+              <span className="lp-ai-tag">Assistente do salão</span>
+              <h3>Pergunte como perguntaria a um gerente</h3>
+              <p>"Tenho buracos amanhã?", "Quem não vem há dois meses?", "Como correu a semana?". A resposta vem da sua agenda real, em segundos.</p>
+              <ul className="lp-points"><li><Check />Horas livres por profissional</li><li><Check />Clientes que deixaram de vir</li><li><Check />Os valores em euros só aparecem ao dono</li></ul>
+            </div>
+            <MockAssistant />
+          </article>
+    )],
+  ]
+  return <>
+    <div className="lp-tabs" role="tablist" aria-label="Ferramentas de IA">
+      {tabs.map(([label], n) => <button key={label} type="button" role="tab" aria-selected={n === i} className={n === i ? 'sel' : ''} onClick={() => setI(n)}>{label}</button>)}
+    </div>
+    <div role="tabpanel">{tabs[i][1]}</div>
+  </>
+}
 
 /** Public home page: what CorteCerto does for a salon, the price, and how to start. */
 export default function LandingPage() {
@@ -217,7 +298,7 @@ export default function LandingPage() {
           </nav>
           <div className="lp-nav-actions">
             <Link to="/painel" className="lp-login">Entrar</Link>
-            <Link to="/painel" className="lp-cta sm lp-nav-cta">Começar grátis</Link>
+            <Link to={SIGNUP} className="lp-cta sm lp-nav-cta">Começar grátis</Link>
           </div>
         </div>
       </header>
@@ -228,9 +309,9 @@ export default function LandingPage() {
         <div className="lp-hero-copy">
           <p className="lp-pill"><span className="lp-flag" aria-hidden="true" />Feito em Portugal · {PLAN.trialDays} dias grátis</p>
           <h1>Menos faltas. <span>Mais cadeiras ocupadas.</span></h1>
-          <p className="lp-lead">A app completa para o seu salão: os clientes marcam online a qualquer hora, recebem o lembrete no WhatsApp e mudam a hora sozinhos, e a IA ajuda-o a encher as horas calmas. Você corta, a CorteCerto trata do resto.</p>
+          <p className="lp-lead">Os clientes marcam online a qualquer hora e recebem o lembrete no WhatsApp do salão. Se não puderem vir, mudam a hora sozinhos. Menos mensagens, menos faltas, mais tempo para cortar.</p>
           <div className="lp-cta-row">
-            <Link to="/painel" className="lp-cta lg" id="lp-hero-cta">{trial}</Link>
+            <Link to={SIGNUP} className="lp-cta lg" id="lp-hero-cta">{trial}</Link>
             <a href={`/s/${EXAMPLE_SLUG}?src=site-exemplo`} target="_blank" rel="noreferrer" className="lp-ghost">Ver uma página de marcação a funcionar ›</a>
           </div>
           <ul className="lp-trust">{TRUST.map(t => <li key={t}><Check />{t}</li>)}</ul>
@@ -256,8 +337,8 @@ export default function LandingPage() {
       <section className="lp-section lp-demo-try" id="experimentar">
         <div className="lp-head">
           <p className="lp-kicker">Experimente aqui</p>
-          <h2>Veja o lembrete que o seu cliente recebe</h2>
-          <p className="lp-sub">Escolha o serviço e a hora. É este o texto que a CorteCerto escreve para cada cliente, com o link para mudar de hora se não puder vir.</p>
+          <h2>O lembrete sai do WhatsApp do salão. Por isso o cliente responde.</h2>
+          <p className="lp-sub">Escolha o tipo de salão, o serviço e a hora. É este o texto que a CorteCerto escreve para cada cliente, com o link para mudar de hora. O salão só toca em enviar.</p>
         </div>
         <ReminderDemo />
       </section>
@@ -283,91 +364,22 @@ export default function LandingPage() {
         </ol>
       </section>
 
-      {TOUR.map((t, i) => (
-        <section key={t.title} className={`lp-section lp-tour ${i % 2 ? 'flip' : ''}`}>
-          <div className="lp-tour-copy">
-            <p className="lp-kicker">{t.kicker}</p>
-            <h2>{t.title}</h2>
-            <p className="lp-sub">{t.text}</p>
-            <ul className="lp-points">{t.points.map(p => <li key={p}><Check />{p}</li>)}</ul>
-          </div>
-          <div className="lp-tour-art"><div className="lp-blob" aria-hidden="true" />{t.mock}</div>
-        </section>
-      ))}
+      <TourTabs />
 
       <section className="lp-section lp-ai" id="ia">
         <div className="lp-head">
           <p className="lp-kicker"><Icon name="spark" size={16} />Inteligência artificial incluída</p>
           <h2>Um assistente que conhece o seu salão</h2>
-          <p className="lp-sub">Dez ferramentas de IA, em português, feitas para o dia a dia de um salão. Incluídas no preço, sem pagar à parte.</p>
+          <p className="lp-sub">Dez ferramentas de IA em português, incluídas no preço. Estas são as que os salões mais usam.</p>
         </div>
-        <div className="lp-ai-grid">
-          <article className="lp-ai-card">
-            <div>
-              <span className="lp-ai-tag">Social Media Manager</span>
-              <h3>Os posts da semana, feitos consigo</h3>
-              <p>A IA vê as horas calmas da agenda e as datas que aí vêm, sugere a promoção certa e escreve a legenda. A app faz a imagem com o seu logótipo e as suas fotos.</p>
-              <ul className="lp-points"><li><Check />Três ideias de posts por semana</li><li><Check />Cada promoção tem link próprio e conta as marcações que trouxe</li><li><Check />Você revê e publica num toque</li></ul>
-            </div>
-            <figure className="lp-post">
-              <div className="lp-post-head"><span className="mk-av sm">BB</span>barbaebeer</div>
-              <img src="/landing/post.webp" alt="Imagem de promoção feita pela app para o Instagram" width={720} height={900} loading="lazy" />
-              <figcaption><b>barbaebeer</b>Terça de manhã com calma e 20% em corte + barba. Marque pelo link na bio ✂️</figcaption>
-            </figure>
-          </article>
-          <article className="lp-ai-card">
-            <div>
-              <span className="lp-ai-tag">Assistente do salão</span>
-              <h3>Pergunte como perguntaria a um gerente</h3>
-              <p>"Tenho buracos amanhã?", "Quem não vem há dois meses?", "Como correu a semana?". A resposta vem da sua agenda real, em segundos.</p>
-              <ul className="lp-points"><li><Check />Horas livres por profissional</li><li><Check />Clientes que deixaram de vir</li><li><Check />Os valores em euros só aparecem ao dono</li></ul>
-            </div>
-            <MockAssistant />
-          </article>
-        </div>
-        <article className="lp-ai-card lp-ai-wide">
-          <div>
-            <span className="lp-ai-tag">Antes e depois</span>
-            <h3>Mostre o resultado antes de pegar na tesoura</h3>
-            <p>Tire uma foto ao cliente na cadeira, escolha o estilo e em cerca de 10 segundos vê o novo visual ao lado da foto original. Fades, barba, cor ou unhas. Menos dúvidas, clientes mais seguros, e serviços extra que se vendem sozinhos.</p>
-          </div>
-          <div className="lp-ba">
-            <ul>{BEFORE_AFTER.map(([k, style]) => (
-              <li key={k}>
-                <figure><img src={`/landing/ia-${k}-antes.webp`} alt={`Antes: ${style}`} width={400} height={500} loading="lazy" decoding="async" /><figcaption>Antes</figcaption></figure>
-                <figure><img src={`/landing/ia-${k}-depois.webp`} alt={`Depois: ${style}, imagem feita pela app`} width={400} height={500} loading="lazy" decoding="async" /><figcaption>Depois</figcaption></figure>
-                <p>{style}</p>
-              </li>
-            ))}</ul>
-            <p className="lp-ba-note">Pessoas fictícias, criadas por IA. Cada "depois" foi feito pela funcionalidade da app, a partir da foto "antes" e do estilo indicado.</p>
-          </div>
-        </article>
-        <ul className="lp-ai-more">
-          {AI_MORE.map(([i, t, d]) => <li key={t}><span className="lp-ico"><Icon name={i} size={20} /></span><h3>{t}</h3><p>{d}</p></li>)}
-        </ul>
+        <AiTabs />
+        <details className="lp-more">
+          <summary>Ver as outras {AI_MORE.length} ferramentas de IA</summary>
+          <ul className="lp-ai-more">
+            {AI_MORE.map(([i, t, d]) => <li key={t}><span className="lp-ico"><Icon name={i} size={20} /></span><h3>{t}</h3><p>{d}</p></li>)}
+          </ul>
+        </details>
         <p className="lp-ai-privacy"><Icon name="shield" size={18} />Os telemóveis e emails dos clientes nunca vão para a IA, os nomes são trocados por códigos e as fotos não são guardadas. Os dados não são usados para treinar modelos.</p>
-      </section>
-
-      <section className="lp-section lp-dark">
-        <div className="lp-head">
-          <p className="lp-kicker">Um dia no salão</p>
-          <h2>O que muda, hora a hora</h2>
-        </div>
-        <ol className="lp-day">
-          {DAY.map(d => (
-            <li key={d.time}><time>{d.time}</time><div><h3>{d.title}</h3><p>{d.text}</p></div></li>
-          ))}
-        </ol>
-      </section>
-
-      <section className="lp-section">
-        <div className="lp-head center">
-          <p className="lp-kicker">Tudo incluído</p>
-          <h2>Tudo o que o salão usa, num só sítio</h2>
-        </div>
-        <ul className="lp-features">
-          {FEATURES.map(([i, t, d]) => <li key={t}><span className="lp-ico"><Icon name={i} size={22} /></span><h3>{t}</h3><p>{d}</p></li>)}
-        </ul>
       </section>
 
       <section className="lp-section" id="tudo">
@@ -383,12 +395,21 @@ export default function LandingPage() {
           </div>
           <div>
             <h3 className="lp-works-title">E funciona com o que já usa</h3>
-            <ul className="lp-works">
-              {WORKS.map(([i, t, d]) => <li key={t}><span className={`lp-ico ${i === 'whatsapp' ? 'wa-ico' : ''}`}>{i === 'whatsapp' ? <WhatsAppIcon size={20} /> : <Icon name={i} size={20} />}</span><span><b>{t}</b><span>{d}</span></span></li>)}
-              {SOON.map(([i, t, d]) => <li key={t} className="soon"><span className="lp-ico"><Icon name={i} size={20} /></span><span><b>{t} <em className="lp-soon">Em breve</em></b><span>{d}</span></span></li>)}
+            <ul className="lp-works-chips">
+              {WORKS.map(([i, t]) => <li key={t}><span className={`lp-ico ${i === 'whatsapp' ? 'wa-ico' : ''}`}>{i === 'whatsapp' ? <WhatsAppIcon size={18} /> : <Icon name={i} size={18} />}</span>{t}</li>)}
             </ul>
           </div>
         </div>
+        <details className="lp-more">
+          <summary>Ver todas as funções e o que vem a seguir</summary>
+          <ul className="lp-features">
+            {FEATURES.map(([i, t, d]) => <li key={t}><span className="lp-ico"><Icon name={i} size={22} /></span><h3>{t}</h3><p>{d}</p></li>)}
+          </ul>
+          <ul className="lp-works">
+            {WORKS.map(([i, t, d]) => <li key={t}><span className={`lp-ico ${i === 'whatsapp' ? 'wa-ico' : ''}`}>{i === 'whatsapp' ? <WhatsAppIcon size={20} /> : <Icon name={i} size={20} />}</span><span><b>{t}</b><span>{d}</span></span></li>)}
+            {SOON.map(([i, t, d]) => <li key={t} className="soon"><span className="lp-ico"><Icon name={i} size={20} /></span><span><b>{t} <em className="lp-soon">Em breve</em></b><span>{d}</span></span></li>)}
+          </ul>
+        </details>
       </section>
 
       {TESTIMONIALS.length > 0 && (
@@ -406,15 +427,15 @@ export default function LandingPage() {
         </section>
       )}
 
-      <section className="lp-section lp-founders" id="fundadores">
+      <section className="lp-section lp-founders" id="connosco">
         <div className="lp-founders-card">
-          <p className="lp-badge"><Icon name="crown" size={16} />Salões fundadores</p>
-          <h2>Seja um dos primeiros {FOUNDERS.spots} salões</h2>
-          <p className="lp-sub">Estamos a começar e queremos fazer isto bem, salão a salão. Quem entra agora tem condições que não vão voltar.</p>
+          <p className="lp-badge"><Icon name="spark" size={16} />Feita em Portugal, com os salões</p>
+          <h2>Ajude-nos a criar a melhor app de marcações para os salões portugueses</h2>
+          <p className="lp-sub">A CorteCerto é de origem 100% portuguesa e cresce com o que os salões nos dizem. Experimente, diga-nos o que falta e veja a sua ideia chegar à app.</p>
           <ul className="lp-perks">
             {FOUNDERS.perks.map(p => <li key={p.title}><span className="lp-ico"><Icon name={p.icon} size={20} /></span><span><b>{p.title}</b><small>{p.text}</small></span></li>)}
           </ul>
-          <Link to="/painel" className="lp-cta lg">Quero ser fundador</Link>
+          <Link to={SIGNUP} className="lp-cta lg">Quero construir convosco</Link>
         </div>
         <figure className="lp-promise">
           <blockquote>“{FOUNDER.quote}”</blockquote>
@@ -426,7 +447,7 @@ export default function LandingPage() {
       <section className="lp-section lp-price" id="preco">
         <div className="lp-head center">
           <p className="lp-kicker">Preço</p>
-          <h2>Um preço, tudo incluído</h2>
+          <h2>Um preço para toda a equipa</h2>
           <p className="lp-sub">Cerca de {perDay} por dia, com IVA. Duas faltas evitadas por mês já pagam a CorteCerto.</p>
         </div>
         <div className="lp-price-box">
@@ -436,8 +457,30 @@ export default function LandingPage() {
           <ul className="lp-points">
             {['Marcações, clientes e profissionais sem limite', 'Página de marcação e poster com QR', 'Lembretes por WhatsApp sem custo por mensagem', 'Fila de espera, sinais por MB Way e estatísticas', '10 ferramentas de IA incluídas', 'Ajuda em português, por pessoas'].map(p => <li key={p}><Check />{p}</li>)}
           </ul>
-          <Link to="/painel" className="lp-cta lg block">Criar o meu salão grátis</Link>
+          <Link to={SIGNUP} className="lp-cta lg block">Criar o meu salão grátis</Link>
           <p className="lp-guarantee"><Icon name="shield" size={16} />Sem fidelização. Cancela quando quiser e leva os seus dados.</p>
+        </div>
+        <div className="lp-price-side">
+          <div className="lp-compare">
+            <h3>Porque é diferente</h3>
+            <table>
+              <thead><tr><th></th><th>CorteCerto</th><th>Outras plataformas habituais</th></tr></thead>
+              <tbody>
+                <tr><th>1, 3 ou 5 profissionais</th><td>{price} + IVA, sempre</td><td>O preço sobe com cada pessoa</td></tr>
+                <tr><th>Comissão sobre clientes novos</th><td>0%</td><td>Até 25% da primeira marcação</td></tr>
+                <tr><th>Lembrete ao cliente</th><td>Do WhatsApp do salão, sem custo</td><td>Notificação ou SMS da plataforma</td></tr>
+                <tr><th>Os clientes</th><td>São do salão. Exporta em Excel</td><td>Também ficam no marketplace</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="lp-after-trial">
+            <h3>Ao fim dos {PLAN.trialDays} dias</h3>
+            <ol>
+              <li>Avisamos antes de acabar. Nada é cobrado sozinho, porque não pedimos cartão.</li>
+              <li>Se quiser continuar, paga {price} + IVA por MB Way ou transferência e recebe a fatura no painel.</li>
+              <li>Se não pagar, o painel fica só de leitura {GRACE_DAYS} dias depois. Os seus dados continuam lá e pode sempre exportá-los.</li>
+            </ol>
+          </div>
         </div>
       </section>
 
@@ -454,7 +497,7 @@ export default function LandingPage() {
       <section className="lp-section" id="perguntas">
         <div className="lp-head center"><p className="lp-kicker">Perguntas frequentes</p><h2>Tudo o que costumam perguntar</h2></div>
         <div className="lp-faq">
-          {FAQ.map(([q, a], i) => <details key={q} open={i < 2}><summary>{q}</summary><p>{a}</p></details>)}
+          {FAQ.map(([q, a], i) => <details key={q} open={i < FAQ_OPEN}><summary>{q}</summary><p>{a}</p></details>)}
         </div>
       </section>
 
@@ -462,13 +505,13 @@ export default function LandingPage() {
         <h2>A próxima cadeira vazia pode ser a última.</h2>
         <p>Crie o seu salão em 15 minutos e partilhe o link ainda hoje.</p>
         <div className="lp-cta-row center">
-          <Link to="/painel" className="lp-cta lg light">{trial}</Link>
+          <Link to={SIGNUP} className="lp-cta lg light">{trial}</Link>
           <a href="#demonstracao" className="lp-ghost light">Pedir demonstração</a>
         </div>
         <p className="lp-final-note">Sem cartão · Sem fidelização · {price} + IVA por mês depois</p>
       </section>
 
-      <div className={`lp-sticky ${pastHero ? 'on' : ''}`}><Link to="/painel" className="lp-cta block">{trial}</Link></div>
+      <div className={`lp-sticky ${pastHero ? 'show' : ''}`}><Link to={SIGNUP} className="lp-cta block">{trial}</Link></div>
 
       <footer className="lp-foot">
         <div>

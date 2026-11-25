@@ -9,7 +9,8 @@ type Mode = 'entrar' | 'criar' | 'link' | 'esqueci'
  * email link would open the browser instead), a new account, or a link by email.
  */
 export default function Login() {
-  const [mode, setMode] = useState<Mode>('entrar')
+  // ?conta=nova (the site's "Experimentar" buttons): open on "Criar conta".
+  const [mode, setMode] = useState<Mode>(() => new URLSearchParams(location.search).get('conta') === 'nova' ? 'criar' : 'entrar')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [show, setShow] = useState(false)
@@ -42,7 +43,8 @@ export default function Login() {
   const needsPassword = mode === 'entrar' || mode === 'criar'
   return (
     <main className="page">
-      <h1>Painel do salão</h1>
+      <h1>{mode === 'criar' ? 'Crie o seu salão' : 'Painel do salão'}</h1>
+      {mode === 'criar' && <p className="muted" style={{ marginTop: -4 }}>30 dias grátis, sem cartão e sem fidelização. Em 15 minutos tem a página de marcação no ar.</p>}
       <div className="chips admin-tabs" role="tablist">
         <button role="tab" aria-selected={mode === 'entrar'} className={`chip${mode === 'entrar' ? ' on' : ''}`} onClick={() => go('entrar')}>Entrar</button>
         <button role="tab" aria-selected={mode === 'criar'} className={`chip${mode === 'criar' ? ' on' : ''}`} onClick={() => go('criar')}>Criar conta</button>
@@ -59,8 +61,8 @@ export default function Login() {
             </span>
           </label>
         )}
-        {mode === 'criar' && <p className="muted small">Pelo menos {MIN_PASSWORD} caracteres. 30 dias grátis, sem cartão.</p>}
-        <button className="btn" disabled={busy}>{busy ? 'Um momento…' : { entrar: 'Entrar', criar: 'Criar conta', link: 'Receber link de acesso', esqueci: 'Enviar link' }[mode]}</button>
+        {mode === 'criar' && <p className="muted small">Pelo menos {MIN_PASSWORD} caracteres.</p>}
+        <button className="btn" disabled={busy}>{busy ? 'Um momento…' : { entrar: 'Entrar', criar: 'Criar conta e continuar', link: 'Receber link de acesso', esqueci: 'Enviar link' }[mode]}</button>
         {msg && <p className={msg.ok ? 'ok' : 'error'} role="alert">{msg.text}</p>}
       </form>
       <p className="row" style={{ justifyContent: 'center', gap: 16 }}>

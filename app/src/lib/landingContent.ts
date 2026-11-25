@@ -12,14 +12,13 @@ export type Testimonial = { quote: string; name: string; salon: string; city: st
  */
 export const TESTIMONIALS: Testimonial[] = []
 
-/** "Salões fundadores": what the first salons get. Francisco to confirm every line. */
+/** "Construa connosco": what salons that join now get. Francisco to confirm every line. */
 export const FOUNDERS = {
-  spots: 20,
   perks: [
+    { icon: 'star', title: 'A sua ideia conta', text: 'Diga-nos o que falta. As ideias dos salões passam à frente na lista do que fazemos a seguir, e avisamos quando ficam prontas.' },
     { icon: 'settings', title: 'Configuramos tudo consigo', text: 'No salão ou por videochamada: serviços, preços, horários e a página de marcação.' },
-    { icon: 'tag', title: 'Preço de lançamento para sempre', text: 'Paga 19,90 € + IVA por mês enquanto mantiver a assinatura, mesmo que o preço suba.' },
-    { icon: 'phone', title: 'Linha direta com o fundador', text: 'Uma dúvida ou um problema? Fala comigo por WhatsApp, não com um robô.' },
-    { icon: 'star', title: 'As suas ideias primeiro', text: 'O que pedir entra à frente na lista do que vamos fazer a seguir.' },
+    { icon: 'phone', title: 'Fala com quem faz a app', text: 'Uma dúvida ou uma ideia? Fala comigo por WhatsApp, não com um robô.' },
+    { icon: 'tag', title: 'Preço de lançamento para sempre', text: 'Quem entra agora paga 19,90 € + IVA por mês enquanto mantiver a assinatura, mesmo que o preço suba.' },
   ],
 }
 
@@ -29,5 +28,5 @@ export const FOUNDER = {
   role: 'Fundador da CorteCerto',
   initials: 'F',
   promises: ['Respondo a cada salão, em português', 'Os dados são sempre seus', 'Sem fidelização nem letras pequenas'],
-  quote: 'Criei a CorteCerto depois de ver barbeiros a perder dinheiro com cadeiras vazias e cadernos cheios de riscos. A app tem de lhe poupar tempo logo na primeira semana. Se não poupar, não paga nada: os primeiros 30 dias são grátis e não pedimos cartão.',
+  quote: 'Criei a CorteCerto depois de ver um amigo barbeiro, em Azeitão, passar o dia a responder a mensagens e a noite a remarcar clientes. As plataformas que existiam cobravam por cada pessoa e ficavam com os clientes. Fiz o contrário: um preço para toda a equipa, os clientes são seus e quem responde sou eu.',
 }
