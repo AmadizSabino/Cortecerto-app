@@ -102,7 +102,12 @@ interface Vapid { publicKey: string; privateKey: CryptoKey }
 const ENDPOINT = /^https:\/\/(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|[a-z0-9.-]+\.push\.apple\.com|[a-z0-9.-]+\.notify\.windows\.com)\//
 
 async function sendPush(env: PushEnv, keys: Vapid, s: Subscription, msg: PushMessage): Promise<boolean> {
-  if (!ENDPOINT.test(s.endpoint)) return false
+  return (await deliver(env, keys, s, msg)).ok
+}
+
+/** Sends one notification; the push service's answer, for the test button and the logs. */
+async function deliver(env: PushEnv, keys: Vapid, s: Subscription, msg: PushMessage): Promise<{ ok: boolean; status: number; reason: string }> {
+  if (!ENDPOINT.test(s.endpoint)) return { ok: false, status: 0, reason: 'endereco' }
   try {
     const body = await encryptPayload(enc.encode(JSON.stringify(msg)), b64urlDecode(s.p256dh), b64urlDecode(s.auth))
     const jwt = await vapidJwt(keys.privateKey, new URL(s.endpoint).origin)
@@ -115,13 +120,33 @@ async function sendPush(env: PushEnv, keys: Vapid, s: Subscription, msg: PushMes
       },
       body,
     })
+    const reason = res.ok ? '' : (await res.text().catch(() => '')).slice(0, 200)
+    if (!res.ok) console.error('push', new URL(s.endpoint).host, res.status, reason)
     // The device unsubscribed or the app was removed: forget it.
     if (res.status === 404 || res.status === 410) await rest(env, `push_subscriptions?endpoint=eq.${encodeURIComponent(s.endpoint)}`, { method: 'DELETE' })
-    return res.ok
+    return { ok: res.ok, status: res.status, reason }
   } catch (e) {
     console.error('push', e instanceof Error ? e.message : e)
-    return false
+    return { ok: false, status: 0, reason: e instanceof Error ? e.message.slice(0, 200) : 'erro' }
   }
+}
+
+/** POST /api/push/test: a test notification to every device of the signed-in person, with each push service's answer. */
+export async function pushTest(request: Request, env: PushEnv): Promise<Response> {
+  if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 })
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) return new Response('Not available', { status: 503 })
+  const auth = request.headers.get('Authorization') ?? ''
+  if (!/^Bearer [\w.-]+$/.test(auth)) return new Response('Unauthorized', { status: 401 })
+  const user = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, { headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: auth } })
+  if (!user.ok) return new Response('Unauthorized', { status: 401 })
+  const { id } = await user.json() as { id: string }
+  if (!UUID.test(id)) return new Response('Unauthorized', { status: 401 })
+  const [res, keys] = await Promise.all([rest(env, `push_subscriptions?select=endpoint,p256dh,auth,user_id&user_id=eq.${id}`), vapidKeys(env)])
+  if (!res.ok || !keys) return new Response('Not available', { status: 503 })
+  const subs = (await res.json()) as Subscription[]
+  const msg: PushMessage = { title: '🔔 Aviso de teste', body: 'Os avisos da CorteCerto estão a funcionar neste aparelho.', url: '/definicoes', tag: 'teste' }
+  const results = await Promise.all(subs.map(async s => ({ host: new URL(s.endpoint).host, ...(await deliver(env, keys, s, msg)) })))
+  return new Response(JSON.stringify({ results }), { headers: { 'Content-Type': 'application/json' } })
 }
 
 /** The key pair, made and saved on first use (a second Worker racing it keeps the first one saved). */

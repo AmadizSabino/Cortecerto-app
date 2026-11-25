@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { pushState, turnOff, turnOn, type PushState } from '../lib/push'
+import { pushState, sendTest, turnOff, turnOn, type PushState } from '../lib/push'
 
 const TEXT: Record<PushState, string> = {
   ligado: 'Ligado neste aparelho. Cada nova marcação aparece no ecrã, mesmo com a app fechada.',
@@ -15,6 +15,7 @@ export default function PushToggle() {
   const [state, setState] = useState<PushState | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [test, setTest] = useState<{ ok: boolean; text: string } | null>(null)
   useEffect(() => { pushState().then(setState).catch(() => setState('sem-suporte')) }, [])
   if (!state) return null
 
@@ -35,6 +36,11 @@ export default function PushToggle() {
           {busy ? 'Um momento…' : state === 'ligado' ? 'Desligar avisos neste aparelho' : 'Ligar avisos no telemóvel'}
         </button>
       )}
+      {state === 'ligado' && (
+        <button type="button" className="link" style={{ marginLeft: 12 }} disabled={busy}
+          onClick={async () => { setBusy(true); setTest(null); setTest(await sendTest()); setBusy(false) }}>Enviar aviso de teste</button>
+      )}
+      {test && <p className={test.ok ? 'ok small' : 'error small'} role="status">{test.text}</p>}
       {error && <p className="error small">{error}</p>}
     </div>
   )

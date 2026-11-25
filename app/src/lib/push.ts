@@ -74,3 +74,21 @@ export async function announceBooking(bookingId: string): Promise<void> {
     body: JSON.stringify({ id: bookingId }),
   }).catch(() => {})
 }
+
+/** Sends a test notification to this person's devices. Returns a line to show, with the push service's answer when it fails. */
+export async function sendTest(): Promise<{ ok: boolean; text: string }> {
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  if (!token) return { ok: false, text: 'Entre na conta primeiro.' }
+  try {
+    const res = await fetch('/api/push/test', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+    if (!res.ok) return { ok: false, text: 'Os avisos ainda não estão disponíveis. Tente mais tarde.' }
+    const { results } = await res.json() as { results: { host: string; ok: boolean; status: number; reason: string }[] }
+    if (!results.length) return { ok: false, text: 'Não há nenhum aparelho com avisos ligados nesta conta. Desligue e volte a ligar.' }
+    const bad = results.filter(r => !r.ok)
+    if (!bad.length) return { ok: true, text: `Enviado para ${results.length === 1 ? 'o seu aparelho' : `${results.length} aparelhos`}. Deve aparecer em segundos.` }
+    return { ok: false, text: `Não foi entregue: ${bad.map(r => `${r.host.replace(/^.*\.(apple|googleapis|mozilla|windows)\..*$/, '$1')} ${r.status}${r.reason ? ` ${r.reason}` : ''}`).join('; ')}` }
+  } catch {
+    return { ok: false, text: 'Sem ligação. Tente de novo.' }
+  }
+}
