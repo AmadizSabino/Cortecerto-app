@@ -254,14 +254,17 @@ export default function BookingPage() {
   }, [service, candidates, overrides, tz, hours, busy, tick, travel, myMinutes]) // eslint-disable-line react-hooks/exhaustive-deps
   // Taken times on the chosen day, for "Pedir este horário" (not for home visits, combos or promotions' special flows).
   const canAsk = Boolean(service) && !atHome && !combo
-  const taken = useMemo(() => {
-    if (!asking || !service || !date) return []
-    return takenTimes({ date, tz, now: new Date(), pros: candidates.flatMap(p => {
+  const takenOn = useMemo(() => (day: string) => {
+    if (!canAsk || !service) return []
+    return takenTimes({ date: day, tz, now: new Date(), pros: candidates.flatMap(p => {
       const eff = effective(service, p.id, overrides)
       return eff ? [{ hours: hoursFor(hours, p.id), durationMin: eff.duration_min, busy: busy.filter(b => b.professional_id === p.id) }] : []
     }) })
-  }, [asking, service, date, tz, candidates, overrides, hours, busy])
+  }, [canAsk, service, tz, candidates, overrides, hours, busy])
+  const taken = useMemo(() => date ? takenOn(date) : [], [date, takenOn])
   const fullDays = useMemo(() => new Set(service ? openDays.filter(d => slotsOn(d).length === 0) : []), [service, openDays, slotsOn])
+  // Days with no time left at all (e.g. today after closing): neither free nor taken times to show.
+  const overDays = useMemo(() => new Set([...fullDays].filter(d => takenOn(d).length === 0)), [fullDays, takenOn])
   const slots = useMemo(() => date ? slotsOn(date) : [], [date, slotsOn])
 
   // Start on the first day with a free time; move off a day that just filled up.
@@ -414,7 +417,7 @@ export default function BookingPage() {
         <summary>Como funciona a marcação</summary>
         <ol>
           <li>Escolha o serviço, com quem e o dia e a hora que lhe dão jeito. Só aparecem horários livres.</li>
-          <li>A hora que quer está ocupada? Toque em "Pedir um horário ocupado". Fica na lista de espera e o salão responde-lhe por WhatsApp.</li>
+          <li>Os horários ocupados aparecem riscados. Se quer mesmo um deles, toque nele para o pedir ao salão: fica na lista de espera e o salão responde-lhe por WhatsApp.</li>
           <li>Escreva o nome e o telemóvel. Não precisa de criar conta nem de palavra-passe.</li>
           {salon.deposit_cents > 0 && salon.mbway_number
             ? <li>Envie o sinal de {euros(salon.deposit_cents)} por MB Way para o número que aparece no fim. A marcação fica confirmada quando o salão o receber.</li>
@@ -680,42 +683,45 @@ export default function BookingPage() {
                 <button key={d} className={`chip${d === date ? ' on' : ''}${fullDays.has(d) ? ' full' : ''}`} onClick={() => { setDate(d); setSlot(undefined) }} aria-label={fullDays.has(d) ? `${d}: sem horários livres` : undefined}>
                   <span className="d1">{d === today ? 'Hoje' : cap(dt.toLocaleDateString('pt-PT', { weekday: 'short', timeZone: 'UTC' }).replace('.', ''))}</span>
                   <span className="d2">{dt.getUTCDate()}</span>
-                  <span className="d1">{fullDays.has(d) ? 'Cheio' : dt.toLocaleDateString('pt-PT', { month: 'short', timeZone: 'UTC' }).replace('.', '')}</span>
+                  <span className="d1">{overDays.has(d) ? (d === today ? 'Fechado' : 'Sem horas') : fullDays.has(d) ? 'Cheio' : dt.toLocaleDateString('pt-PT', { month: 'short', timeZone: 'UTC' }).replace('.', '')}</span>
                 </button>
               )
             })}
           </div>
-          <div className="slots">
-            {slots.length === 0 && date && <p className="muted" style={{ gridColumn: '1 / -1' }}>Sem horários livres neste dia.{openDays.some(d => !fullDays.has(d)) ? ' Experimente outro dia.' : ' Fale com o salão por WhatsApp.'}</p>}
-            {slots.map(t => (
-              <button key={t.start.getTime()} className={t.start.getTime() === slot?.start.getTime() ? 'slot on' : 'slot'} onClick={() => { setSlot(t); setError(''); setAsking(false); setWish([]) }}>{formatTime(t.start, tz)}</button>
-            ))}
-          </div>
-          {error && <p className="error" role="alert">{error}</p>}
-          {canAsk && !asking && date && (
-            <div className="card soft ask-slot">
-              <span><b>O horário que quer está ocupado?</b><small className="muted">Peça-o ao salão. Fica na lista de espera e o salão responde-lhe por WhatsApp.</small></span>
-              <button className="btn ghost inline sm" onClick={() => { setAsking(true); setSlot(undefined); setError('') }}><Icon name="clock" size={16} />Pedir um horário ocupado</button>
-            </div>
-          )}
-          {canAsk && asking && (
-            <section className="card ask-slot open" aria-label="Pedir um horário ocupado">
-              <div className="between"><b>Pedir um horário ocupado</b><button className="link" onClick={() => { setAsking(false); setWish([]) }}>Fechar</button></div>
-              <p className="muted small" style={{ margin: '4px 0 0' }}>{wish.length === 0 ? 'Toque no horário que quer.' : wish.length === 1 ? 'Se quiser, escolha uma 2.ª opção (pode ser noutro dia).' : 'Já tem duas escolhas. Toque numa para a tirar.'}</p>
+          {/* Free and taken times together, in order. A taken one can be asked for: the client goes on the salon's waiting list. */}
+          {(() => {
+            const pick = (t: Date) => {
+              const i = wish.findIndex(w => w.getTime() === t.getTime())
+              setSlot(undefined); setError(''); setAsking(true)
+              setWish(ws => i >= 0 ? ws.filter((_, k) => k !== i) : ws.length < 2 ? [...ws, t] : [ws[0], t])
+            }
+            const all = [
+              ...slots.map(t => ({ at: t.start.getTime(), free: t as { start: Date; proId: string } | null })),
+              ...taken.filter(t => !slots.some(f => f.start.getTime() === t.getTime())).map(t => ({ at: t.getTime(), free: null })),
+            ].sort((a, b) => a.at - b.at)
+            return <>
               <div className="slots">
-                {taken.length === 0 && <p className="muted small" style={{ gridColumn: '1 / -1', margin: 0 }}>Neste dia não há horários ocupados. Escolha uma hora livre acima, ou outro dia.</p>}
-                {taken.map(t => {
-                  const i = wish.findIndex(w => w.getTime() === t.getTime())
-                  return <button key={t.getTime()} className={i >= 0 ? 'slot taken on' : 'slot taken'} aria-pressed={i >= 0} onClick={() => {
-                    setWish(ws => i >= 0 ? ws.filter((_, k) => k !== i) : ws.length < 2 ? [...ws, t] : [ws[0], t])
-                  }}>{formatTime(t, tz)}{i >= 0 && <small>{i + 1}.ª</small>}</button>
+                {all.length === 0 && date && <p className="muted" style={{ gridColumn: '1 / -1' }}>{date === today && overDays.has(date) ? 'Hoje já não há horários.' : 'Sem horários neste dia.'} {openDays.some(d => !fullDays.has(d)) ? 'Experimente outro dia.' : 'Fale com o salão por WhatsApp.'}</p>}
+                {all.map(x => {
+                  if (x.free) return <button key={x.at} className={x.at === slot?.start.getTime() ? 'slot on' : 'slot'} onClick={() => { setSlot(x.free!); setError(''); setAsking(false); setWish([]) }}>{formatTime(x.free.start, tz)}</button>
+                  const i = wish.findIndex(w => w.getTime() === x.at)
+                  return <button key={x.at} className={i >= 0 ? 'slot taken on' : 'slot taken'} aria-pressed={i >= 0} aria-label={`${formatTime(new Date(x.at), tz)}, ocupado: pedir`} onClick={() => pick(new Date(x.at))}>
+                    {formatTime(new Date(x.at), tz)}<small>{i >= 0 ? `${i + 1}.ª escolha` : 'ocupado'}</small></button>
                 })}
               </div>
-              {wish.length > 0 && (
-                <ol className="wish-list small">
-                  {wish.map((w, i) => <li key={w.getTime()}><span>{i + 1}.ª escolha: <b>{shortWhen(w, tz)}</b></span><button className="link" onClick={() => setWish(ws => ws.filter((_, k) => k !== i))}>Tirar</button></li>)}
-                </ol>
+              {taken.length > 0 && wish.length === 0 && (
+                <p className="slots-legend small muted"><span className="slot taken mini" aria-hidden="true" /><span>Ocupado. Quer mesmo essa hora? Toque nela para a <b>pedir ao salão</b>: fica na lista de espera e o salão responde-lhe por WhatsApp.</span></p>
               )}
+            </>
+          })()}
+          {error && <p className="error" role="alert">{error}</p>}
+          {canAsk && asking && wish.length > 0 && (
+            <section className="card ask-slot open" aria-label="Pedido de horário">
+              <div className="between"><b>Pedir ao salão</b><button className="link" onClick={() => { setAsking(false); setWish([]) }}>Cancelar pedido</button></div>
+              <ol className="wish-list small">
+                {wish.map((w, i) => <li key={w.getTime()}><span>{i + 1}.ª escolha: <b>{shortWhen(w, tz)}</b></span><button className="link" onClick={() => setWish(ws => ws.filter((_, k) => k !== i))}>Tirar</button></li>)}
+              </ol>
+              <p className="muted small" style={{ margin: 0 }}>{wish.length === 1 ? 'Se quiser, toque noutro horário ocupado para uma 2.ª opção (pode ser noutro dia). Depois toque em Continuar.' : 'Toque em Continuar. Fica na lista de espera até o salão lhe responder.'}</p>
             </section>
           )}
         </>}
@@ -733,7 +739,7 @@ export default function BookingPage() {
                   : wish.map((w, i) => <Fragment key={w.getTime()}><dt>{wish.length > 1 ? `${i + 1}.ª escolha` : 'Pede'}</dt><dd>{cap(longDate(w))}, {formatTime(w, tz)}</dd></Fragment>)}
                 {atHome && zone && <><dt>Onde</dt><dd>Em sua casa · {zone.name}</dd></>}
               </dl>
-              {!slot && <p className="ask-note small"><Icon name="clock" size={14} /> É um <b>pedido</b>, ainda não uma marcação. Fica na lista de espera do salão até o salão lhe responder por WhatsApp.</p>}
+              {!slot && <p className="ask-note small"><Icon name="clock" size={14} /><span>É um <b>pedido</b>, ainda não uma marcação. Fica na lista de espera do salão até o salão lhe responder por WhatsApp.</span></p>}
               {atHome && zone && eff && slot && (() => {
                 const q = homeQuote({ servicesCents: eff.price_cents, zone, fees: home!.fees, start: slot.start, tz })
                 return <dl className="kv quote">{q.lines.map(l => <Fragment key={l.label}><dt>{l.label}</dt><dd>{euros(l.cents)}</dd></Fragment>)}<dt><b>Total</b></dt><dd><b>{euros(q.total)}</b></dd></dl>

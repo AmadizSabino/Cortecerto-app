@@ -133,7 +133,7 @@ export const HELP: HelpTopic[] = [
   {
     id: 'pedidos-horario', group: 'A agenda', title: 'Responder a um pedido de horário ocupado', screen: '/painel', need: 'agenda', words: 'pedido horário ocupado lista de espera trocar mudar cliente encaixar',
     steps: [
-      'Na página de marcação, o cliente pode tocar em "Pedir um horário ocupado" e escolher a hora que quer (e uma 2.ª opção). Recebe um aviso no telemóvel e o pedido aparece no Hoje, em "Pedidos de horário".',
+      'Na página de marcação, os horários ocupados aparecem riscados, ao lado dos livres. O cliente toca no que quer (e numa 2.ª opção) e envia o pedido. Recebe um aviso no telemóvel e o pedido aparece no Hoje, em "Pedidos de horário".',
       'Até lhe responder, o cliente fica na lista de espera. Em cada hora pedida vê quem lá está. Toque em "Pedir a … para mudar" para lhe perguntar por WhatsApp, ou em "Mudar … de hora" para lhe enviar um novo horário com link.',
       'Quando a hora ficar livre, toque em "Dar 15:00 a …" e depois em "Enviar por WhatsApp" para o avisar. Fica marcado e confirmado.',
       'Não dá? Toque em "Propor outro horário": o horário fica guardado para o cliente, que aceita com um toque no link. Se disser que não, volta à lista de espera.',
