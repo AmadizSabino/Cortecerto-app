@@ -6,7 +6,7 @@
  * The answer is always JSON with a status:
  *   { status: 'feito', text?, image? }   done
  *   { status: 'indisponivel', message }  not switched on yet (no key), or still being built
- *   { status: 'limite', message }        the salon used this month's allowance
+ *   { status: 'limite', message }        the salon used this month's allowance, or the client today's
  *   { status: 'erro', message }          the provider failed
  *
  * Switching on:
@@ -44,6 +44,8 @@ interface Feature {
   need?: Level
   /** Requests per salon per calendar month, when limited. */
   monthly?: number
+  /** Client features: requests per person (phone) in 24 hours. The connection gets three times as many, for a salon's shared Wi-Fi. */
+  daily?: number
   system?: string
   /** The question for the model, from the request's input. Returns an error text when the input is wrong. */
   prompt: (input: Input) => string | { error: string }
@@ -60,7 +62,7 @@ const str = (v: unknown, max = 2000) => typeof v === 'string' ? v.trim().slice(0
 export const FEATURES: Record<string, Feature> = {
   // Client: try a cut, colour or nails on a selfie ("antes e depois" for the client).
   'try-on': {
-    kind: 'image', who: 'client', monthly: 100,
+    kind: 'image', who: 'client', monthly: 50, daily: 4,
     prompt: i => str(i.style, 80) && str(i.image, 3_000_000) ? `Aplica o estilo "${str(i.style, 80)}" à pessoa da foto, mantendo o rosto, a luz e o fundo.` : { error: 'Falta a foto ou o estilo.' },
   },
   // Salon: from a "before" photo, show the expected result of a service ("antes e depois" for the salon).
@@ -70,7 +72,7 @@ export const FEATURES: Record<string, Feature> = {
   },
   // Client: which cuts suit them, from a selfie and what they like.
   'cut-suggestions': {
-    kind: 'text', who: 'client', monthly: 300,
+    kind: 'text', who: 'client', monthly: 300, daily: 10,
     system: `És consultor de imagem de um salão. ${PT} Sugere 3 estilos do catálogo do salão, cada um com uma frase sobre porque fica bem.`,
     prompt: i => `Catálogo: ${str(i.catalogue, 600) || 'cortes clássicos e modernos'}.\nO cliente diz: ${str(i.wish, 400) || 'sem preferências'}.`,
   },
@@ -133,7 +135,7 @@ export async function handleAi(request: Request, env: AiEnv, name: string): Prom
   const feature = FEATURES[name]
   if (!feature) return json({ status: 'erro', message: 'Funcionalidade desconhecida.' }, 404)
 
-  let body: { salon?: unknown; input?: unknown } = {}
+  let body: { salon?: unknown; input?: unknown; device?: unknown } = {}
   try { body = await request.json() } catch { /* empty body */ }
   const input = (body.input && typeof body.input === 'object' ? body.input : {}) as Input
 
@@ -160,8 +162,13 @@ export async function handleAi(request: Request, env: AiEnv, name: string): Prom
     await log(env, salonId, name, 'indisponivel', userId)
     return json({ status: 'indisponivel', message: feature.building ? 'Esta funcionalidade está em desenvolvimento.' : 'A IA ainda não está ligada. Em breve.' })
   }
+  const client = feature.who === 'client' ? await clientKeys(env, request, body.device) : {}
+  if (feature.daily && await overDaily(env, name, feature.daily, client)) {
+    await log(env, salonId, name, 'limite', userId, undefined, client)
+    return json({ status: 'limite', message: `Já usou as ${feature.daily} vezes de hoje. Pode experimentar de novo amanhã, ou peça no salão.` })
+  }
   if (feature.monthly && await usedThisMonth(env, salonId, name) >= feature.monthly) {
-    await log(env, salonId, name, 'limite', userId)
+    await log(env, salonId, name, 'limite', userId, undefined, client)
     return json({ status: 'limite', message: 'Atingiu o limite deste mês para esta funcionalidade.' })
   }
 
@@ -169,10 +176,10 @@ export async function handleAi(request: Request, env: AiEnv, name: string): Prom
     const r = name === 'owner-assistant' && env.SUPABASE_SERVICE_ROLE_KEY
       ? await ownerAssistant(env, { salonId, system: feature.system!, question: str(input.question, 500), context: str(input.context, 20000), model: env.AI_MODEL || DEFAULT_MODEL, money: role === 'dono' })
       : feature.kind === 'text' ? await askClaude(env, feature, prompt, str(input.image, 3_000_000)) : await editImage(env, name, input, prompt)
-    await log(env, salonId, name, 'feito', userId, r.usage)
+    await log(env, salonId, name, 'feito', userId, r.usage, client)
     return json({ status: 'feito', ...(feature.kind === 'text' ? { text: r.out } : { image: r.out }) })
   } catch (e) {
-    await log(env, salonId, name, 'erro', userId)
+    await log(env, salonId, name, 'erro', userId, undefined, client)
     console.error('ai', name, e instanceof Error ? e.message : e)
     return json({ status: 'erro', message: 'Não foi possível agora. Tente de novo daqui a pouco.' }, 502)
   }
@@ -205,16 +212,59 @@ async function usedThisMonth(env: AiEnv, salonId: string, feature: string): Prom
 /** What a request used, for its cost (migration 0027 prices it from the settings). */
 export interface Usage { model: string; input_tokens?: number; output_tokens?: number; images?: number }
 
-async function log(env: AiEnv, salonId: string, feature: string, status: string, userId: string | null, usage?: Usage) {
+async function log(env: AiEnv, salonId: string, feature: string, status: string, userId: string | null, usage?: Usage, client: ClientKeys = {}) {
   if (!env.SUPABASE_SERVICE_ROLE_KEY) return
   await fetch(`${env.SUPABASE_URL}/rest/v1/ai_requests`, {
     method: 'POST',
     headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-    body: JSON.stringify({ salon_id: salonId, feature, status, created_by: userId, ...usage }),
+    body: JSON.stringify({ salon_id: salonId, feature, status, created_by: userId, ...usage, ...client }),
   }).then(async r => {
-    // Before migration 0027 the usage columns are missing: keep the row without them.
-    if (!r.ok && usage) await log(env, salonId, feature, status, userId)
+    // Before migrations 0027 and 0029 the usage and client columns are missing: keep the row without them.
+    if (!r.ok && (usage || client.client_device || client.client_ip)) await log(env, salonId, feature, status, userId)
   }).catch(() => {}) // before migration 0018 the table is missing: the feature still answers
+}
+
+/**
+ * Who a client is, for the daily limit, without keeping who they are: keyed hashes (HMAC with the
+ * service key) of the phone's random id and of the connection. Cleared after two days (forgetClients).
+ */
+export interface ClientKeys { client_device?: string; client_ip?: string }
+
+async function clientKeys(env: AiEnv, request: Request, device: unknown): Promise<ClientKeys> {
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) return {}
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.SUPABASE_SERVICE_ROLE_KEY), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+  const hash = async (v: string) => [...new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(v)))].slice(0, 16).map(b => b.toString(16).padStart(2, '0')).join('')
+  const d = typeof device === 'string' && /^[\w-]{8,64}$/.test(device) ? device : ''
+  const ip = request.headers.get('CF-Connecting-IP') ?? ''
+  return { ...(d ? { client_device: await hash(`d:${d}`) } : {}), ...(ip ? { client_ip: await hash(`i:${ip}`) } : {}) }
+}
+
+/** True when this phone, or this connection (three times as many), used the feature `daily` times in the last 24 hours. */
+async function overDaily(env: AiEnv, feature: string, daily: number, c: ClientKeys): Promise<boolean> {
+  const since = new Date(Date.now() - 86_400_000).toISOString()
+  const used = (col: string, v: string) => count(env, `ai_requests?select=id&feature=eq.${feature}&status=eq.feito&${col}=eq.${v}&created_at=gte.${since}`)
+  if (c.client_device && await used('client_device', c.client_device) >= daily) return true
+  if (c.client_ip && await used('client_ip', c.client_ip) >= daily * 3) return true
+  return false
+}
+
+async function count(env: AiEnv, path: string): Promise<number> {
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) return 0
+  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/${path}`, {
+    method: 'HEAD', headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, Prefer: 'count=exact' },
+  })
+  return Number(res.headers.get('content-range')?.split('/')[1] ?? 0) || 0
+}
+
+/** Daily: forgets the client keys older than two days. */
+export async function forgetClients(env: AiEnv): Promise<void> {
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) return
+  const before = new Date(Date.now() - 2 * 86_400_000).toISOString()
+  await fetch(`${env.SUPABASE_URL}/rest/v1/ai_requests?created_at=lt.${before}&or=(client_device.not.is.null,client_ip.not.is.null)`, {
+    method: 'PATCH',
+    headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ client_device: null, client_ip: null }),
+  }).catch(() => {})
 }
 
 type Answer = { out: string; usage?: Usage }

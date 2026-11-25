@@ -513,4 +513,35 @@ select pg_temp.check(is_platform_admin(), 'with the code, the admin is admin');
 set request.jwt.claim.aal = '';
 reset role;
 delete from auth.mfa_factors;
+-- 0029: phone notifications and the client AI daily limit
+insert into auth.users values ('00000000-0000-0000-0000-00000000000d','sem-salao@x.pt');
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+select save_push_subscription('https://fcm.googleapis.com/fcm/send/dono-1', 'p256', 'auth');
+select save_push_subscription('https://fcm.googleapis.com/fcm/send/dono-1', 'p256-new', 'auth2');
+select pg_temp.check(count(*) = 1 and min(p256dh) = 'p256-new', 'saving the same device again updates it') from push_subscriptions;
+do $$ begin perform save_push_subscription('https://evil.example.com/x', 'p', 'a'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%endereco_invalido%' then raise; end if; end $$;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+do $$ begin perform save_push_subscription('https://fcm.googleapis.com/fcm/send/x', 'p', 'a'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_salao%' then raise; end if; end $$;
+select pg_temp.check(count(*) = 0, 'people only see their own devices') from push_subscriptions;
+select delete_push_subscription('https://fcm.googleapis.com/fcm/send/dono-1');
+do $$ begin perform claim_booking_push((select id from bookings limit 1), null); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%permission denied%' then raise; end if; end $$;
+reset role;
+select pg_temp.check(count(*) = 1, 'nobody else can remove a device') from push_subscriptions;
+select pg_temp.check(count(*) = 0, 'the key pair table is closed to the app')
+  from pg_policies where tablename = 'push_vapid';
+set role anon;
+select create_booking(:'salon', :'corte', :'rui', now() + interval '20 days', 'Push', '919000000', false) as bp \gset
+reset role;
+select pg_temp.check(count(*) = 1 and min(made_today) >= 1 and min(client_name) = 'Push', 'a new booking is announced once')
+  from claim_booking_push(:'bp', null);
+select pg_temp.check(count(*) = 0, 'and only once') from claim_booking_push(:'bp', null);
+set role anon;
+select create_booking(:'salon', :'corte', :'rui', now() + interval '21 days', 'Push2', '919000001', false) as bp2 \gset
+reset role;
+select pg_temp.check(count(*) = 0, 'someone outside the salon cannot announce its bookings') from claim_booking_push(:'bp2', '00000000-0000-0000-0000-00000000000d');
+select pg_temp.check(count(*) = 1, 'someone in the salon can') from claim_booking_push(:'bp2', '00000000-0000-0000-0000-00000000000b');
+update bookings set push_notified_at = null, created_at = now() - interval '1 hour' where id = :'bp2';
+select pg_temp.check(count(*) = 0, 'old bookings are not announced') from claim_booking_push(:'bp2', null);
+insert into ai_requests (salon_id, feature, status, client_device, client_ip) values (:'salon', 'try-on', 'feito', 'abc', 'def');
+select pg_temp.check(count(*) = 1, 'AI requests keep the client keys for the daily limit') from ai_requests where client_device = 'abc';
 \echo All database checks passed

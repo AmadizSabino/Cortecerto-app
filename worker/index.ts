@@ -1,7 +1,8 @@
 /**
  * CorteCerto Worker: serves the app (static assets) and a small API.
  *
- * POST /api/notify-booking { id } — emails the salon owner about a new booking.
+ * POST /api/notify-booking { id } — emails the salon owner about a new booking, and sends the phone notifications.
+ * GET /api/push/key, POST /api/push/booking { id } — phone notifications for the salon (see push.ts).
  * POST /api/notify-change { id } — emails the owner when a client cancels or moves it.
  * POST /api/admin/remind — a payment reminder email the admin sends from /admin (see reminders.ts).
  * POST /api/admin/send-request — emails a monthly payment request PDF to a salon (see requests.ts).
@@ -22,13 +23,14 @@
 
 import { bookingEmail, changeEmail, type ChangeClaimed } from './email'
 import { reportError } from './errors'
-import { handleAi } from './ai'
+import { forgetClients, handleAi } from './ai'
 import { remindNow, remindScheduled } from './reminders'
 import { sendRequest } from './requests'
 import { track } from './track'
 import { demoRequest } from './demo'
 import { withMeta } from './meta'
 import { opsDaily, opsEveryFiveMinutes } from './ops'
+import { announceBooking, pushFromPanel, pushKey } from './push'
 
 interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> }
@@ -59,7 +61,9 @@ const DAILY = '0 8 * * *' // must match wrangler.jsonc
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
-    if (url.pathname === '/api/notify-booking') return notifyOwner<Claimed>(request, env, url.origin, 'claim_booking_notification', bookingEmail)
+    if (url.pathname === '/api/notify-booking') return notifyOwner<Claimed>(request, env, url.origin, 'claim_booking_notification', bookingEmail, id => announceBooking(env, id, null))
+    if (url.pathname === '/api/push/key') return pushKey(env)
+    if (url.pathname === '/api/push/booking') return pushFromPanel(request, env)
     if (url.pathname === '/api/notify-change') return notifyOwner<ChangeClaimed>(request, env, url.origin, 'claim_client_change_notification', changeEmail)
     if (url.pathname === '/api/errors') return reportError(request, env)
     if (url.pathname === '/api/admin/remind') return remindNow(request, env, url.origin)
@@ -74,7 +78,7 @@ export default {
     return env.ASSETS.fetch(request)
   },
   async scheduled(event: { cron: string }, env: Env, ctx: { waitUntil(p: Promise<unknown>): void }): Promise<void> {
-    if (event.cron === DAILY) ctx.waitUntil(Promise.all([remindScheduled(env), opsDaily(env)]))
+    if (event.cron === DAILY) ctx.waitUntil(Promise.all([remindScheduled(env), opsDaily(env), forgetClients(env)]))
     else ctx.waitUntil(opsEveryFiveMinutes(env))
   },
 }
@@ -109,13 +113,16 @@ type Email = { subject: string; html: string; text: string }
  */
 async function notifyOwner<T extends { owner_email: string }>(
   request: Request, env: Env, origin: string, rpcName: string, build: (row: T, appUrl: string) => Email,
+  also?: (id: string) => Promise<unknown>,
 ): Promise<Response> {
   if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 })
-  if (!env.RESEND_API_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) return new Response(null, { status: 204 })
 
   let id = ''
   try { id = String(((await request.json()) as { id?: unknown }).id ?? '') } catch { /* bad body */ }
   if (!UUID.test(id)) return new Response('Bad request', { status: 400 })
+  // Phone notifications go out even when email is not set up.
+  if (also) await also(id).catch(e => console.error('notify', e instanceof Error ? e.message : e))
+  if (!env.RESEND_API_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) return new Response(null, { status: 204 })
 
   const rpc = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/${rpcName}`, {
     method: 'POST',
