@@ -61,6 +61,8 @@ const DAILY = '0 8 * * *' // must match wrangler.jsonc
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
+    const moved = canonicalRedirect(url)
+    if (moved) return moved
     if (url.pathname === '/api/notify-booking') return notifyOwner<Claimed>(request, env, url.origin, 'claim_booking_notification', bookingEmail, id => announceBooking(env, id, null))
     if (url.pathname === '/api/push/key') return pushKey(env)
     if (url.pathname === '/api/push/booking') return pushFromPanel(request, env)
@@ -82,6 +84,14 @@ export default {
     if (event.cron === DAILY) ctx.waitUntil(Promise.all([remindScheduled(env), opsDaily(env), forgetClients(env)]))
     else ctx.waitUntil(opsEveryFiveMinutes(env))
   },
+}
+
+/** www.cortecerto.pt, cortecerto.com.pt and cortecerto.eu (with or without www) all go to cortecerto.pt. */
+const CANONICAL = 'cortecerto.pt'
+const ALIASES = new Set(['www.cortecerto.pt', 'cortecerto.com.pt', 'www.cortecerto.com.pt', 'cortecerto.eu', 'www.cortecerto.eu'])
+export function canonicalRedirect(url: URL): Response | null {
+  if (!ALIASES.has(url.hostname)) return null
+  return Response.redirect(`https://${CANONICAL}${url.pathname}${url.search}`, 301)
 }
 
 /**

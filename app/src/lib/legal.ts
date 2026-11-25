@@ -22,7 +22,7 @@ export interface LegalDoc {
 
 // Registered office address still to add (DL 7/2004, art. 10): Francisco is choosing a domiciliação address.
 /** CorteCerto's company, as it appears on payment requests and in the legal texts. */
-export const COMPANY_DETAILS = { name: 'Amadiz Sabino Consulting, Lda.', nipc: '510900801', city: 'Setúbal', email: 'amadiz.sabino@gmail.com' }
+export const COMPANY_DETAILS = { name: 'Amadiz Sabino Consulting, Lda.', nipc: '510900801', city: 'Setúbal', email: 'admin@cortecerto.pt' }
 const COMPANY = `${COMPANY_DETAILS.name}, NIPC ${COMPANY_DETAILS.nipc}, com sede em ${COMPANY_DETAILS.city}, email ${COMPANY_DETAILS.email}`
 
 export const TERMS: LegalDoc = {
@@ -139,7 +139,7 @@ export const PRIVACY: LegalDoc = {
       'Os dados ficam guardados enquanto for cliente do salão. Se não tiver nenhuma marcação durante 3 anos, o seu nome, telemóvel e notas são apagados automaticamente. Os dados das contas dos salões ficam guardados enquanto a conta existir, e os de faturação pelo prazo exigido por lei.',
     ] },
     { heading: '5. Os seus direitos', paragraphs: [
-      'Pode pedir acesso, correção ou apagamento dos seus dados, ou opor-se a mensagens de promoção. Faça o pedido ao salão. Se preferir, escreva para amadiz.sabino@gmail.com e reencaminhamos o pedido.',
+      'Pode pedir acesso, correção ou apagamento dos seus dados, ou opor-se a mensagens de promoção. Faça o pedido ao salão. Se preferir, escreva para admin@cortecerto.pt e reencaminhamos o pedido.',
       'Tem também o direito de apresentar queixa à Comissão Nacional de Proteção de Dados (CNPD), em www.cnpd.pt.',
     ] },
     { heading: '6. Armazenamento no seu browser', paragraphs: [

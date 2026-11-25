@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { readDemoRequest } from '../../../worker/demo'
 import { salonMeta } from '../../../worker/meta'
 
@@ -15,4 +15,15 @@ it('gives each booking page its salon name in link previews', () => {
     description: 'Veja os serviços e preços e marque online no Barba e Beer, Setúbal. Recebe a confirmação e um lembrete.',
   })
   expect(salonMeta('Studio', null).description).toContain('no Studio.')
+})
+
+describe('canonical address', () => {
+  it('sends the other domains to cortecerto.pt, keeping the path', async () => {
+    const { canonicalRedirect } = await import('../../../worker/index')
+    const r = canonicalRedirect(new URL('https://www.cortecerto.eu/s/barba-e-beer?src=x'))!
+    expect(r.status).toBe(301)
+    expect(r.headers.get('location')).toBe('https://cortecerto.pt/s/barba-e-beer?src=x')
+    expect(canonicalRedirect(new URL('https://cortecerto.pt/painel'))).toBeNull()
+    expect(canonicalRedirect(new URL('https://cortecerto-app.amadiz-sabino.workers.dev/'))).toBeNull()
+  })
 })

@@ -7,7 +7,7 @@ import type { ReminderEnv } from './reminders'
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const TEST_SENDER = 'CorteCerto <onboarding@resend.dev>'
-const LIVE_URL = 'https://cortecerto-app.amadiz-sabino.workers.dev'
+const LIVE_URL = 'https://cortecerto.pt'
 
 export interface RequestClaim {
   owner_email: string; salon_name: string; number: string; amount_cents: number

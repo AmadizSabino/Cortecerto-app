@@ -36,7 +36,7 @@ export interface Digest {
 }
 
 const TEST_SENDER = 'CorteCerto <onboarding@resend.dev>'
-const LIVE_URL = 'https://cortecerto-app.amadiz-sabino.workers.dev'
+const LIVE_URL = 'https://cortecerto.pt'
 const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
 const euros = (c: number) => new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(c / 100)
 const eur = (n: number) => new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 }).format(n)
