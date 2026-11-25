@@ -31,6 +31,7 @@ import HelpLink from '../HelpLink'
 import AiTryOn from '../components/AiTryOn'
 import AskAssistant from '../components/AskAssistant'
 import { styleOptions } from '../lib/styles'
+import { cardById } from '../lib/styleCatalog'
 
 const STATUS_LABEL: Record<Booking['status'], string> = {
   pendente: 'Pendente', confirmada: 'Confirmada', concluida: 'Concluída', faltou: 'Faltou', cancelada: 'Cancelada',
@@ -284,6 +285,7 @@ export default function AgendaPage() {
             <div style={{ minWidth: 0 }}>
               <div className="who"><b>{b.client_name}</b><span className={`tag ${b.status}`}>{STATUS_LABEL[b.status]}</span></div>
               <div className="muted small" style={{ marginTop: 2 }}>{b.package_summary ?? svc?.name} · {pros[b.professional_id]?.name}{svc && <> · {euros(bookingPrice(b, services))}</>}{b.client_pack_id && ' · pago com pack'}</div>
+              {cardById(b.style) && <div className="small style-booked"><Link to={`/estilos?e=${b.style}`}><Icon name="scissors" size={14} />Escolheu o estilo <b>{cardById(b.style)!.name}</b></Link></div>}
               {b.location === 'domicilio' && (
                 <div className="proposal home-visit">
                   <b><Icon name="home" size={14} /> Ao domicílio</b>{addresses[b.id]?.zone_name ? ` · ${addresses[b.id].zone_name}` : ''}{b.travel_min ? ` · ${b.travel_min} min de viagem` : ''}{b.home_fee_cents ? ` · deslocação e taxas ${euros(b.home_fee_cents)}` : ''}
@@ -358,7 +360,7 @@ export default function AgendaPage() {
             {trying === b.id && (
               <AiTryOn feature="before-after" title={`Antes e depois · ${b.client_name.split(' ')[0]}`}
                 intro="Tire a foto do antes e mostre ao cliente como vai ficar."
-                styles={styleOptions(salon.type, Object.values(services).map(s => s.name))} initialStyle={svc?.name} />
+                styles={styleOptions(salon.type, [...(cardById(b.style) ? [cardById(b.style)!.name] : []), ...Object.values(services).map(s => s.name)])} initialStyle={cardById(b.style)?.name ?? svc?.name} />
             )}
             {freeing === b.id && (
               <FreeSlot salon={salon} freed={b} proName={pros[b.professional_id]?.name ?? ''} onClose={() => setFreeing(null)} onFilled={reload} />

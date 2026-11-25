@@ -16,6 +16,8 @@ import { manageLink } from '../lib/clientChanges'
 import { effective, priceRange, type Overrides } from '../lib/pricing'
 import { loadOverrides } from '../lib/pricingData'
 import AiTryOn from '../components/AiTryOn'
+import { ClientFacts, StyleSheet, StyleStrip } from '../components/StyleCards'
+import { cardById, cardsFor, salonTypes, type StyleCard } from '../lib/styleCatalog'
 import { styleOptions } from '../lib/styles'
 import { benefitList, type Club } from '../lib/club'
 import { mediaUrl, type Photo } from '../lib/brand'
@@ -118,6 +120,10 @@ export default function BookingPage() {
   const [where, setWhere] = useState<'salao' | 'domicilio'>('salao')
   const [postcode, setPostcode] = useState('')
   const [zoneId, setZoneId] = useState('')
+  // Style cards (migration 0030): the one open, the one the client picked for this booking, and whether they're trying it on.
+  const [styleOpen, setStyleOpen] = useState<StyleCard | null>(null)
+  const [styleId, setStyleId] = useState<string>()
+  const [tryingStyle, setTryingStyle] = useState(false)
   const [address, setAddress] = useState('')
   const [addressNotes, setAddressNotes] = useState('')
   // Packages (migration 0022); a combo chosen on its page arrives as ?combo=<id>&extras=<ids>.
@@ -264,6 +270,8 @@ export default function BookingPage() {
   // The promotion covers this service and time: the price the database will charge.
   const promoOn = Boolean(promo && service && slot && applies(promo, service.id, slot.start, tz))
   const skipPro = pros.length === 1
+  const styleCards = salon ? cardsFor(salonTypes(salon), salon.styles_hidden ?? []) : []
+  const chosenStyle = cardById(styleId)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -293,6 +301,8 @@ export default function BookingPage() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: bookingId }), keepalive: true,
     }).catch(() => {})
+    // The style the client picked from the cards, for the salon to see on the booking. Best effort.
+    if (styleId) supabase.rpc('set_booking_style', { p_booking: bookingId, p_style: styleId }).then(() => {}, () => {})
     setDone(String(bookingId))
     track('marcacao_feita', { page: 'salao', salon: salon?.id })
     window.scrollTo(0, 0)
@@ -523,6 +533,25 @@ export default function BookingPage() {
               ))}
             </div>
           </>}
+          {services.length > 0 && styleCards.length > 0 && <>
+            <div className="step-title"><h2>Inspire-se</h2></div>
+            <p className="muted small" style={{ margin: '-4px 0 8px' }}>Toque num estilo para ver como é e quanto dura. Fotos ilustrativas, criadas por IA.</p>
+            <StyleStrip cards={styleCards} chosen={styleId} onOpen={c => { setStyleOpen(c); setTryingStyle(false) }} />
+            {chosenStyle && <p className="small style-chosen"><Icon name="check" size={14} />Vai pedir: <b>{chosenStyle.name}</b> <button className="link" onClick={() => setStyleId(undefined)}>Tirar</button></p>}
+          </>}
+          {styleOpen && (
+            <StyleSheet card={styleOpen} onClose={() => setStyleOpen(null)}>
+              <ClientFacts card={styleOpen} />
+              <div className="actions">
+                <button className="btn-inline" onClick={() => { setStyleId(styleOpen.id); setStyleOpen(null) }}>
+                  <Icon name="check" size={16} />{styleId === styleOpen.id ? 'Escolhido' : 'Quero este estilo'}</button>
+                {!tryingStyle && <button onClick={() => setTryingStyle(true)}><Icon name="camera" size={16} />Experimentar com a minha foto</button>}
+              </div>
+              <p className="muted small">Quem o vai fazer adapta o estilo ao seu cabelo e à sua cara. Pode falar disso no dia.</p>
+              {tryingStyle && <AiTryOn feature="try-on" salonId={salon.id} title="Como fica em si" initialStyle={styleOpen.name}
+                intro="Tire uma selfie e veja este estilo em si." styles={styleOptions(salon.type, [styleOpen.name, ...services.map(x => x.name)])} />}
+            </StyleSheet>
+          )}
           {services.length > 0 && <AiTryOn feature="try-on" salonId={salon.id} title="Experimente antes de marcar"
             intro="Tire uma selfie e veja como fica, antes e depois." styles={styleOptions(salon.type, services.map(x => x.name))} />}
           </>}
@@ -580,6 +609,7 @@ export default function BookingPage() {
             <div className="card" style={{ marginTop: 0 }}>
               <dl className="kv">
                 <dt>Serviço</dt><dd>{service!.name} · {priceText}</dd>
+                {chosenStyle && <><dt>Estilo</dt><dd>{chosenStyle.name}</dd></>}
                 <dt>Com</dt><dd>{proName(slot.proId)}</dd>
                 <dt>Quando</dt><dd>{cap(longDate(slot.start))}, {formatTime(slot.start, tz)}</dd>
                 {atHome && zone && <><dt>Onde</dt><dd>Em sua casa · {zone.name}</dd></>}

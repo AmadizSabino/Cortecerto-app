@@ -26,7 +26,7 @@ export const HELP_GROUPS = ['Começar', 'A agenda', 'Clientes', 'No salão', 'Pr
 export const SCREEN_LABEL: Record<string, string> = {
   '/painel': 'Hoje', '/semana': 'Semana', '/clientes': 'Clientes', '/mais': 'Mais', '/lembretes': 'Lembretes', '/fila': 'Fila de espera',
   '/poster': 'Poster com QR', '/convidar': 'Convidar clientes', '/clube': 'Clube', '/pacotes': 'Pacotes', '/promocoes': 'Social Media Manager',
-  '/ia': 'Assistente IA', '/definicoes': 'Definições', '/horarios': 'Horários e folgas', '/equipa': 'Equipa', '/precos': 'Preços por profissional',
+  '/ia': 'Assistente IA', '/estilos': 'Estilos', '/definicoes': 'Definições', '/horarios': 'Horários e folgas', '/equipa': 'Equipa', '/precos': 'Preços por profissional',
   '/estatisticas': 'Estatísticas', '/marca': 'Marca e galeria', '/domicilio': 'Ao domicílio', '/assinatura': 'Assinatura', '/palavra-passe': 'Palavra-passe',
 }
 
@@ -260,6 +260,17 @@ export const HELP: HelpTopic[] = [
       'Toque em "Ver o depois". Em cerca de 10 segundos aparece a foto com o novo visual, ao lado da original.',
     ],
     tip: 'A foto não é guardada. Também pode usar em Mais › Assistente IA ou na ficha do cliente.',
+  },
+  {
+    id: 'estilos', group: 'No salão', title: 'Ver as fichas de estilo e escolher o que os clientes veem', screen: '/estilos', need: 'estilos', words: 'estilo ficha corte fade barba unhas maquilhagem foto passo a passo vídeo inspiração',
+    steps: [
+      'Abra Mais › Estilos. Aparecem os estilos do seu tipo de salão, cada um com uma foto.',
+      'Toque num estilo para ver para quem é, quanto dura, o tempo, o material e o passo a passo.',
+      'Para mostrar ao cliente como fica, toque em "Antes e depois com um cliente".',
+      'Se não faz um estilo, desligue "Mostrar este estilo aos clientes". Deixa de aparecer na sua página de marcação.',
+      'Quando um cliente escolhe um estilo ao marcar, aparece em Hoje, na marcação: "Escolheu o estilo …". Toque para abrir a ficha.',
+    ],
+    tip: 'As fotos são ilustrativas, criadas por IA, e não são pessoas reais. O passo a passo é uma referência: cada profissional adapta-o ao cliente. Só o dono e quem tem acesso Gestor podem esconder estilos. Os vídeos chegam aos poucos.',
   },
   {
     id: 'ia', group: 'Promoções e vendas', title: 'Usar o Assistente IA', screen: '/ia', need: 'ia', words: 'ia inteligência artificial antes depois relatório',

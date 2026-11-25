@@ -37,9 +37,9 @@ export const atLeast = (role: Role, need: Role) => RANK[role] >= RANK[need]
 
 /** The lowest role that may open each part of the panel. */
 export const NEED = {
-  agenda: 'agenda', semana: 'agenda', fila: 'agenda', lembretes: 'agenda',
+  agenda: 'agenda', semana: 'agenda', fila: 'agenda', lembretes: 'agenda', estilos: 'agenda',
   clientes: 'rececao', convidar: 'rececao', clube: 'rececao', poster: 'rececao',
-  promocoes: 'gestor', pacotes: 'gestor', domicilio: 'gestor', horarios: 'gestor', precos: 'gestor', equipa: 'gestor', clubeDefinicoes: 'gestor', ia: 'gestor',
+  promocoes: 'gestor', pacotes: 'gestor', domicilio: 'gestor', horarios: 'gestor', precos: 'gestor', equipa: 'gestor', clubeDefinicoes: 'gestor', ia: 'gestor', estilosMostrar: 'gestor',
   // Money (takings, revenue, commissions totals) is for the owner only.
   revenue: 'dono', estatisticas: 'dono',
   acessos: 'dono', definicoes: 'dono', assinatura: 'dono', exportar: 'dono', apagarCliente: 'dono',
