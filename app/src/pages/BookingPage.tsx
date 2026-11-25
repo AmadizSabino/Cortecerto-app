@@ -718,10 +718,11 @@ export default function BookingPage() {
           {canAsk && asking && wish.length > 0 && (
             <section className="card ask-slot open" aria-label="Pedido de horário">
               <div className="between"><b>Pedir ao salão</b><button className="link" onClick={() => { setAsking(false); setWish([]) }}>Cancelar pedido</button></div>
+              <p className="small" style={{ margin: '6px 0 0' }}>{wish.length === 1 ? 'O horário que escolheu já está marcado. Se precisa mesmo dele, pode pedi-lo ao salão' : 'Os horários que escolheu já estão marcados. Se precisa mesmo de um deles, pode pedir ao salão'}: toque em <b>Continuar</b>. Fica na lista de espera até o salão lhe responder por WhatsApp.</p>
               <ol className="wish-list small">
                 {wish.map((w, i) => <li key={w.getTime()}><span>{i + 1}.ª escolha: <b>{shortWhen(w, tz)}</b></span><button className="link" onClick={() => setWish(ws => ws.filter((_, k) => k !== i))}>Tirar</button></li>)}
               </ol>
-              <p className="muted small" style={{ margin: 0 }}>{wish.length === 1 ? 'Se quiser, toque noutro horário ocupado para uma 2.ª opção (pode ser noutro dia). Depois toque em Continuar.' : 'Toque em Continuar. Fica na lista de espera até o salão lhe responder.'}</p>
+              <p className="muted small" style={{ margin: 0 }}>{wish.length === 1 ? 'Se quiser, toque noutro horário ocupado para uma 2.ª opção (pode ser noutro dia).' : 'Pode tirar uma escolha se mudar de ideias.'}</p>
             </section>
           )}
         </>}
