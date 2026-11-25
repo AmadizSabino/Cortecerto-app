@@ -12,14 +12,13 @@ export type Testimonial = { quote: string; name: string; salon: string; city: st
  */
 export const TESTIMONIALS: Testimonial[] = []
 
-/** "Salões fundadores": what the first salons get. Francisco to confirm every line. */
+/** "Construa connosco": what salons that join now get. Francisco to confirm every line. */
 export const FOUNDERS = {
-  spots: 20,
   perks: [
+    { icon: 'star', title: 'A sua ideia conta', text: 'Diga-nos o que falta. As ideias dos salões passam à frente na lista do que fazemos a seguir, e avisamos quando ficam prontas.' },
     { icon: 'settings', title: 'Configuramos tudo consigo', text: 'No salão ou por videochamada: serviços, preços, horários e a página de marcação.' },
-    { icon: 'tag', title: 'Preço de lançamento para sempre', text: 'Paga 19,90 € + IVA por mês enquanto mantiver a assinatura, mesmo que o preço suba.' },
-    { icon: 'phone', title: 'Linha direta com o fundador', text: 'Uma dúvida ou um problema? Fala comigo por WhatsApp, não com um robô.' },
-    { icon: 'star', title: 'As suas ideias primeiro', text: 'O que pedir entra à frente na lista do que vamos fazer a seguir.' },
+    { icon: 'phone', title: 'Fala com quem faz a app', text: 'Uma dúvida ou uma ideia? Fala comigo por WhatsApp, não com um robô.' },
+    { icon: 'tag', title: 'Preço de lançamento para sempre', text: 'Quem entra agora paga 19,90 € + IVA por mês enquanto mantiver a assinatura, mesmo que o preço suba.' },
   ],
 }
 

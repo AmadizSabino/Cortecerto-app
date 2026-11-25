@@ -427,15 +427,15 @@ export default function LandingPage() {
         </section>
       )}
 
-      <section className="lp-section lp-founders" id="fundadores">
+      <section className="lp-section lp-founders" id="connosco">
         <div className="lp-founders-card">
-          <p className="lp-badge"><Icon name="crown" size={16} />Salões fundadores</p>
-          <h2>Seja um dos primeiros {FOUNDERS.spots} salões</h2>
-          <p className="lp-sub">Estamos a começar e queremos fazer isto bem, salão a salão. Quem entra agora tem condições que não vão voltar.</p>
+          <p className="lp-badge"><Icon name="spark" size={16} />Feita em Portugal, com os salões</p>
+          <h2>Ajude-nos a criar a melhor app de marcações para os salões portugueses</h2>
+          <p className="lp-sub">A CorteCerto é de origem 100% portuguesa e cresce com o que os salões nos dizem. Experimente, diga-nos o que falta e veja a sua ideia chegar à app.</p>
           <ul className="lp-perks">
             {FOUNDERS.perks.map(p => <li key={p.title}><span className="lp-ico"><Icon name={p.icon} size={20} /></span><span><b>{p.title}</b><small>{p.text}</small></span></li>)}
           </ul>
-          <Link to={SIGNUP} className="lp-cta lg">Quero ser fundador</Link>
+          <Link to={SIGNUP} className="lp-cta lg">Quero construir convosco</Link>
         </div>
         <figure className="lp-promise">
           <blockquote>“{FOUNDER.quote}”</blockquote>
