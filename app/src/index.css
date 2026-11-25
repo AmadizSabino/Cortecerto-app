@@ -570,3 +570,6 @@ body.no-scroll { overflow: hidden; }
 .times-list li { display: flex; justify-content: space-between; gap: 8px; }
 .times-form { display: grid; gap: 8px; margin-top: 8px; }
 .times-form label { margin: 0; }
+.slot.taken small { opacity: .85; }
+.slots-legend { display: flex; gap: 8px; align-items: flex-start; margin: 10px 0 0; }
+.slot.taken.mini { flex: none; width: 28px; min-height: 18px; height: 18px; padding: 0; border: 1px dashed var(--line); border-radius: 6px; margin-top: 2px; }
