@@ -27,7 +27,7 @@ export interface ReminderClaim {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const KINDS = ['gratis_7', 'gratis_3', 'gratis_0', 'atraso_5', 'atraso_10']
 const TEST_SENDER = 'CorteCerto <onboarding@resend.dev>'
-const LIVE_URL = 'https://cortecerto-app.amadiz-sabino.workers.dev'
+const LIVE_URL = 'https://cortecerto.pt'
 const PRICE = '24,48 € (19,90 € + IVA)'
 
 const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
