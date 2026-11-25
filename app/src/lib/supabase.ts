@@ -15,6 +15,7 @@ export interface Salon {
   address?: string | null; news?: string | null; google_review_url?: string | null // migration 0016
   logo_path?: string | null; cover_path?: string | null; about?: string | null // migration 0019
   areas?: string[]; booking_mode?: 'marcacao' | 'sem_marcacao' | 'ambos'; work_place?: 'salao' | 'domicilio' | 'ambos' // migration 0022
+  styles_hidden?: string[] // migration 0030: style cards the salon doesn't show
 }
 export interface Service { id: string; name: string; duration_min: number; price_cents: number; at_home?: boolean }
 export interface Professional { id: string; name: string; at_home?: boolean }
@@ -33,6 +34,7 @@ export interface Booking {
   location?: 'salao' | 'domicilio'; travel_min?: number; home_fee_cents?: number // migration 0022: home visits
   en_route_at?: string | null; started_at?: string | null; finished_at?: string | null
   package_id?: string | null; package_summary?: string | null; package_request_id?: string | null; waiting_min?: number; client_pack_id?: string | null
+  style?: string | null // migration 0030: the style card the client picked
 }
 
 export const euros = (cents: number) =>

@@ -544,4 +544,24 @@ update bookings set push_notified_at = null, created_at = now() - interval '1 ho
 select pg_temp.check(count(*) = 0, 'old bookings are not announced') from claim_booking_push(:'bp2', null);
 insert into ai_requests (salon_id, feature, status, client_device, client_ip) values (:'salon', 'try-on', 'feito', 'abc', 'def');
 select pg_temp.check(count(*) = 1, 'AI requests keep the client keys for the daily limit') from ai_requests where client_device = 'abc';
+-- 0030: style cards
+set role anon;
+select create_booking(:'salon', :'corte', :'rui', now() + interval '22 days', 'Estilo', '919000002', false) as bs \gset
+select set_booking_style(:'bs', 'mid-fade');
+select set_booking_style(:'bs', 'buzz-cut');
+do $$ begin perform set_booking_style(gen_random_uuid(), 'Mid Fade!'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%estilo_invalido%' then raise; end if; end $$;
+reset role;
+select pg_temp.check(min(style) = 'mid-fade', 'the client picks a style once, when booking') from bookings where id = :'bs';
+update bookings set style = null, created_at = now() - interval '1 hour' where id = :'bs';
+set role anon;
+select set_booking_style(:'bs', 'buzz-cut');
+do $$ begin perform set_styles_hidden((select id from salons limit 1), '{low-fade}'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%permission denied%' then raise; end if; end $$;
+reset role;
+select pg_temp.check(min(style) is null, 'an old booking keeps its style') from bookings where id = :'bs';
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+select set_styles_hidden(:'salon', '{pompadour,low-fade,pompadour}');
+select pg_temp.check(styles_hidden = '{low-fade,pompadour}', 'the salon hides styles from its clients') from salons where id = :'salon';
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+do $$ begin perform set_styles_hidden((select id from salons where owner_id = '00000000-0000-0000-0000-00000000000a'), '{}'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+reset role;
 \echo All database checks passed

@@ -14,6 +14,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
   { title: 'No salão', items: [
     { to: '/fila', icon: 'queue', label: 'Fila de espera', hint: 'Clientes sem marcação, por ordem de chegada', need: 'fila', show: s => s.booking_mode !== 'marcacao' && s.work_place !== 'domicilio' },
     { to: '/lembretes', icon: 'bell', label: 'Lembretes', hint: 'Avisar os clientes de amanhã por WhatsApp', need: 'lembretes' },
+    { to: '/estilos', icon: 'scissors', label: 'Estilos', hint: 'Fotos, passo a passo e o que os clientes veem', need: 'estilos' },
     { to: '/poster', icon: 'qr', label: 'Poster com QR', hint: 'Para o espelho ou a porta', need: 'poster' },
   ] },
   { title: 'Clientes', items: [
