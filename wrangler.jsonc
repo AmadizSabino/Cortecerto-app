@@ -19,10 +19,11 @@
   "routes": [
     { "pattern": "cortecerto.pt", "custom_domain": true },
     { "pattern": "www.cortecerto.pt", "custom_domain": true },
-    { "pattern": "cortecerto.com.pt", "custom_domain": true },
-    { "pattern": "www.cortecerto.com.pt", "custom_domain": true },
     { "pattern": "cortecerto.eu", "custom_domain": true },
     { "pattern": "www.cortecerto.eu", "custom_domain": true }
+    // Add these once the zone is Active in Cloudflare (the redirect to .pt is already in worker/index.ts):
+    // { "pattern": "cortecerto.com.pt", "custom_domain": true },
+    // { "pattern": "www.cortecerto.com.pt", "custom_domain": true }
   ],
   // Required by `wrangler preview`, which Cloudflare runs for non-main branches. Empty is fine.
   "previews": {},
