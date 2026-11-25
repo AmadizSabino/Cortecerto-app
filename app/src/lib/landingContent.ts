@@ -28,5 +28,5 @@ export const FOUNDER = {
   role: 'Fundador da CorteCerto',
   initials: 'F',
   promises: ['Respondo a cada salão, em português', 'Os dados são sempre seus', 'Sem fidelização nem letras pequenas'],
-  quote: 'Criei a CorteCerto depois de ver barbeiros a perder dinheiro com cadeiras vazias e cadernos cheios de riscos. A app tem de lhe poupar tempo logo na primeira semana. Se não poupar, não paga nada: os primeiros 30 dias são grátis e não pedimos cartão.',
+  quote: 'Criei a CorteCerto depois de ver um amigo barbeiro, em Azeitão, passar o dia a responder a mensagens e a noite a remarcar clientes. As plataformas que existiam cobravam por cada pessoa e ficavam com os clientes. Fiz o contrário: um preço para toda a equipa, os clientes são seus e quem responde sou eu.',
 }
