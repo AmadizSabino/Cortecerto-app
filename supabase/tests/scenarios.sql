@@ -564,4 +564,91 @@ select pg_temp.check(styles_hidden = '{low-fade,pompadour}', 'the salon hides st
 set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
 do $$ begin perform set_styles_hidden((select id from salons where owner_id = '00000000-0000-0000-0000-00000000000a'), '{}'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
 reset role;
+-- 0031: per-client service times
+select set_config('t.salon', :'salon', false), set_config('t.ana', :'ana', false), set_config('t.corte', :'corte', false) \g /dev/null
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+insert into client_times (salon_id, phone_key, service_id, minutes) values (:'salon', '351917000001', :'corte', 60);
+insert into client_times (salon_id, phone_key, service_id, minutes) values (:'salon', '351917000002', null, 15);
+select pg_temp.check(client_duration(:'salon', :'corte', :'ana', '917 000 001') = 60, 'a client time for one service replaces its length');
+select pg_temp.check(client_duration(:'salon', :'corte', :'ana', '917000002') = 45, 'extra minutes are added to the usual length');
+select pg_temp.check(client_duration(:'salon', :'corte', :'ana', '917000003') = 30, 'other clients keep the usual length');
+reset role; reset request.jwt.claim.sub;
+set role anon;
+select create_booking(:'salon', :'corte', :'ana', date_trunc('day', now()) + interval '30 days 12 hours', 'Longo', '917000001', false) as bl \gset
+reset role;
+select pg_temp.check(ends_at - starts_at = interval '60 minutes', 'an online booking takes the client''s own time') from bookings where id = :'bl';
+-- A booking 45 minutes after leaves 45 minutes free: enough for others, not for this client.
+set role anon;
+select create_booking(:'salon', :'corte', :'ana', date_trunc('day', now()) + interval '31 days 12 hours 45 minutes', 'Depois', '917000009', false) \g /dev/null
+select set_config('t.before', (date_trunc('day', now()) + interval '31 days 12 hours')::text, false);
+do $$ begin perform create_booking(current_setting('t.salon')::uuid, current_setting('t.corte')::uuid, current_setting('t.ana')::uuid, current_setting('t.before')::timestamptz, 'Longo', '917000001', false); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%horario_curto%' then raise; end if; end $$;
+select create_booking(:'salon', :'corte', :'ana', current_setting('t.before')::timestamptz, 'Normal', '917000008', false) \g /dev/null
+do $$ begin insert into client_times (salon_id, phone_key, minutes) values (current_setting('t.salon')::uuid, '351917000005', 30); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%row-level security%' then raise; end if; end $$;
+reset role;
+-- 0031: requests for a taken time
+select starts_at as taken from bookings where id = :'bl' \gset
+set role anon;
+select request_slot(:'salon', :'corte', :'ana', :'taken', :'taken'::timestamptz + interval '2 hours', 'Pedro', '917100001', true, 'Só posso a esta hora') as rq \gset
+select pg_temp.check(request_slot(:'salon', :'corte', :'ana', :'taken', null, 'Pedro', '917100001', true) = :'rq', 'asking again for the same time gives the same request');
+select pg_temp.check(status = 'espera' and service_name = 'Corte' and alt_starts_at is not null, 'the client sees they are on the waiting list') from slot_request_for_client(:'rq');
+select set_config('t.rq', :'rq', false) \g /dev/null
+do $$ begin perform propose_slot_request(current_setting('t.rq')::uuid, now() + interval '40 days', current_setting('t.ana')::uuid); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+select pg_temp.check(count(*) = 0, 'clients cannot read the waiting list') from slot_requests;
+reset role;
+set role service_role;
+select pg_temp.check(count(*) = 1 and min(taken_by) = 'Longo', 'a new request is announced, with who has that time') from claim_slot_request_push(:'rq');
+select pg_temp.check(count(*) = 0, 'and only once') from claim_slot_request_push(:'rq');
+reset role;
+-- The salon suggests another time: it is held until the client answers.
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+select pg_temp.check(count(*) = 1, 'the salon sees the request') from slot_requests where id = :'rq';
+do $$ begin perform accept_slot_request(current_setting('t.rq')::uuid, 1); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%horario_ocupado%' then raise; end if; end $$;
+select pg_temp.check(status = 'espera', 'a failed accept leaves the request on the list') from slot_requests where id = :'rq';
+select propose_slot_request(:'rq', :'taken'::timestamptz + interval '5 hours', :'ana', 'Às 5 já dá');
+reset role; reset request.jwt.claim.sub;
+set role anon;
+select set_config('t.held', (:'taken'::timestamptz + interval '5 hours')::text, false);
+do $$ begin perform create_booking(current_setting('t.salon')::uuid, current_setting('t.corte')::uuid, current_setting('t.ana')::uuid, current_setting('t.held')::timestamptz, 'Outro', '917100009', false); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%horario_ocupado%' then raise; end if; end $$;
+select pg_temp.check(count(*) >= 1, 'the suggested time shows as busy') from busy_slots(:'salon', current_setting('t.held')::timestamptz, current_setting('t.held')::timestamptz + interval '10 minutes');
+select answer_slot_proposal(:'rq', false) \g /dev/null
+select pg_temp.check(status = 'espera' and client_declined_at is not null and proposed_starts_at is null, 'saying no puts the client back on the list') from slot_request_for_client(:'rq');
+reset role;
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+select propose_slot_request(:'rq', :'taken'::timestamptz + interval '5 hours', :'ana');
+reset role; reset request.jwt.claim.sub;
+set role anon;
+select answer_slot_proposal(:'rq', true) as rqb \gset
+reset role;
+select pg_temp.check(r.status = 'marcada' and r.booking_id = :'rqb' and b.starts_at = :'taken'::timestamptz + interval '5 hours' and b.client_name = 'Pedro',
+  'accepting the suggested time books it') from slot_requests r join bookings b on b.id = r.booking_id where r.id = :'rq';
+-- The salon moves the other client and gives the requested time; second choice and "anyone".
+set role anon;
+select request_slot(:'salon', :'corte', null, :'taken', :'taken'::timestamptz + interval '1 day', 'Marta', '917100002', false) as rq2 \gset
+reset role;
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+do $$ begin perform accept_slot_request((select id from slot_requests where client_name = 'Marta'), 2); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%profissional_invalido%' then raise; end if; end $$;
+select accept_slot_request(:'rq2', 2, :'rui') as rq2b \gset
+select pg_temp.check(status = 'confirmada' and professional_id = :'rui', 'the salon gives the second choice, with who it chose, confirmed') from bookings where id = :'rq2b';
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+do $$ begin perform decline_slot_request(current_setting('t.rq')::uuid); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+reset role;
+-- A booking on the same day, made any other way, takes the client off the list.
+set role anon;
+select request_slot(:'salon', :'corte', :'ana', :'taken', null, 'Rita', '917100003', false) as rq3 \gset
+select create_booking(:'salon', :'corte', :'rui', :'taken'::timestamptz - interval '2 hours', 'Rita', '917 100 003', false) as rq3b \gset
+select pg_temp.check(status = 'marcada' and booking_id = :'rq3b', 'booking that day closes the request') from slot_request_for_client(:'rq3');
+select request_slot(:'salon', :'corte', :'ana', :'taken', null, 'Sofia', '917100004', false) as rq4 \gset
+select cancel_slot_request(:'rq4');
+select pg_temp.check(status = 'cancelada', 'the client can give up') from slot_request_for_client(:'rq4');
+select request_slot(:'salon', :'corte', :'ana', :'taken'::timestamptz + interval '1 day', null, 'Rui C', '917100005', false) \g /dev/null
+select request_slot(:'salon', :'corte', :'ana', :'taken'::timestamptz + interval '2 days', null, 'Rui C', '917100005', false) \g /dev/null
+select request_slot(:'salon', :'corte', :'ana', :'taken'::timestamptz + interval '3 days', null, 'Rui C', '917100005', false) \g /dev/null
+do $$ begin perform request_slot(current_setting('t.salon')::uuid, current_setting('t.corte')::uuid, null, now() + interval '4 days', null, 'Rui C', '917100005', false); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%pedidos_a_mais%' then raise; end if; end $$;
+reset role;
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+select forget_client(:'salon', '351917000001') \g /dev/null
+select forget_client(:'salon', '351917100005') \g /dev/null
+reset role;
+select pg_temp.check((select count(*) from client_times where phone_key = '351917000001') = 0
+  and (select count(*) from slot_requests where client_name = 'Rui C') = 0, 'forgetting a client removes their times and requests');
 \echo All database checks passed

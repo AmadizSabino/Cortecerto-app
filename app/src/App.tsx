@@ -32,6 +32,7 @@ import HomeSettingsPage from './pages/HomeSettingsPage'
 import PackagesPage from './pages/PackagesPage'
 import PackagePage from './pages/PackagePage'
 import RequestPage from './pages/RequestPage'
+import SlotRequestPage from './pages/SlotRequestPage'
 import BillingPage from './pages/BillingPage'
 import PasswordPage from './pages/PasswordPage'
 import LegalPage from './pages/LegalPage'
@@ -54,6 +55,7 @@ export default function App() {
         <Route path="/s/:slug" element={<BookingPage />} />
         <Route path="/s/:slug/pacote/:id" element={<PackagePage />} />
         <Route path="/pedido/:id" element={<RequestPage />} />
+        <Route path="/horario/:id" element={<SlotRequestPage />} />
         <Route path="/painel" element={<AgendaPage />} />
         <Route path="/registar" element={<OnboardingPage />} />
         <Route path="/no-ar" element={<LivePage />} />

@@ -13,6 +13,8 @@ import { styleOptions } from '../lib/styles'
 import Icon from '../components/Icon'
 import { photoToDataUrl, runAi } from '../lib/ai'
 import HelpLink from '../HelpLink'
+import ClientTimes from '../components/ClientTimes'
+import type { ClientTime } from '../lib/clientTimes'
 
 const FILTERS: { id: ClientFilter; label: string }[] = [
   { id: 'todos', label: 'Todos' },
@@ -169,6 +171,8 @@ export default function ClientsPage() {
   const [registering, setRegistering] = useState<{ name: string; phone: string; email?: string | null } | null>(() =>
     params.get('novo') ? { name: params.get('nome') ?? '', phone: params.get('novo') ?? '' } : null)
   const [noteSeed, setNoteSeed] = useState<Record<string, string>>({})
+  // Per-client service times (migration 0031); null before it, so the card doesn't offer them.
+  const [times, setTimes] = useState<ClientTime[] | null>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -182,12 +186,14 @@ export default function ClientsPage() {
       setRole(mine.role)
       setSalon(s)
       if (!s) return
-      const [sv, bk, nt, rg] = await Promise.all([
-        supabase.from('services').select('id,name,duration_min,price_cents').eq('salon_id', s.id),
+      const [sv, bk, nt, rg, ct] = await Promise.all([
+        supabase.from('services').select('id,name,duration_min,price_cents,active').eq('salon_id', s.id),
         supabase.from('bookings').select('*').eq('salon_id', s.id).order('starts_at', { ascending: false }).limit(5000),
         supabase.from('client_notes').select('phone_key,notes,birthday_day,birthday_month').eq('salon_id', s.id),
         supabase.from('salon_clients').select('phone_key,name,phone,email,source,created_at').eq('salon_id', s.id),
+        supabase.from('client_times').select('id,phone_key,service_id,minutes').eq('salon_id', s.id),
       ])
+      setTimes(ct.error ? null : (ct.data ?? []) as ClientTime[])
       // Before migration 0018 there is no client list of the salon's own: clients come from bookings only.
       setRegisterReady(!rg.error)
       setRegistered((rg.data ?? []) as RegisteredClient[])
@@ -318,6 +324,12 @@ export default function ClientsPage() {
                     <a className="wa" href={waLink(c.phone, comeBackMsg(c))} target="_blank" rel="noreferrer">Convidar a voltar</a>
                   )}
                 </div>
+                {times && c.key.length >= 9 && c.name !== 'Cliente apagado' && (
+                  <ClientTimes salonId={salon.id} phoneKey={c.key} firstName={c.name.split(' ')[0]}
+                    services={Object.values(services).filter(x => (x as Service & { active?: boolean }).active !== false).sort((a, b) => a.name.localeCompare(b.name))}
+                    rows={times.filter(t => t.phone_key === c.key)}
+                    onChange={rows => setTimes(ts => [...(ts ?? []).filter(t => t.phone_key !== c.key), ...rows])} />
+                )}
                 {notesReady && <NoteEditor key={noteSeed[c.key] ?? ''} salonId={salon.id} phoneKey={c.key}
                   note={notes[c.key]} draft={noteSeed[c.key]}
                   onSaved={n => setNotes(ns => ({ ...ns, [n.phone_key]: n }))} />}
