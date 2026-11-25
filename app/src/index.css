@@ -374,6 +374,9 @@ button.back-link { font-size: 1rem; padding: 6px 0; }
 .stats.kpis .stat b { font-size: 1.3rem; }
 .todo { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
 .todo li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.follow { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.follow li { border-top: 1px solid var(--line); padding-top: 10px; }
+.follow li p { margin: 6px 0 8px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--warn); align-self: center; }
 .dot.alta { background: var(--danger); }
 .funnel { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
@@ -509,3 +512,24 @@ button.back-link { font-size: 1rem; padding: 6px 0; }
 .style-toggle { margin-top: 14px; }
 .style-booked a { display: inline-flex; gap: 4px; align-items: center; margin-top: 4px; }
 body.no-scroll { overflow: hidden; }
+
+/* /no-ar: the end of the sign-up wizard */
+.live-hero { text-align: center; margin: 12px 0 20px; }
+.live-badge { display: inline-grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: var(--accent); color: #fff; animation: live-pop .5s cubic-bezier(.2, 1.4, .4, 1) both; }
+@keyframes live-pop { from { transform: scale(.4); opacity: 0 } to { transform: none; opacity: 1 } }
+.live-steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.live-steps h2 { margin-top: 0; font-size: 1.1rem; }
+.live-steps .card .card { box-shadow: none; padding: 0; border: 0; background: none; }
+.live-link { font-weight: 600; word-break: break-all; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 10px; }
+.live .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (prefers-reduced-motion: reduce) { .live-badge { animation: none; } }
+
+/* Hoje: the first online booking */
+.first-booking { position: relative; overflow: hidden; text-align: center; border-color: var(--accent); }
+.first-booking h2 { margin: 10px 0 6px; }
+.first-booking .actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.confetti i { position: absolute; top: -12px; left: calc(var(--i) * 7.2% + 2%); width: 8px; height: 14px; border-radius: 2px;
+  background: var(--accent); opacity: .8; animation: confetti 1.8s calc(var(--i) * 70ms) ease-in both; }
+.confetti i:nth-child(3n) { background: #e7b84a; } .confetti i:nth-child(3n+1) { background: #2f8a5b; }
+@keyframes confetti { from { transform: translateY(0) rotate(0); opacity: 1 } to { transform: translateY(260px) rotate(540deg); opacity: 0 } }
+@media (prefers-reduced-motion: reduce) { .confetti { display: none; } }

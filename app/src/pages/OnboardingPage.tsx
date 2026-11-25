@@ -106,7 +106,7 @@ export default function OnboardingPage() {
     if (salonId && heard) await supabase.from('salons').update({ heard_from: heard, heard_detail: heardDetail.trim() || null }).eq('id', salonId)
     // Before migration 0004 this fails quietly; the panel then asks again once it can record it.
     await recordAcceptance(REQUIRED, salonId ?? null)
-    nav('/painel', { replace: true })
+    nav('/no-ar', { replace: true })
   }
 
   return (
