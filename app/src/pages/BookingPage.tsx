@@ -26,6 +26,7 @@ import { homeQuote, widen, zoneFor, type HomeFee, type HomeSettings, type Zone }
 import { comboTotals, priceLabel, type Package, type PackageItem } from '../lib/packages'
 import { lockState, type BillingFields } from '../lib/billing'
 import { track } from '../lib/track'
+import { salonAt } from '../lib/salonAt'
 
 const ERRORS: Record<string, string> = {
   horario_ocupado: 'Esse horário acabou de ser ocupado. Escolha outro, por favor.',
@@ -408,8 +409,9 @@ export default function BookingPage() {
         <main className="page">
           <div className="card raised" style={{ textAlign: 'center', marginTop: 20 }}>
             <div className="done-mark"><Icon name="check" size={36} /></div>
-            <h2 style={{ margin: 0 }}>Marcação feita!</h2>
-            <p className="muted" style={{ margin: '6px 0 0' }}>{owesDeposit ? 'Falta só o sinal para a confirmar.' : 'Até breve!'}</p>
+            <h2 style={{ margin: 0 }}>Marcação registada!</h2>
+            <p style={{ margin: '8px 0 0' }}>A sua marcação ficou registada {salonAt(salon).replace(salon.name, '')}<b>{salon.name}</b>. Já está na agenda do salão: não precisa de fazer mais nada.</p>
+            {owesDeposit && <p className="muted" style={{ margin: '6px 0 0' }}>Falta só o sinal para a confirmar.</p>}
             <dl className="kv" style={{ textAlign: 'left', marginTop: 20 }}>
               <dt>Serviço</dt><dd>{service!.name}</dd>
               <dt>Com</dt><dd>{proName(slot!.proId)}</dd>
@@ -432,8 +434,14 @@ export default function BookingPage() {
           )}
           <div className="stack" style={{ marginTop: 16 }}>
             <button className="btn ghost" onClick={addToCalendar}><Icon name="calendar" size={18} />Adicionar ao calendário</button>
-            {salon.whatsapp && <a className="btn wa" onClick={() => track('whatsapp', { page: 'salao', salon: salon.id })} href={waLink(salon.whatsapp, msg)} target="_blank" rel="noreferrer"><WhatsAppIcon />Avisar o salão por WhatsApp</a>}
           </div>
+          {salon.whatsapp && (
+            <div className="card">
+              <h3>Quer dizer alguma coisa ao salão?</h3>
+              <p className="muted small" style={{ margin: '4px 0 8px' }}>Opcional. A marcação já está feita; use só se quiser deixar uma nota ou fazer uma pergunta.</p>
+              <a className="btn ghost inline sm" onClick={() => track('whatsapp', { page: 'salao', salon: salon.id })} href={waLink(salon.whatsapp, msg)} target="_blank" rel="noreferrer"><WhatsAppIcon size={16} />Enviar mensagem por WhatsApp</a>
+            </div>
+          )}
           <div className="card">
             <h3>Precisa de cancelar ou mudar?</h3>
             <p className="muted small" style={{ margin: '4px 0 8px' }}>Guarde este link. O salão também o envia no lembrete.</p>
