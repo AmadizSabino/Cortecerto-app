@@ -90,9 +90,12 @@ export default {
   },
 }
 
-/** www.cortecerto.pt, cortecerto.com.pt and cortecerto.eu (with or without www) all go to cortecerto.pt. */
+/**
+ * www.cortecerto.pt, cortecerto.com.pt, cortecerto.eu (with or without www) and the old workers.dev address
+ * all go to cortecerto.pt. Branch previews (claude-…-cortecerto-app.….workers.dev) are not redirected.
+ */
 const CANONICAL = 'cortecerto.pt'
-const ALIASES = new Set(['www.cortecerto.pt', 'cortecerto.com.pt', 'www.cortecerto.com.pt', 'cortecerto.eu', 'www.cortecerto.eu'])
+const ALIASES = new Set(['www.cortecerto.pt', 'cortecerto.com.pt', 'www.cortecerto.com.pt', 'cortecerto.eu', 'www.cortecerto.eu', 'cortecerto-app.amadiz-sabino.workers.dev'])
 export function canonicalRedirect(url: URL): Response | null {
   if (!ALIASES.has(url.hostname)) return null
   return Response.redirect(`https://${CANONICAL}${url.pathname}${url.search}`, 301)

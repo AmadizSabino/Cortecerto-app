@@ -24,6 +24,7 @@ describe('canonical address', () => {
     expect(r.status).toBe(301)
     expect(r.headers.get('location')).toBe('https://cortecerto.pt/s/barba-e-beer?src=x')
     expect(canonicalRedirect(new URL('https://cortecerto.pt/painel'))).toBeNull()
-    expect(canonicalRedirect(new URL('https://cortecerto-app.amadiz-sabino.workers.dev/'))).toBeNull()
+    expect(canonicalRedirect(new URL('https://cortecerto-app.amadiz-sabino.workers.dev/painel'))!.headers.get('location')).toBe('https://cortecerto.pt/painel')
+    expect(canonicalRedirect(new URL('https://claude-x-cortecerto-app.amadiz-sabino.workers.dev/'))).toBeNull()
   })
 })

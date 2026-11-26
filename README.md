@@ -2,7 +2,7 @@
 
 **A booking and growth app for barbers, hair salons and nail studios in Portugal.** This repository holds the clickable product prototype, built to validate the idea with salon owners before the production build.
 
-> Status: the production MVP lives in [`app/`](app/README.md) and is deployed at https://cortecerto.pt (also reachable at https://cortecerto-app.amadiz-sabino.workers.dev). The clickable prototype in [`prototype/`](prototype/index.html) is kept for reference; its payments, messages and AI are simulated.
+> Status: the production MVP lives in [`app/`](app/README.md) and is deployed at https://cortecerto.pt (the old workers.dev address redirects there). The clickable prototype in [`prototype/`](prototype/index.html) is kept for reference; its payments, messages and AI are simulated.
 
 <p>
   <img src="screenshots/client-booking.png" width="200" alt="Client booking page">
