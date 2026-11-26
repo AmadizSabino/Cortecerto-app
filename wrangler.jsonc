@@ -20,10 +20,9 @@
     { "pattern": "cortecerto.pt", "custom_domain": true },
     { "pattern": "www.cortecerto.pt", "custom_domain": true },
     { "pattern": "cortecerto.com.pt", "custom_domain": true },
-    { "pattern": "www.cortecerto.com.pt", "custom_domain": true }
-    // cortecerto.eu has existing A/CNAME records (Google) to sort out first:
-    // { "pattern": "cortecerto.eu", "custom_domain": true },
-    // { "pattern": "www.cortecerto.eu", "custom_domain": true }
+    { "pattern": "www.cortecerto.com.pt", "custom_domain": true },
+    { "pattern": "cortecerto.eu", "custom_domain": true },
+    { "pattern": "www.cortecerto.eu", "custom_domain": true }
   ],
   // Required by `wrangler preview`, which Cloudflare runs for non-main branches. Empty is fine.
   "previews": {},
