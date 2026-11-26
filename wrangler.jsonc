@@ -24,6 +24,10 @@
     { "pattern": "cortecerto.eu", "custom_domain": true },
     { "pattern": "www.cortecerto.eu", "custom_domain": true }
   ],
+  // Keep the old workers.dev address on, so old links and QR codes get the redirect to cortecerto.pt
+  // (worker/index.ts) instead of a 404. Setting routes turns it off unless this says otherwise.
+  "workers_dev": true,
+  "preview_urls": true,
   // Required by `wrangler preview`, which Cloudflare runs for non-main branches. Empty is fine.
   "previews": {},
   // 08:00 UTC (8 or 9 in Lisbon): automatic payment reminders and the daily summary, each only when switched on in /admin.
@@ -39,6 +43,7 @@
     "binding": "ASSETS",
     // Send /api/* to the Worker before the single-page fallback catches it, and the home page and
     // salon booking pages too, so their link previews (WhatsApp, Instagram) are filled in (worker/meta.ts).
-    "run_worker_first": ["/api/*", "/", "/s/*"]
+    // /painel and /app also go first so that old addresses redirect to cortecerto.pt there as well.
+    "run_worker_first": ["/api/*", "/", "/s/*", "/painel*", "/app*"]
   }
 }
