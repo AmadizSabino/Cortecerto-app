@@ -9,10 +9,12 @@ export const STYLE_PRESETS: Partial<Record<SalonType, string[]>> = {
     'Low fade', 'Mid fade', 'High fade', 'Skin fade', 'Taper fade', 'Buzz cut', 'Crew cut', 'French crop',
     'Corte à tesoura', 'Undercut', 'Pompadour', 'Quiff', 'Risca ao lado', 'Mullet moderno',
     'Barba curta desenhada', 'Barba cheia aparada', 'Sem barba',
+    'Fade com caracóis', '360 waves', 'Twists', 'Cornrows', 'Locs',
   ],
   cabeleireiro: [
     'Bob', 'Long bob', 'Corte em camadas', 'Franja cortina', 'Pixie', 'Corte reto pelos ombros',
     'Balayage', 'Madeixas loiras', 'Loiro', 'Castanho chocolate', 'Ruivo acobreado', 'Preto', 'Ondulado', 'Liso',
+    'Box braids', 'Twists', 'Cornrows', 'Locs', 'Afro', 'Silk press',
   ],
   unhas: ['Gel nude', 'Francesa', 'Vermelho clássico', 'Unhas amendoadas', 'Unhas quadradas', 'Nail art minimalista'],
   sobrancelhas: ['Sobrancelhas definidas', 'Sobrancelhas naturais', 'Laminação de sobrancelhas', 'Extensão de pestanas'],
