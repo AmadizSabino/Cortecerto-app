@@ -26,7 +26,7 @@ export const HELP_GROUPS = ['Começar', 'A agenda', 'Clientes', 'No salão', 'Pr
 export const SCREEN_LABEL: Record<string, string> = {
   '/painel': 'Hoje', '/semana': 'Semana', '/clientes': 'Clientes', '/mais': 'Mais', '/lembretes': 'Lembretes', '/fila': 'Fila de espera',
   '/poster': 'Poster com QR', '/convidar': 'Convidar clientes', '/clube': 'Clube', '/pacotes': 'Pacotes', '/promocoes': 'Social Media Manager',
-  '/ia': 'Assistente IA', '/estilos': 'Estilos', '/loja': 'Loja', '/definicoes': 'Definições', '/horarios': 'Horários e folgas', '/equipa': 'Equipa', '/precos': 'Preços por profissional',
+  '/ia': 'Assistente IA', '/estilos': 'Estilos', '/loja': 'Loja', '/indicar': 'Convidar um colega', '/definicoes': 'Definições', '/horarios': 'Horários e folgas', '/equipa': 'Equipa', '/precos': 'Preços por profissional',
   '/estatisticas': 'Estatísticas', '/marca': 'Marca e galeria', '/domicilio': 'Ao domicílio', '/assinatura': 'Assinatura', '/palavra-passe': 'Palavra-passe',
 }
 
@@ -251,6 +251,16 @@ export const HELP: HelpTopic[] = [
       'Quem paga no balcão: use "Juntar um cliente".',
     ],
     tip: 'O cliente paga a mensalidade diretamente ao salão (MB Way ou balcão). A CorteCerto não fica com nada.',
+  },
+  {
+    id: 'indicar', group: 'Conta e assinatura', title: 'Convidar um colega e ganhar um mês grátis', screen: '/indicar', need: 'assinatura', words: 'convidar colega amigo indicar referência mês grátis desconto barbeiro',
+    steps: [
+      'Abra Mais › Convidar um colega.',
+      'Toque em "Enviar por WhatsApp" e escolha o colega. A mensagem já leva o seu link.',
+      'O colega cria o salão pelo link e tem 30 dias grátis para experimentar.',
+      'Quando ele pagar o primeiro mês, a CorteCerto junta um mês grátis à sua assinatura e à dele. Vê o estado de cada colega na mesma página.',
+    ],
+    tip: 'A sua página de marcação também tem, no fim, "É dono de um salão?" com o seu convite: um cliente que tenha um salão também conta.',
   },
   {
     id: 'loja', group: 'Promoções e vendas', title: 'Pôr produtos à venda na loja', screen: '/loja', need: 'lojaProdutos', words: 'loja produtos vender pomada champô óleo foto preço esgotado',

@@ -447,6 +447,7 @@ export default function BookingPage() {
         </div>
       </div> : <button className="link" onClick={() => setPicking(true)}>Mudar o estilo da página</button>}
       <p className="muted" style={{ marginTop: 10 }}>Marcações com <a href="/?src=salao">CorteCerto</a> · <a href="/privacidade">Privacidade</a></p>
+      <p className="muted small salon-invite" style={{ marginTop: 4 }}>É dono de um salão? <a href={`/?src=salao&convite=${encodeURIComponent(salon.slug)}`}>Experimente a CorteCerto 30 dias grátis</a></p>
     </footer>
   )
 

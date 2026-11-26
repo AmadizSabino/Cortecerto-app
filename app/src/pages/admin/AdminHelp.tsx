@@ -15,6 +15,7 @@ const ADMIN_HELP: Record<AdminTab, string[]> = {
     'Depois de passar a fatura no seu programa de faturação, carregue o PDF no salão (separador Salões › abrir o salão).',
     '"Lembretes de pagamento" lista quem está em atraso, com o botão para enviar o lembrete.',
     'Em "Pedidos e faturas enviados" vê tudo o que foi enviado. O filtro "Pagos sem fatura" mostra o que ainda falta faturar.',
+    'Em "Convites entre salões" vê quem convidou quem. Quando o convidado pagar o primeiro mês, toque em "Dar o mês grátis aos dois".',
     'Em "Como os salões pagam" ficam o seu MB Way e o IBAN, que aparecem nos pedidos de pagamento.',
   ],
   site: [
