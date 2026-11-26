@@ -185,7 +185,7 @@ export const HELP: HelpTopic[] = [
     steps: [
       'Toque no separador Clientes e escreva o nome ou o telemóvel em Procurar.',
       'Toque no cliente para ver as visitas, as faltas e as notas.',
-      'Toque em "Editar registo" para juntar notas (por exemplo, o corte que prefere) e o dia de anos.',
+      'Toque em "Editar ficha" para juntar o aniversário (dia e mês), o profissional preferido, notas, o NIF e se aceita mensagens.',
     ],
   },
   {
@@ -201,7 +201,7 @@ export const HELP: HelpTopic[] = [
     id: 'cliente-novo', group: 'Clientes', title: 'Registar um cliente novo', screen: '/clientes', need: 'clientes', words: 'novo cliente registar adicionar lista',
     steps: [
       'Em Clientes, toque em "Novo cliente".',
-      'Escreva o nome e o telemóvel e guarde. Depois pode juntar notas e o aniversário.',
+      'Escreva o nome e o telemóvel. Em "Mais detalhes" (opcional) junte o aniversário, o profissional preferido, como o conheceu, notas, o NIF e se aceita mensagens.',
       'Quando alguém novo marca pela primeira vez, a agenda pergunta "Cliente novo. Quer adicionar?". Toque em "Sim, adicionar".',
     ],
   },

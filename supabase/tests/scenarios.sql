@@ -755,4 +755,10 @@ do $$ begin perform add_package_service(current_setting('t.salon')::uuid, '', 20
 set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000c1';
 do $$ begin perform add_package_service(current_setting('t.salon')::uuid, 'X', 20, 100); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
 reset role; reset request.jwt.claim.sub;
+-- 0036: optional client details
+insert into salon_clients (salon_id, phone_key, name, phone, preferred_pro, heard_from, nif, consent_messages, consent_at)
+  values (:'salon', '351919000036', 'Rui Detalhes', '919 000 036', :'ana', 'instagram', '123456789', true, now());
+select pg_temp.check(preferred_pro = :'ana' and consent_messages, 'a client keeps the preferred professional and the consent') from salon_clients where phone_key = '351919000036';
+do $$ begin insert into salon_clients (salon_id, phone_key, name, phone, nif) values (current_setting('t.salon')::uuid, '351919000037', 'X', '919', '12'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%nif%' then raise; end if; end $$;
+do $$ begin insert into salon_clients (salon_id, phone_key, name, phone, consent_messages) values (current_setting('t.salon')::uuid, '351919000038', 'X', '919', true); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%consent_dated%' then raise; end if; end $$;
 \echo All database checks passed

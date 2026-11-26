@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { waNumber } from './lib/whatsapp'
 import { announceBooking } from './lib/push'
 import { supabase, type Booking, type Professional, type Salon, type Service } from './lib/supabase'
 import { freeSlots } from './lib/slots'
@@ -74,6 +75,15 @@ export default function BookingEditor({ salon, booking, defaultDate, onSaved, on
     supabase.rpc('client_duration', { p_salon: salon.id, p_service: d.serviceId, p_professional: d.professionalId, p_phone: d.clientPhone })
       .then(({ data, error }) => setClientLen(!error && typeof data === 'number' ? data : null))
   }, [salon.id, d.serviceId, d.professionalId, d.clientPhone, digits])
+  // A new booking for a client on the salon's list: start with their preferred professional (migration 0036).
+  useEffect(() => {
+    if (booking || d.professionalId || digits < 9 || pros.length < 2) return
+    supabase.from('salon_clients').select('preferred_pro').eq('salon_id', salon.id).eq('phone_key', waNumber(d.clientPhone)).maybeSingle()
+      .then(({ data, error }) => {
+        const id = !error && (data as { preferred_pro?: string | null } | null)?.preferred_pro
+        if (id && pros.some(p => p.id === id)) setD(cur => cur.professionalId ? cur : { ...cur, professionalId: id })
+      })
+  }, [booking, d.professionalId, d.clientPhone, digits, pros, salon.id])
   const autoLen = clientLen ?? eff?.duration_min ?? 0
   const minutes = lenTouched ? len : autoLen
   const lenChoices = useMemo(() => [...new Set([...minuteOptions(eff?.duration_min ?? 30), minutes].filter(m => m > 0))].sort((a, b) => a - b), [eff?.duration_min, minutes])
