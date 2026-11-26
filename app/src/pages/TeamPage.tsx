@@ -8,6 +8,7 @@ import { NO_PAY, parsePay, payLabel, type Pay } from '../lib/commission'
 import { themeById, themeStyle } from '../lib/themes'
 import { waLink } from '../lib/whatsapp'
 import HelpLink from '../HelpLink'
+import { publicOrigin } from '../lib/publicOrigin'
 
 interface Pro { id?: string; name: string; active: boolean }
 interface Member { user_id: string; email: string; professional_id: string | null; created_at: string; access?: Level }
@@ -136,7 +137,7 @@ export default function TeamPage() {
 
   const active = pros.filter(p => p.active)
   const proName = (id: string | null) => (id && pros.find(p => p.id === id)?.name) || 'Sem profissional associado'
-  const shareText = (to: string) => `Olá! Dei-te acesso à agenda do ${salon.name} na CorteCerto. Entra em ${location.origin}/painel com o email ${to} e segue o link que recebes.`
+  const shareText = (to: string) => `Olá! Dei-te acesso à agenda do ${salon.name} na CorteCerto. Entra em ${publicOrigin()}/painel com o email ${to} e segue o link que recebes.`
 
   async function invite(e: React.FormEvent) {
     e.preventDefault()

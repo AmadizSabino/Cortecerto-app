@@ -9,6 +9,7 @@ import { canPickContacts, inviteText, pickContacts, type Picked } from '../lib/c
 import { themeById, themeStyle } from '../lib/themes'
 import { formatPhone, waLink, waNumber } from '../lib/whatsapp'
 import HelpLink from '../HelpLink'
+import { publicOrigin } from '../lib/publicOrigin'
 
 interface Invited { phone_key: string; name: string; phone: string; invited_at: string | null; source: string }
 
@@ -47,7 +48,7 @@ export default function InvitePage() {
   if (salon === null) return <Navigate to="/registar" replace />
   if (!can(role, 'convidar')) return <Navigate to="/painel" replace />
 
-  const link = `${location.origin}/s/${salon.slug}`
+  const link = `${publicOrigin()}/s/${salon.slug}`
 
   /** Saves the client to the list (keeps an existing name) and opens WhatsApp with the invitation. */
   async function send(p: Picked, source: 'convite' | 'contactos') {

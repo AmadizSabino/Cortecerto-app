@@ -17,6 +17,7 @@ import { quietPeriods, quietText, weekKey, weekPlan, type Quiet } from '../lib/s
 import { themeById, themeStyle } from '../lib/themes'
 import { formatPhone, waLink, waNumber } from '../lib/whatsapp'
 import HelpLink from '../HelpLink'
+import { publicOrigin } from '../lib/publicOrigin'
 
 interface Form {
   id?: string; title: string; kind: Promo['kind']; value: string; gift: string
@@ -131,7 +132,7 @@ export default function PromosPage() {
     amount_cents: f.kind === 'montante' ? parseEuros(f.value) : null, gift: f.kind === 'oferta' ? f.gift.trim() : null,
     weekdays: f.weekdays.length ? f.weekdays : null, time_from: f.from || null, time_to: f.to || null, starts_on: f.starts, ends_on: f.ends || null,
   })
-  const caption = (p: Pick<Promo, 'message' | 'code'>) => `${p.message}${p.message.includes(promoLink(location.origin, salon.slug, p.code)) ? '' : `\n${promoLink(location.origin, salon.slug, p.code)}`}\n\n${hashtags(salon.type, salon.address)}`
+  const caption = (p: Pick<Promo, 'message' | 'code'>) => `${p.message}${p.message.includes(promoLink(publicOrigin(), salon.slug, p.code)) ? '' : `\n${promoLink(publicOrigin(), salon.slug, p.code)}`}\n\n${hashtags(salon.type, salon.address)}`
 
   const plan = weekPlan({ type: salon.type, hasPhotos: photos.length > 0, quiet: quiet[0] ?? null, next: dates[0] ?? null, today })
   function tick(key: string) {
@@ -173,7 +174,7 @@ export default function PromosPage() {
     if ((f.from && !f.to) || (!f.from && f.to) || (f.from && f.to <= f.from)) { setError('Indique a hora de início e de fim, ou nenhuma.'); return }
     if (f.ends && f.ends < f.starts) { setError('A data de fim é antes do início.'); return }
     const code = f.id ? promos.find(x => x.id === f.id)!.code : uniqueCode(codeFrom(f.title))
-    const link = promoLink(location.origin, salon!.slug, code)
+    const link = promoLink(publicOrigin(), salon!.slug, code)
     const message = f.message.trim() || fillPhrase(phrasesFor(salon!.type)[0].text, { oferta: offerText(p), quando: whenText(p, today), salao: salon!.name, link })
     const row = { salon_id: salon!.id, code, title: f.title.trim(), message, service_ids: f.services.length ? f.services : null, active: f.active, image_path: f.image, ...p }
     setBusy('guardar')
@@ -187,7 +188,7 @@ export default function PromosPage() {
   async function aiCaption() {
     const f = form!, p = asPromo(f)
     setBusy('ia')
-    const r = await runAi('promo-caption', { salon: salon!.name, type: salon!.type, title: f.title, offer: offerText(p), when: whenText(p, today), link: promoLink(location.origin, salon!.slug, codeFrom(f.title)) })
+    const r = await runAi('promo-caption', { salon: salon!.name, type: salon!.type, title: f.title, offer: offerText(p), when: whenText(p, today), link: promoLink(publicOrigin(), salon!.slug, codeFrom(f.title)) })
     setBusy('')
     if (r.status === 'feito' && r.text) setForm({ ...f, message: r.text })
     else setError(r.message ?? 'Não foi possível agora.')
@@ -198,7 +199,7 @@ export default function PromosPage() {
     try {
       const img = await promoImage({
         theme, salonName: salon!.name, title: p.title, offer: offerText(p), when: whenText(p, today),
-        link: promoLink(location.origin, salon!.slug, p.code), photo: mediaUrl(p.image_path ?? photos[0] ?? salon!.cover_path ?? null), logo: mediaUrl(salon!.logo_path),
+        link: promoLink(publicOrigin(), salon!.slug, p.code), photo: mediaUrl(p.image_path ?? photos[0] ?? salon!.cover_path ?? null), logo: mediaUrl(salon!.logo_path),
       })
       // Instagram usually drops the text that comes with a shared picture: the caption is copied first, ready to paste.
       await navigator.clipboard?.writeText(caption(p)).catch(() => {})
@@ -304,7 +305,7 @@ export default function PromosPage() {
           <details>
             <summary>Frases prontas</summary>
             {phrasesFor(salon.type).map(ph => (
-              <button type="button" key={ph.title} className="phrase" onClick={() => preview && setForm({ ...f, message: fillPhrase(ph.text, { oferta: offerText(preview), quando: whenText(preview, today), salao: salon.name, link: promoLink(location.origin, salon.slug, f.id ? promos.find(x => x.id === f.id)!.code : codeFrom(f.title || 'promo')) }) })}>
+              <button type="button" key={ph.title} className="phrase" onClick={() => preview && setForm({ ...f, message: fillPhrase(ph.text, { oferta: offerText(preview), quando: whenText(preview, today), salao: salon.name, link: promoLink(publicOrigin(), salon.slug, f.id ? promos.find(x => x.id === f.id)!.code : codeFrom(f.title || 'promo')) }) })}>
                 <b>{ph.title}</b><br /><small className="muted">{ph.text.replace(/\{link\}/, '…')}</small>
               </button>
             ))}
@@ -334,7 +335,7 @@ export default function PromosPage() {
       {promos.map(p => {
         const r = results[p.id] ?? { bookings: 0, revenue: 0 }
         const ended = p.ends_on !== null && p.ends_on < today
-        const link = promoLink(location.origin, salon.slug, p.code)
+        const link = promoLink(publicOrigin(), salon.slug, p.code)
         return (
           <article key={p.id} className={p.active && !ended ? 'card' : 'card off'}>
             <div className="row">

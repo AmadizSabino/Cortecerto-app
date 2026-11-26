@@ -8,6 +8,7 @@ import { can, levelLabel, NEED } from '../lib/access'
 import InstallCard from '../InstallCard'
 import { themeById, themeStyle } from '../lib/themes'
 import HelpLink from '../HelpLink'
+import { publicOrigin } from '../lib/publicOrigin'
 
 interface Item { to: string; icon: string; label: string; hint: string; need: keyof typeof NEED; show?: (s: Salon) => boolean }
 const GROUPS: { title: string; items: Item[] }[] = [
@@ -55,7 +56,7 @@ export default function MorePage() {
   if (session === undefined || salon === undefined) return <main className="page"><p className="muted">A carregar…</p></main>
   if (salon === null) return <Navigate to="/registar" replace />
 
-  const link = `${location.origin}/s/${salon.slug}`
+  const link = `${publicOrigin()}/s/${salon.slug}`
   return (
     <div className="themed" style={themeStyle(themeById(salon.theme))}><main className="page">
       <div className="greet">

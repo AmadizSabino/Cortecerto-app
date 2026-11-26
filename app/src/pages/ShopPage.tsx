@@ -16,6 +16,7 @@ import {
 } from '../lib/shop'
 import HelpLink from '../HelpLink'
 import ProductPhoto from '../components/ProductPhoto'
+import { publicOrigin } from '../lib/publicOrigin'
 
 interface Draft {
   id?: string; name: string; price: string; description: string; pay: ProductPay; refill: string; sold_out: boolean; active: boolean; photo_path: string | null
@@ -83,7 +84,7 @@ export default function ShopPage() {
   const manager = can(role, 'lojaProdutos')
   const owner = can(role, 'revenue')
   const locked = lockState(salon as Salon & BillingFields).locked
-  const link = shopLink(location.origin, salon.slug)
+  const link = shopLink(publicOrigin(), salon.slug)
   const open = orders.filter(isOpen)
   const old = orders.filter(o => !isOpen(o)).slice(0, 30)
   const onSale = products.filter(p => p.active && !p.sold_out)

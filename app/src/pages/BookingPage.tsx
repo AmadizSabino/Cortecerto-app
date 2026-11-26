@@ -30,6 +30,7 @@ import { salonAt } from '../lib/salonAt'
 import { requestLink, shortWhen, takenTimes } from '../lib/slotRequests'
 import ShopView from '../components/ShopView'
 import type { Product } from '../lib/shop'
+import { publicOrigin } from '../lib/publicOrigin'
 
 const ERRORS: Record<string, string> = {
   horario_ocupado: 'Esse horário acabou de ser ocupado. Escolha outro, por favor.',
@@ -380,7 +381,7 @@ export default function BookingPage() {
     downloadIcs('marcacao.ics', icsEvent({
       title: `${service!.name} · ${salon!.name}`, start: slot!.start, end,
       location: salon!.address ?? undefined,
-      description: `Com ${proName(slot!.proId)}${done ? `. Cancelar ou mudar: ${manageLink(location.origin, done)}` : ''}`,
+      description: `Com ${proName(slot!.proId)}${done ? `. Cancelar ou mudar: ${manageLink(publicOrigin(), done)}` : ''}`,
     }))
   }
 
@@ -468,7 +469,7 @@ export default function BookingPage() {
   )
 
   if (requested) {
-    const link = requestLink(location.origin, requested)
+    const link = requestLink(publicOrigin(), requested)
     return (
       <div className="themed" style={themeStyle(theme)}>
         {header}
@@ -498,7 +499,7 @@ export default function BookingPage() {
 
   if (done) {
     const msg = `Olá! Acabei de marcar ${service!.name} com ${proName(slot!.proId)} para ${longDate(slot!.start)} às ${formatTime(slot!.start, tz)}. Nome: ${name}.`
-    const manage = manageLink(location.origin, done)
+    const manage = manageLink(publicOrigin(), done)
     const owesDeposit = salon.deposit_cents > 0 && Boolean(salon.mbway_number) && doneDeposit !== 'nenhum'
     return (
       <div className="themed" style={themeStyle(theme)}>

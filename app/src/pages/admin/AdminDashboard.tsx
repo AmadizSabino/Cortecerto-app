@@ -6,6 +6,7 @@ import {
   attention, funnel, health, kpis, setupSteps, since, weeklySignups, HEALTH_LABEL, HEALTH_TAG,
   type AdminSalonRow, type Dashboard,
 } from '../../lib/adminStats'
+import { publicOrigin } from '../../lib/publicOrigin'
 
 const pct = (n: number | null) => n === null ? '—' : `${Math.round(n * 100)}%`
 const shortDate = (iso: string) => new Date(iso + (iso.length === 10 ? 'T12:00:00Z' : '')).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' })
@@ -83,7 +84,7 @@ export function AdminOverview({ data, onOpen }: { data: Dashboard; onOpen: (salo
         <div className="stat"><b>{k.activeOwners7} de {k.salons}</b><span>Donos ativos em 7 d</span></div>
       </div>
 
-      <FollowUpCard list={followUps(data.salons, location.origin, now)} onOpen={onOpen} />
+      <FollowUpCard list={followUps(data.salons, publicOrigin(), now)} onOpen={onOpen} />
 
       <section className="card">
         <h2>Precisa de atenção</h2>

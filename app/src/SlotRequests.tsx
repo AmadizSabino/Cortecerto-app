@@ -9,6 +9,7 @@ import { formatPhone, waLink } from './lib/whatsapp'
 import { manageLink } from './lib/clientChanges'
 import { acceptedMessage, askToMoveMessage, declinedMessage, isOpen, proposalMessage, requestLink, shortWhen, sittingOn, type SlotRequest } from './lib/slotRequests'
 import ProposeTime from './ProposeTime'
+import { publicOrigin } from './lib/publicOrigin'
 
 const ERRORS: Record<string, string> = {
   horario_ocupado: 'Esse horário ainda está ocupado. Mude primeiro a outra marcação (o cliente tem de aceitar o novo horário) e depois tente de novo.',
@@ -134,7 +135,7 @@ export default function SlotRequests({ salon, services, pros, locked, refresh, o
       // The booking id is not needed for the message: the client's link comes from the request.
       supabase.from('slot_requests').select('booking_id').eq('id', r.id).maybeSingle().then(({ data }) => {
         done(r, { kind: 'aceite', name: r.client_name, phone: r.client_phone,
-          text: acceptedMessage(r.client_name, salon.name, svcName(r), when, tz, data?.booking_id ? manageLink(location.origin, data.booking_id) : requestLink(location.origin, r.id)) })
+          text: acceptedMessage(r.client_name, salon.name, svcName(r), when, tz, data?.booking_id ? manageLink(publicOrigin(), data.booking_id) : requestLink(publicOrigin(), r.id)) })
       })
       onBooked()
     })
@@ -161,7 +162,7 @@ export default function SlotRequests({ salon, services, pros, locked, refresh, o
       {reqs.map(r => {
         const choices = [r.starts_at, r.alt_starts_at].filter((x): x is string => Boolean(x)).map(t => new Date(t))
         const proposed = r.status === 'proposta' && r.proposed_starts_at ? new Date(r.proposed_starts_at) : null
-        const link = requestLink(location.origin, r.id)
+        const link = requestLink(publicOrigin(), r.id)
         return (
           <article key={r.id} className="request">
             <div className="who">
@@ -227,7 +228,7 @@ export default function SlotRequests({ salon, services, pros, locked, refresh, o
               <div className="actions">
                 <button onClick={() => setProposing(r.id)}>Propor outro horário</button>
                 <button className="link" disabled={busyId === r.id} onClick={() => act(r, () => supabase.rpc('decline_slot_request', { p_request: r.id }),
-                  () => done(r, { kind: 'recusado', name: r.client_name, phone: r.client_phone, text: declinedMessage(r.client_name, salon.name, `${location.origin}/s/${salon.slug}`) }))}>Recusar</button>
+                  () => done(r, { kind: 'recusado', name: r.client_name, phone: r.client_phone, text: declinedMessage(r.client_name, salon.name, `${publicOrigin()}/s/${salon.slug}`) }))}>Recusar</button>
               </div>
             )}
             {proposing === r.id && (

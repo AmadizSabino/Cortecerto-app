@@ -9,6 +9,7 @@ import { themeById, themeStyle } from '../lib/themes'
 import { loadMySalon } from '../lib/mySalon'
 import { manageLink } from '../lib/clientChanges'
 import HelpLink from '../HelpLink'
+import { publicOrigin } from '../lib/publicOrigin'
 
 /** WhatsApp reminders for a day's bookings, tomorrow by default. */
 export default function RemindersPage() {
@@ -95,7 +96,7 @@ export default function RemindersPage() {
             clientName: b.client_name, serviceName: svc?.name ?? 'serviço', startsAt: when, tz, salonName: salon.name,
             isTomorrow: date === addDays(today, 1),
             // Only once migration 0007 has run (the column exists) and the salon allows changes.
-            manageUrl: salon.client_change_hours != null ? manageLink(location.origin, b.id) : null,
+            manageUrl: salon.client_change_hours != null ? manageLink(publicOrigin(), b.id) : null,
             depositDue: b.deposit === 'pendente' && salon.mbway_number ? { cents: salon.deposit_cents, mbway: salon.mbway_number } : null,
           })
           return (

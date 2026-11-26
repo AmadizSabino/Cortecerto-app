@@ -10,6 +10,7 @@ import { manageLink } from './lib/clientChanges'
 import { waLink } from './lib/whatsapp'
 import { effective } from './lib/pricing'
 import { loadOverrides } from './lib/pricingData'
+import { publicOrigin } from './lib/publicOrigin'
 
 const ERRORS: Record<string, string> = {
   horario_ocupado: 'Esse horário acabou de ser ocupado. Escolha outro.',
@@ -89,7 +90,7 @@ export default function NextVisit({ salon, booking, service, pro, onBooked, onCl
 
   if (booked) {
     const when = new Date(booked.starts_at)
-    const link = salon.client_change_hours != null ? ` Se precisar de cancelar ou mudar: ${manageLink(location.origin, booked.id)}` : ''
+    const link = salon.client_change_hours != null ? ` Se precisar de cancelar ou mudar: ${manageLink(publicOrigin(), booked.id)}` : ''
     const msg = `Olá ${booking.client_name.split(' ')[0]}! Fica marcado: ${service.name} no ${salon.name}, ${dayText(when)} às ${formatTime(when, tz)}.${link} Até lá!`
     return (
       <div className="next-visit">
