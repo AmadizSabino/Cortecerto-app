@@ -11,8 +11,8 @@ const base = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? ''
 /** Public address of a stored file, or null. */
 export const mediaUrl = (path: string | null | undefined) => path ? `${base}/storage/v1/object/public/${BUCKET}/${path}` : null
 
-export type MediaKind = 'logo' | 'capa' | 'galeria'
-const SIZE: Record<MediaKind, number> = { logo: 512, capa: 1600, galeria: 1280 }
+export type MediaKind = 'logo' | 'capa' | 'galeria' | 'produto'
+const SIZE: Record<MediaKind, number> = { logo: 512, capa: 1600, galeria: 1280, produto: 900 }
 
 /** Shrinks a photo in the browser: logos stay PNG (keeps transparency), photos become JPEG. */
 export function shrink(file: File, kind: MediaKind): Promise<Blob> {

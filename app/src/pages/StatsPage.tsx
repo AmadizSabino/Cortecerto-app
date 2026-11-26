@@ -9,6 +9,7 @@ import { loadMySalon, type Role } from '../lib/mySalon'
 import { can } from '../lib/access'
 import { commissions, payLabel, type Pay } from '../lib/commission'
 import HelpLink from '../HelpLink'
+import { shopSales, type Order } from '../lib/shop'
 
 const WEEKDAY_SHORT = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
 
@@ -41,6 +42,7 @@ export default function StatsPage() {
   const [all, setAll] = useState<Booking[] | null>(null)
   const [period, setPeriod] = useState<Period>('mes')
   const [pay, setPay] = useState<Record<string, Pay> | null>(null)
+  const [orders, setOrders] = useState<Order[] | null>(null) // the shop (migration 0032); null before it
 
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setSession(data.session)) }, [])
   useEffect(() => {
@@ -51,6 +53,8 @@ export default function StatsPage() {
       setRole(mine.role)
       setSalon(s)
       if (!s) return
+      supabase.from('product_orders').select('*').eq('salon_id', s.id).in('status', ['pago', 'entregue']).limit(20000)
+        .then(({ data, error }) => setOrders(error ? null : (data ?? []) as Order[]))
       const [sv, pr, bk, py] = await Promise.all([
         supabase.from('services').select('id,name,duration_min,price_cents').eq('salon_id', s.id),
         supabase.from('professionals').select('id,name').eq('salon_id', s.id),
@@ -73,6 +77,10 @@ export default function StatsPage() {
   const comm = useMemo(() => all && pay
     ? commissions(all, pay, services, zonedToUtc(range.from, '00:00', tz).toISOString(), zonedToUtc(addDays(range.to, 1), '00:00', tz).toISOString())
     : null, [all, pay, services, tz, range.from, range.to])
+
+  const shop = useMemo(() => orders
+    ? shopSales(orders, zonedToUtc(range.from, '00:00', tz).toISOString(), zonedToUtc(addDays(range.to, 1), '00:00', tz).toISOString())
+    : null, [orders, tz, range.from, range.to])
 
   if (session === undefined) return <main className="page">A carregar…</main>
   if (!session) return <Navigate to="/painel" replace />
@@ -105,6 +113,8 @@ export default function StatsPage() {
             <span className="tile-sub">{stats.noShows} {stats.noShows === 1 ? 'falta' : 'faltas'} · {stats.cancelledByClient} {stats.cancelledByClient === 1 ? 'cancelou' : 'cancelaram'}</span></div>
           <div className="tile"><span className="tile-label">Clientes novos</span><strong className="tile-value">{stats.newClients}</strong>
             <span className="tile-sub">{stats.returningClients} voltaram</span></div>
+          {shop && (shop.sales > 0 || orders!.length > 0) && <div className="tile"><span className="tile-label">Vendas na loja</span><strong className="tile-value">{euros(shop.revenue)}</strong>
+            <span className="tile-sub">{shop.units} {shop.units === 1 ? 'produto' : 'produtos'}{shop.online ? ` · ${shop.online} reservados online` : ''}</span></div>}
         </div>
 
         <section className="card">
@@ -124,6 +134,14 @@ export default function StatsPage() {
           <h2>Serviços</h2>
           <BarList items={stats.byService} value={r => r.revenue} label={r => services[r.id]?.name ?? 'Serviço'} format={r => `${euros(r.revenue)} · ${r.count}`} />
         </section>
+
+        {shop && shop.byProduct.length > 0 && (
+          <section className="card">
+            <h2>Vendas na loja</h2>
+            <BarList items={shop.byProduct} value={r => r.revenue} label={r => (r as typeof shop.byProduct[number]).name} format={r => `${euros(r.revenue)} · ${r.count}`} />
+            <p className="muted small">Produtos pagos no período, online e no balcão. Não entram no Faturado dos serviços. Veja as reservas em <Link to="/loja">Mais &gt; Loja</Link>.</p>
+          </section>
+        )}
 
         {Object.keys(pros).length > 1 && (
           <section className="card">

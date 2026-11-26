@@ -89,3 +89,13 @@ describe('request notification (migration 0031)', () => {
     expect(m.url).toBe('/painel#pedidos')
   })
 })
+
+describe('shop reservation notification (migration 0032)', () => {
+  it('says who reserved what, with money only for the owner', async () => {
+    const { orderMessage } = await import('../../../worker/push')
+    const o = { salon_id: 's', owner_id: 'u', client_name: 'Tiago', product_name: 'Pomada mate', qty: 2, price_cents: 1500, pay: 'mbway' as const }
+    expect(orderMessage(o, true).body).toBe('Tiago reservou 2 × Pomada mate · 30,00 €.\nVai pagar por MB WAY: confirme quando receber.')
+    expect(orderMessage({ ...o, qty: 1, pay: 'salao' }, false).body).toBe('Tiago reservou Pomada mate.\nPaga no salão quando levantar.')
+    expect(orderMessage(o, false).url).toBe('/loja#reservas')
+  })
+})
