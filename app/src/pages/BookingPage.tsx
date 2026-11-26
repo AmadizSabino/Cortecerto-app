@@ -626,7 +626,7 @@ export default function BookingPage() {
           <div className="step-title"><h2>O que vai fazer?</h2></div>
           {services.length === 0 && <p className="muted">Este salão ainda não tem serviços para marcar online.</p>}
           <div className="choices">
-            {(atHome ? services.filter(x => x.at_home) : services).map(s => (
+            {(atHome ? services.filter(x => x.at_home) : services).filter(x => !x.packages_only).map(s => (
               <button key={s.id} className={s.id === service?.id ? 'choice on' : 'choice'} onClick={() => {
                 setService(s); setSlot(undefined)
                 if (proId && proId !== ANY && !effective(s, proId, overrides) && !skipPro) setProId(undefined)

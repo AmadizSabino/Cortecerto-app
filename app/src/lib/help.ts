@@ -309,6 +309,7 @@ export const HELP: HelpTopic[] = [
     id: 'pacotes', group: 'Promoções e vendas', title: 'Vender pacotes e packs de sessões', screen: '/pacotes', need: 'pacotes', words: 'pacote pack casamento evento combo sessões',
     steps: [
       'Abra Mais › Pacotes e crie um pacote: nome, descrição, preço e, se for um pack, o número de sessões e a validade.',
+      'Falta um serviço? Toque em "+ Outro serviço" na lista dos serviços incluídos: fica só para pacotes, a não ser que marque "Também se pode marcar sozinho".',
       'Os pacotes aparecem na sua página de marcação.',
       'Pedidos de casamentos e eventos aparecem em Pedidos: faça a proposta com o preço e o sinal e envie por WhatsApp.',
       'Os packs que vendeu estão em "Packs vendidos". Na agenda, toque em "Usar sessão do pack" quando o cliente vier.',
