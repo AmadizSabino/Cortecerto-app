@@ -8,6 +8,7 @@ import { loadMarks, saveMarks } from '../lib/setup'
 import { themeById, themeStyle } from '../lib/themes'
 import { loadMySalon } from '../lib/mySalon'
 import HelpLink from '../HelpLink'
+import { publicOrigin } from '../lib/publicOrigin'
 
 /** A printable A4 poster with the salon's booking QR code, in the salon's theme. */
 export default function PosterPage() {
@@ -24,7 +25,7 @@ export default function PosterPage() {
     loadMySalon(session.user.id).then(r => { setSalon(r.salon) })
   }, [session])
 
-  const link = salon ? `${location.origin}/${queue ? 'f' : 's'}/${salon.slug}${shop ? '?loja=1' : ''}` : ''
+  const link = salon ? `${publicOrigin()}/${queue ? 'f' : 's'}/${salon.slug}${shop ? '?loja=1' : ''}` : ''
   // The QR code carries ?src=cartaz, so /admin > Site counts visits that came from the poster.
   const qr = useMemo(() => (link ? qrPath(`${link}${shop ? '&' : '?'}src=cartaz`) : null), [link, shop])
 

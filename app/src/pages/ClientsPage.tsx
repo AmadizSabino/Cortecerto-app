@@ -16,6 +16,7 @@ import HelpLink from '../HelpLink'
 import ClientTimes from '../components/ClientTimes'
 import type { ClientTime } from '../lib/clientTimes'
 import { buyerKeys, orderTotal, type Order } from '../lib/shop'
+import { publicOrigin } from '../lib/publicOrigin'
 
 const FILTERS: { id: ClientFilter; label: string }[] = [
   { id: 'todos', label: 'Todos' },
@@ -288,7 +289,7 @@ export default function ClientsPage() {
 
   const tz = salon.timezone
   const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('pt-PT', { timeZone: tz, day: 'numeric', month: 'short', year: 'numeric' })
-  const bookingLink = `${location.origin}/s/${salon.slug}`
+  const bookingLink = `${publicOrigin()}/s/${salon.slug}`
 
   function comeBackMsg(c: Client) {
     const first = c.name.split(' ')[0]

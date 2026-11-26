@@ -11,6 +11,7 @@ import { dateInTz } from '../lib/time'
 import { themeById, themeStyle } from '../lib/themes'
 import { formatPhone, waLink, waNumber } from '../lib/whatsapp'
 import HelpLink from '../HelpLink'
+import { publicOrigin } from '../lib/publicOrigin'
 
 const STATE_LABEL = { pedido: 'Quer aderir', em_dia: 'Em dia', por_pagar: 'Mensalidade por pagar', cancelado: 'Cancelado' }
 
@@ -57,7 +58,7 @@ export default function ClubPage() {
   const tz = salon.timezone
   const today = dateInTz(new Date(), tz)
   const manager = can(role, 'clubeDefinicoes')
-  const joinLink = `${location.origin}/s/${salon.slug}?clube=1`
+  const joinLink = `${publicOrigin()}/s/${salon.slug}?clube=1`
   const open = members.filter(m => m.status !== 'cancelado')
   const old = members.filter(m => m.status === 'cancelado')
   const fmt = (d: string) => new Date(d + 'T12:00:00Z').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short', timeZone: 'UTC' })

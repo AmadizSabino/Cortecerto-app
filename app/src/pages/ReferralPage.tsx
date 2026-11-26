@@ -9,6 +9,7 @@ import { inviteLink, inviteMessage } from '../lib/referral'
 import { themeById, themeStyle } from '../lib/themes'
 import { waLink } from '../lib/whatsapp'
 import HelpLink from '../HelpLink'
+import { publicOrigin } from '../lib/publicOrigin'
 
 interface Referral { name: string; joined_at: string; paying: boolean; rewarded_at: string | null }
 
@@ -37,7 +38,7 @@ export default function ReferralPage() {
   if (salon === null) return <Navigate to="/registar" replace />
   if (!can(role, 'assinatura')) return <Navigate to="/painel" replace />
 
-  const link = inviteLink(location.origin, salon.slug)
+  const link = inviteLink(publicOrigin(), salon.slug)
   const msg = inviteMessage(salon.name, link)
   const earned = (list ?? []).filter(r => r.rewarded_at).length
   const fmt = (iso: string) => new Date(iso).toLocaleDateString('pt-PT', { day: 'numeric', month: 'short', year: 'numeric' })

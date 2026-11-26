@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import SaveToHome from '../components/SaveToHome'
 import { STORES, platform, useInstall } from '../lib/install'
 import { qrPath } from '../lib/qr'
+import { publicOrigin } from '../lib/publicOrigin'
 
 /**
  * cortecerto.pt/app: one link (and QR) to install CorteCerto on any device.
@@ -12,7 +13,7 @@ export default function InstallPage() {
   const inst = useInstall()
   const p = platform()
   const store = p === 'ios' ? STORES.ios : p === 'android' ? STORES.android : ''
-  const here = `${location.origin}/app`
+  const here = `${publicOrigin()}/app`
   const qr = qrPath(here)
 
   return (

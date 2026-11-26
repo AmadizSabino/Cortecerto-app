@@ -8,6 +8,7 @@ import { manageLink } from '../lib/clientChanges'
 import { formatTime } from '../lib/time'
 import { waLink } from '../lib/whatsapp'
 import type { RequestStatus } from '../lib/slotRequests'
+import { publicOrigin } from '../lib/publicOrigin'
 
 /** Row returned by slot_request_for_client (migration 0031). */
 interface Req {
@@ -113,7 +114,7 @@ export default function SlotRequestPage() {
       <p className="muted small" style={{ marginTop: 16 }}>
         {r.salon_whatsapp && <a href={waLink(r.salon_whatsapp, `Olá! Sobre o meu pedido de horário (${r.service_name}, ${when(r.starts_at)}).`)} target="_blank" rel="noreferrer"><WhatsAppIcon size={14} /> Falar com o salão</a>}
         {r.salon_whatsapp && ' · '}<Link to={`/s/${r.salon_slug}`}>Página do salão</Link>
-        {r.booking_id && <> · <a href={manageLink(location.origin, r.booking_id)}>Mudar ou cancelar</a></>}
+        {r.booking_id && <> · <a href={manageLink(publicOrigin(), r.booking_id)}>Mudar ou cancelar</a></>}
       </p>
     </main></div>
   )

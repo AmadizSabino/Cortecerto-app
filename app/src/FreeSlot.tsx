@@ -4,6 +4,7 @@ import { supabase, type Booking, type Salon } from './lib/supabase'
 import { candidates, offerMessage, REASON_LABEL, usableWindow, type Candidate, type SlotBooking } from './lib/freeSlot'
 import { addDays, dateInTz, formatTime, zonedToUtc } from './lib/time'
 import { waLink, waNumber } from './lib/whatsapp'
+import { publicOrigin } from './lib/publicOrigin'
 
 const ERRORS: Record<string, string> = {
   horario_ocupado: 'Esse horário já voltou a estar ocupado.',
@@ -71,7 +72,7 @@ export default function FreeSlot({ salon, freed, proName, onClose, onFilled }: {
 
   const day = dateInTz(win.start, tz) === dateInTz(now, tz) ? 'hoje' : win.start.toLocaleDateString('pt-PT', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'short' })
   const when = `${day} às ${formatTime(win.start, tz)}`
-  const link = (c?: Candidate) => `${location.origin}/vaga/${offerId}${c?.booking ? `?b=${c.booking.id}` : ''}`
+  const link = (c?: Candidate) => `${publicOrigin()}/vaga/${offerId}${c?.booking ? `?b=${c.booking.id}` : ''}`
   const bookedAt = (b: SlotBooking) => {
     const d = new Date(b.starts_at)
     return dateInTz(d, tz) === dateInTz(win.start, tz) ? `marcado às ${formatTime(d, tz)}` : `marcado ${d.toLocaleDateString('pt-PT', { timeZone: tz, weekday: 'short', day: 'numeric' })} às ${formatTime(d, tz)}`

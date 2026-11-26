@@ -35,6 +35,7 @@ import AiTryOn from '../components/AiTryOn'
 import AskAssistant from '../components/AskAssistant'
 import { styleOptions } from '../lib/styles'
 import { cardById } from '../lib/styleCatalog'
+import { publicOrigin } from '../lib/publicOrigin'
 
 const STATUS_LABEL: Record<Booking['status'], string> = {
   pendente: 'Pendente', confirmada: 'Confirmada', concluida: 'Concluída', faltou: 'Faltou', cancelada: 'Cancelada',
@@ -277,7 +278,7 @@ export default function AgendaPage() {
         const svc = services[b.service_id]
         const when = new Date(b.starts_at)
         const mins = Math.round((new Date(b.ends_at).getTime() - when.getTime()) / 60000)
-        const msg = `Olá ${b.client_name}! A sua marcação de ${svc?.name ?? ''} no ${salon.name} está confirmada para ${when.toLocaleDateString('pt-PT', { timeZone: tz, day: 'numeric', month: 'long' })} às ${formatTime(when, tz)}.${salon.client_change_hours != null ? ` Se precisar de cancelar ou mudar: ${manageLink(location.origin, b.id)}` : ''} Até já!`
+        const msg = `Olá ${b.client_name}! A sua marcação de ${svc?.name ?? ''} no ${salon.name} está confirmada para ${when.toLocaleDateString('pt-PT', { timeZone: tz, day: 'numeric', month: 'long' })} às ${formatTime(when, tz)}.${salon.client_change_hours != null ? ` Se precisar de cancelar ou mudar: ${manageLink(publicOrigin(), b.id)}` : ''} Até já!`
         if (editing === b.id) return (
           <BookingEditor key={b.id} salon={salon} booking={b} defaultDate={date} onClose={() => setEditing(null)} onSaved={saved} />
         )

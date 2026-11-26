@@ -8,6 +8,7 @@ import { formatPhone, waLink } from '../lib/whatsapp'
 import { themeById, themeStyle } from '../lib/themes'
 import { loadMySalon } from '../lib/mySalon'
 import HelpLink from '../HelpLink'
+import { publicOrigin } from '../lib/publicOrigin'
 
 /** The salon's walk-in queue: open or close it, call people by WhatsApp, add people at the counter. */
 export default function QueuePage() {
@@ -46,7 +47,7 @@ export default function QueuePage() {
   if (salon === null) return <Navigate to="/registar" replace />
 
   const tz = salon.timezone
-  const joinLink = `${location.origin}/f/${salon.slug}`
+  const joinLink = `${publicOrigin()}/f/${salon.slug}`
   const waiting = (list ?? []).filter(w => w.status === 'espera')
 
   async function toggle() {

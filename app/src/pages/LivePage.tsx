@@ -6,6 +6,7 @@ import PushToggle from '../components/PushToggle'
 import { supabase, type Salon } from '../lib/supabase'
 import { loadMySalon } from '../lib/mySalon'
 import { themeById, themeStyle } from '../lib/themes'
+import { publicOrigin } from '../lib/publicOrigin'
 
 /** What to send clients so they book online. */
 const shareText = (salon: Pick<Salon, 'name'>, link: string) => `Já pode marcar no ${salon.name} online, a qualquer hora: ${link}`
@@ -26,7 +27,7 @@ export default function LivePage() {
   if (session === undefined || salon === undefined) return <main className="page"><p className="muted">A carregar…</p></main>
   if (salon === null) return <Navigate to="/registar" replace />
 
-  const link = `${location.origin}/s/${salon.slug}`
+  const link = `${publicOrigin()}/s/${salon.slug}`
   const text = shareText(salon, link)
   async function copy() {
     try { await navigator.clipboard.writeText(link); setCopied(true) } catch { /* clipboard blocked */ }

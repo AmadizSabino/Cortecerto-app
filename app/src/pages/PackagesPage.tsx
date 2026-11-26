@@ -12,6 +12,7 @@ import { dateInTz, zonedToUtc } from '../lib/time'
 import { themeById, themeStyle } from '../lib/themes'
 import { formatPhone, waLink } from '../lib/whatsapp'
 import HelpLink from '../HelpLink'
+import { publicOrigin } from '../lib/publicOrigin'
 
 interface Req {
   id: string; package_id: string; client_name: string; client_phone: string; event_date: string; event_time: string | null
@@ -56,7 +57,7 @@ function Proposal({ salon, req, pkg, pros, onDone }: { salon: Salon; req: Req; p
     if (error) { setError(error.message.includes('datas_invalidas') ? 'Confirme as horas e durações (mínimo 15 minutos).' : error.message.includes('valores_invalidos') ? 'O sinal não pode ser maior que o preço.' : 'Não foi possível guardar.'); return }
     setSent(true); onDone()
   }
-  const link = `${location.origin}/pedido/${req.id}`
+  const link = `${publicOrigin()}/pedido/${req.id}`
   if (sent) return (
     <div className="next-visit"><b>Proposta guardada</b>
       <div className="actions"><a className="wa" href={waLink(req.client_phone, `Olá ${req.client_name.split(' ')[0]}! Aqui está a proposta do ${salon.name} para ${pkg?.name ?? 'o seu evento'}: ${link}`)} target="_blank" rel="noreferrer"><WhatsAppIcon size={16} />Enviar por WhatsApp</a></div>
@@ -346,7 +347,7 @@ export default function PackagesPage() {
                 <div className="actions">
                   {manager && <button className="link" onClick={() => edit(p)}>Editar</button>}
                   {manager && <label className="link" style={{ cursor: 'pointer' }}>{busy === `fotos-${p.id}` ? 'A enviar…' : 'Juntar fotos de trabalhos'}<input type="file" accept="image/*" multiple hidden onChange={e => { addPhotos(p.id, e.target.files); e.target.value = '' }} /></label>}
-                  <button onClick={() => navigator.clipboard?.writeText(`${location.origin}/s/${salon.slug}/pacote/${p.id}`)}>Copiar link</button>
+                  <button onClick={() => navigator.clipboard?.writeText(`${publicOrigin()}/s/${salon.slug}/pacote/${p.id}`)}>Copiar link</button>
                 </div>
               </article>
             )
