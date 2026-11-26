@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { waNumber } from './lib/whatsapp'
 import { announceBooking } from './lib/push'
 import { supabase, type Booking, type Professional, type Salon, type Service } from './lib/supabase'
 import { freeSlots } from './lib/slots'
@@ -8,6 +9,7 @@ import { addDays, dateInTz, formatTime, zonedToUtc } from './lib/time'
 import { draftInterval, saveErrorText, validateDraft, type BookingDraft } from './lib/bookingForm'
 import { effective, type Overrides } from './lib/pricing'
 import { loadOverrides } from './lib/pricingData'
+import { minuteOptions } from './lib/clientTimes'
 
 /** New booking (phone or counter) or edit an existing one, from the salon's agenda. */
 export default function BookingEditor({ salon, booking, defaultDate, onSaved, onClose }: {
@@ -27,6 +29,11 @@ export default function BookingEditor({ salon, booking, defaultDate, onSaved, on
   const [error, setError] = useState('')
   const [pricing, setPricing] = useState<{ overrides: Overrides; ready: boolean }>({ overrides: {}, ready: false })
   const [saving, setSaving] = useState(false)
+  // The length: the booking's own when editing, otherwise the service's, or this client's own time (migration 0031).
+  // The salon can stretch or shorten any single booking here.
+  const [len, setLen] = useState(() => booking ? Math.round((new Date(booking.ends_at).getTime() - new Date(booking.starts_at).getTime()) / 60000) : 0)
+  const [lenTouched, setLenTouched] = useState(Boolean(booking))
+  const [clientLen, setClientLen] = useState<number | null>(null)
 
   useEffect(() => {
     Promise.all([
@@ -62,20 +69,41 @@ export default function BookingEditor({ salon, booking, defaultDate, onSaved, on
   const service = services.find(s => s.id === d.serviceId)
   // The salon can book anyone for anything; a service the professional doesn't do falls back to its own values.
   const eff = service ? effective(service, d.professionalId, pricing.overrides) ?? { price_cents: service.price_cents, duration_min: service.duration_min } : null
-  const slots = useMemo(() => service && d.professionalId
-    ? freeSlots({ date: d.date, tz, hours: hoursFor(hours, d.professionalId), durationMin: eff!.duration_min, busy, now: new Date() })
-    : [], [service, eff?.duration_min, d.professionalId, d.date, tz, hours, busy]) // eslint-disable-line react-hooks/exhaustive-deps
+  const digits = d.clientPhone.replace(/\D/g, '').length
+  useEffect(() => {
+    if (!d.serviceId || !d.professionalId || digits < 9) { setClientLen(null); return }
+    supabase.rpc('client_duration', { p_salon: salon.id, p_service: d.serviceId, p_professional: d.professionalId, p_phone: d.clientPhone })
+      .then(({ data, error }) => setClientLen(!error && typeof data === 'number' ? data : null))
+  }, [salon.id, d.serviceId, d.professionalId, d.clientPhone, digits])
+  // A new booking for a client on the salon's list: start with their preferred professional (migration 0036).
+  useEffect(() => {
+    if (booking || d.professionalId || digits < 9 || pros.length < 2) return
+    supabase.from('salon_clients').select('preferred_pro').eq('salon_id', salon.id).eq('phone_key', waNumber(d.clientPhone)).maybeSingle()
+      .then(({ data, error }) => {
+        const id = !error && (data as { preferred_pro?: string | null } | null)?.preferred_pro
+        if (id && pros.some(p => p.id === id)) setD(cur => cur.professionalId ? cur : { ...cur, professionalId: id })
+      })
+  }, [booking, d.professionalId, d.clientPhone, digits, pros, salon.id])
+  const autoLen = clientLen ?? eff?.duration_min ?? 0
+  const minutes = lenTouched ? len : autoLen
+  const lenChoices = useMemo(() => [...new Set([...minuteOptions(eff?.duration_min ?? 30), minutes].filter(m => m > 0))].sort((a, b) => a - b), [eff?.duration_min, minutes])
+  const slots = useMemo(() => service && d.professionalId && minutes
+    ? freeSlots({ date: d.date, tz, hours: hoursFor(hours, d.professionalId), durationMin: minutes, busy, now: new Date() })
+    : [], [service, minutes, d.professionalId, d.date, tz, hours, busy])
 
-  const set = (patch: Partial<BookingDraft>) => { setD(cur => ({ ...cur, ...patch })); setError('') }
+  const set = (patch: Partial<BookingDraft>) => {
+    setD(cur => ({ ...cur, ...patch })); setError('')
+    // Another service or professional: back to its usual length (or the client's own).
+    if (('serviceId' in patch && patch.serviceId !== d.serviceId) || ('professionalId' in patch && patch.professionalId !== d.professionalId)) setLenTouched(false)
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
     const v = validateDraft(d)
     if (v) { setError(v); return }
     setSaving(true)
-    // Editing keeps the booking's length and price unless the service or professional changed.
+    // Editing keeps the booking's price unless the service or professional changed; the length is the one chosen above.
     const same = booking && booking.service_id === d.serviceId && booking.professional_id === d.professionalId
-    const minutes = same ? Math.round((new Date(booking.ends_at).getTime() - new Date(booking.starts_at).getTime()) / 60000) : eff!.duration_min
     const interval = draftInterval(d, tz, minutes)
     const fields = {
       client_name: d.clientName.trim(), client_phone: d.clientPhone.trim(),
@@ -109,6 +137,14 @@ export default function BookingEditor({ salon, booking, defaultDate, onSaved, on
           {pros.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
       </label>
+      {service && (
+        <label>Duração
+          <select value={minutes} onChange={e => { setLen(Number(e.target.value)); setLenTouched(true) }}>
+            {lenChoices.map(m => <option key={m} value={m}>{m} min{m === eff?.duration_min ? ' (normal)' : m === clientLen ? ` (tempo de ${d.clientName.trim().split(' ')[0] || 'este cliente'})` : ''}</option>)}
+          </select>
+          {!lenTouched && clientLen !== null && clientLen !== eff?.duration_min && <small className="muted">Tempo de {d.clientName.trim().split(' ')[0] || 'este cliente'} neste serviço (definido na ficha do cliente).</small>}
+        </label>
+      )}
       <div className="row">
         <label>Dia<input type="date" value={d.date} onChange={e => set({ date: e.target.value })} /></label>
         <label>Hora<input type="time" step={300} value={d.time} onChange={e => set({ time: e.target.value })} /></label>

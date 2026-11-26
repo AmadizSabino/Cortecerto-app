@@ -77,12 +77,12 @@ export const DPA: LegalDoc = {
   path: '/tratamento-dados',
   title: 'Acordo de tratamento de dados',
   withArticle: 'o acordo de tratamento de dados',
-  version: '2026-11-24',
+  version: '2026-11-26',
   intro: `Este acordo, previsto no artigo 28.º do Regulamento Geral sobre a Proteção de Dados (RGPD), aplica-se aos dados dos clientes que o salão ("responsável pelo tratamento") guarda na CorteCerto, operada por ${COMPANY} ("subcontratante").`,
   sections: [
     { heading: '1. Objeto', paragraphs: [
       'A CorteCerto trata dados pessoais dos clientes do salão apenas para prestar o serviço: gerir marcações, a lista de clientes, notas, aniversários e o envio de mensagens iniciado pelo salão.',
-      'Categorias de dados: nome, telemóvel, histórico de marcações, consentimento para mensagens, notas escritas pelo salão e dia e mês de aniversário. Titulares: clientes do salão.',
+      'Categorias de dados: nome, telemóvel, email, histórico de marcações, consentimento para mensagens (com a data em que foi dado), notas escritas pelo salão, dia e mês de aniversário, profissional preferido, como conheceu o salão e NIF para a fatura. Todos, exceto o nome e o telemóvel, são opcionais. Titulares: clientes do salão.',
     ] },
     { heading: '2. Instruções do salão', paragraphs: [
       'A CorteCerto só trata os dados segundo as instruções do salão, que correspondem ao uso da aplicação. Não usa os dados dos clientes para fins próprios, não os vende e não os partilha com outros salões.',
@@ -117,7 +117,7 @@ export const PRIVACY: LegalDoc = {
   path: '/privacidade',
   title: 'Política de privacidade',
   withArticle: 'a política de privacidade',
-  version: '2026-11-24',
+  version: '2026-11-26',
   intro: 'Esta política explica que dados são tratados quando marca uma visita através da CorteCerto ou quando um salão usa a aplicação.',
   sections: [
     { heading: '1. Quem é responsável', paragraphs: [
@@ -128,7 +128,7 @@ export const PRIVACY: LegalDoc = {
       'Para marcar: nome, telemóvel, serviço, profissional, dia e hora. Servem para o salão gerir a marcação e contactá-lo sobre ela. Base legal: a execução do serviço que pediu.',
       'Lembretes da sua marcação: o salão pode enviar-lhe por WhatsApp um lembrete da visita que marcou, como parte do serviço. Base legal: a execução do serviço que pediu.',
       'Novidades e promoções do salão por WhatsApp: só se aceitar, na caixa de consentimento, que nunca vem marcada. Pode retirar o consentimento a qualquer momento, pedindo ao salão.',
-      'O salão pode guardar notas sobre os serviços que fez e o dia e mês do seu aniversário, para o atender melhor.',
+      'O salão pode guardar notas sobre os serviços que fez, o dia e mês do seu aniversário (sem o ano), o profissional que prefere, como conheceu o salão e o seu NIF se o pedir na fatura, para o atender melhor. Se aceitar receber mensagens ao balcão, o salão regista a data.',
     ] },
     { heading: '3. Com quem partilhamos', paragraphs: [
       'Os seus dados são vistos apenas pelo salão onde marcou. A CorteCerto usa a Supabase (base de dados, União Europeia), a Cloudflare (alojamento) e a Resend (emails sobre a marcação). Não vendemos dados nem os usamos para publicidade.',

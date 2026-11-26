@@ -16,10 +16,43 @@ export interface Client {
   consent: boolean       // opted in to messages in their most recent booking
   registered?: boolean   // on the salon's own client list (salon_clients, migration 0018)
   email?: string | null
+  /** Optional details from the salon's list (migration 0036). */
+  details?: ClientDetails
+}
+
+/** Optional details the salon keeps on its list (salon_clients, migration 0036). */
+export interface ClientDetails {
+  preferred_pro?: string | null
+  heard_from?: string | null
+  nif?: string | null
+  consent_messages?: boolean | null
+  consent_at?: string | null
+}
+
+export const HEARD_FROM: { id: string; label: string }[] = [
+  { id: 'amigo', label: 'Um amigo ou familiar' }, { id: 'instagram', label: 'Instagram' }, { id: 'facebook', label: 'Facebook' },
+  { id: 'tiktok', label: 'TikTok' }, { id: 'google', label: 'Google ou Maps' }, { id: 'passagem', label: 'Passou à porta' }, { id: 'outro', label: 'Outro' },
+]
+
+/** A Portuguese NIF: 9 digits with a valid check digit. */
+export function validNif(nif: string): boolean {
+  if (!/^[0-9]{9}$/.test(nif)) return false
+  const sum = [...nif.slice(0, 8)].reduce((s, d, i) => s + Number(d) * (9 - i), 0)
+  const check = 11 - (sum % 11)
+  return (check >= 10 ? 0 : check) === Number(nif[8])
+}
+
+/**
+ * Consent to messages: the most recent signal wins, either the tick in the client's latest online booking
+ * or what the salon recorded in person (with its date).
+ */
+export function mergedConsent(fromBooking: { consent: boolean; at: string | null }, salon?: ClientDetails): boolean {
+  if (salon?.consent_at && salon.consent_messages != null && (!fromBooking.at || salon.consent_at > fromBooking.at)) return salon.consent_messages
+  return fromBooking.consent
 }
 
 /** A client the salon added to its list (salon_clients, migration 0018). */
-export interface RegisteredClient { phone_key: string; name: string; phone: string; email: string | null; source: string; created_at: string }
+export interface RegisteredClient extends ClientDetails { phone_key: string; name: string; phone: string; email: string | null; source: string; created_at: string }
 
 /**
  * Adds the salon's own list to the clients found in bookings: the salon's name
@@ -30,17 +63,23 @@ export function mergeRegistered(clients: Client[], registered: RegisteredClient[
   const byKey = new Map(registered.map(r => [r.phone_key, r]))
   const merged = clients.map(c => {
     const r = byKey.get(c.key)
-    return r ? { ...c, name: r.name || c.name, email: r.email, registered: true } : { ...c, registered: false }
+    if (!r) return { ...c, registered: false }
+    const latest = c.bookings[0] as (typeof c.bookings)[number] & { created_at?: string } | undefined
+    const consent = mergedConsent({ consent: c.consent, at: latest ? latest.created_at ?? latest.starts_at : null }, r)
+    return { ...c, name: r.name || c.name, email: r.email, registered: true, consent, details: detailsOf(r) }
   })
   const seen = new Set(clients.map(c => c.key))
   const only = registered.filter(r => !seen.has(r.phone_key)).sort((a, b) => b.created_at.localeCompare(a.created_at)).map((r): Client => ({
     key: r.phone_key, name: r.name, phone: r.phone, bookings: [], visits: 0, noShows: 0, spentCents: 0,
-    lastVisit: null, nextBooking: null, consent: false, registered: true, email: r.email,
+    lastVisit: null, nextBooking: null, consent: mergedConsent({ consent: false, at: null }, r), registered: true, email: r.email, details: detailsOf(r),
   }))
   return [...only, ...merged]
 }
 
-export type ClientFilter = 'todos' | 'em_risco' | 'faltas' | 'consentimento' | 'aniversario'
+const detailsOf = (r: ClientDetails): ClientDetails =>
+  ({ preferred_pro: r.preferred_pro, heard_from: r.heard_from, nif: r.nif, consent_messages: r.consent_messages, consent_at: r.consent_at })
+
+export type ClientFilter = 'todos' | 'em_risco' | 'faltas' | 'consentimento' | 'aniversario' | 'loja'
 
 /** What the salon keeps about a client (table client_notes). */
 export interface ClientNote {
@@ -129,6 +168,7 @@ export function birthdaySoon(note: ClientNote | undefined, today: string): numbe
 export function filterClients(
   clients: Client[], query: string, filter: ClientFilter, now = new Date(),
   notes: Record<string, ClientNote> = {}, today = now.toISOString().slice(0, 10),
+  buyers: Set<string> = new Set(), // phone keys of shop buyers (lib/shop.ts buyerKeys)
 ): Client[] {
   const q = fold(query.trim())
   const qDigits = query.replace(/\D/g, '')
@@ -137,6 +177,7 @@ export function filterClients(
     if (filter === 'faltas' && c.noShows === 0) return false
     if (filter === 'consentimento' && !c.consent) return false
     if (filter === 'aniversario' && birthdaySoon(notes[c.key], today) === null) return false
+    if (filter === 'loja' && !buyers.has(c.key)) return false
     if (!q) return true
     return fold(c.name).includes(q)
       || (qDigits.length >= 3 && c.key.includes(qDigits))

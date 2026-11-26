@@ -111,9 +111,14 @@ export async function sharePost(blob: Blob, caption: string, name: string): Prom
       // other failures fall back to a download
     }
   }
+  downloadBlob(blob, file.name)
+  return 'descarregado'
+}
+
+/** Saves a picture to the computer. */
+export function downloadBlob(blob: Blob, name: string) {
   const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob); a.download = file.name
+  a.href = URL.createObjectURL(blob); a.download = name
   document.body.appendChild(a); a.click(); a.remove()
   setTimeout(() => URL.revokeObjectURL(a.href), 5000)
-  return 'descarregado'
 }

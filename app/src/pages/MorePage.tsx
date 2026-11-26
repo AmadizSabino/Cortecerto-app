@@ -15,6 +15,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     { to: '/fila', icon: 'queue', label: 'Fila de espera', hint: 'Clientes sem marcação, por ordem de chegada', need: 'fila', show: s => s.booking_mode !== 'marcacao' && s.work_place !== 'domicilio' },
     { to: '/lembretes', icon: 'bell', label: 'Lembretes', hint: 'Avisar os clientes de amanhã por WhatsApp', need: 'lembretes' },
     { to: '/estilos', icon: 'scissors', label: 'Estilos', hint: 'Fotos, passo a passo e o que os clientes veem', need: 'estilos' },
+    { to: '/loja', icon: 'bag', label: 'Loja', hint: 'Produtos à venda, reservas e vendas no balcão', need: 'loja' },
     { to: '/poster', icon: 'qr', label: 'Poster com QR', hint: 'Para o espelho ou a porta', need: 'poster' },
   ] },
   { title: 'Clientes', items: [
@@ -31,6 +32,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     { to: '/marca', icon: 'camera', label: 'Marca e galeria', hint: 'Logótipo, capa, texto e fotos do seu trabalho', need: 'equipa' },
     { to: '/equipa', icon: 'users', label: 'Equipa', hint: 'Profissionais, comissões e acessos ao painel', need: 'equipa' },
     { to: '/ia', icon: 'spark', label: 'Assistente IA', hint: 'Antes e depois, relatórios, respostas e mais', need: 'ia' },
+    { to: '/indicar', icon: 'gift', label: 'Convidar um colega', hint: 'Um mês grátis para os dois por cada salão', need: 'assinatura' },
     { to: '/assinatura', icon: 'card', label: 'Assinatura', hint: 'Período grátis e pagamento', need: 'assinatura' },
     { to: '/definicoes', icon: 'settings', label: 'Definições', hint: 'Salão, serviços, sinal e estilo', need: 'definicoes' },
   ] },

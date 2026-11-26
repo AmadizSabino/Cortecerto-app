@@ -2,6 +2,8 @@
  * CorteCerto Worker: serves the app (static assets) and a small API.
  *
  * POST /api/notify-booking { id } — emails the salon owner about a new booking, and sends the phone notifications.
+ * POST /api/notify-request { id } — phone notifications for a client's request for a taken time (see push.ts).
+ * POST /api/notify-order { id } — phone notifications for a reservation in the salon's shop (see push.ts).
  * GET /api/push/key, POST /api/push/booking { id }, POST /api/push/test — phone notifications for the salon (see push.ts).
  * POST /api/notify-change { id } — emails the owner when a client cancels or moves it.
  * POST /api/admin/remind — a payment reminder email the admin sends from /admin (see reminders.ts).
@@ -30,7 +32,7 @@ import { track } from './track'
 import { demoRequest } from './demo'
 import { withMeta } from './meta'
 import { opsDaily, opsEveryFiveMinutes } from './ops'
-import { announceBooking, pushFromPanel, pushKey, pushTest } from './push'
+import { announceBooking, announceOrder, announceRequest, pushFromPanel, pushKey, pushTest } from './push'
 
 interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> }
@@ -64,6 +66,8 @@ export default {
     const moved = canonicalRedirect(url)
     if (moved) return moved
     if (url.pathname === '/api/notify-booking') return notifyOwner<Claimed>(request, env, url.origin, 'claim_booking_notification', bookingEmail, id => announceBooking(env, id, null))
+    if (url.pathname === '/api/notify-request') return announceRequest(request, env)
+    if (url.pathname === '/api/notify-order') return announceOrder(request, env)
     if (url.pathname === '/api/push/key') return pushKey(env)
     if (url.pathname === '/api/push/booking') return pushFromPanel(request, env)
     if (url.pathname === '/api/push/test') return pushTest(request, env)

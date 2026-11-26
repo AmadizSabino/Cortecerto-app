@@ -26,7 +26,7 @@ export const HELP_GROUPS = ['Começar', 'A agenda', 'Clientes', 'No salão', 'Pr
 export const SCREEN_LABEL: Record<string, string> = {
   '/painel': 'Hoje', '/semana': 'Semana', '/clientes': 'Clientes', '/mais': 'Mais', '/lembretes': 'Lembretes', '/fila': 'Fila de espera',
   '/poster': 'Poster com QR', '/convidar': 'Convidar clientes', '/clube': 'Clube', '/pacotes': 'Pacotes', '/promocoes': 'Social Media Manager',
-  '/ia': 'Assistente IA', '/estilos': 'Estilos', '/definicoes': 'Definições', '/horarios': 'Horários e folgas', '/equipa': 'Equipa', '/precos': 'Preços por profissional',
+  '/ia': 'Assistente IA', '/estilos': 'Estilos', '/loja': 'Loja', '/indicar': 'Convidar um colega', '/definicoes': 'Definições', '/horarios': 'Horários e folgas', '/equipa': 'Equipa', '/precos': 'Preços por profissional',
   '/estatisticas': 'Estatísticas', '/marca': 'Marca e galeria', '/domicilio': 'Ao domicílio', '/assinatura': 'Assinatura', '/palavra-passe': 'Palavra-passe',
 }
 
@@ -131,6 +131,17 @@ export const HELP: HelpTopic[] = [
     ],
   },
   {
+    id: 'pedidos-horario', group: 'A agenda', title: 'Responder a um pedido de horário ocupado', screen: '/painel', need: 'agenda', words: 'pedido horário ocupado lista de espera trocar mudar cliente encaixar',
+    steps: [
+      'Na página de marcação, os horários ocupados aparecem riscados, ao lado dos livres. O cliente toca no que quer (e numa 2.ª opção) e envia o pedido. Recebe um aviso no telemóvel e o pedido aparece no Hoje, em "Pedidos de horário".',
+      'Até lhe responder, o cliente fica na lista de espera. Em cada hora pedida vê quem lá está. Toque em "Pedir a … para mudar" para lhe perguntar por WhatsApp, ou em "Mudar … de hora" para lhe enviar um novo horário com link.',
+      'Quando a hora ficar livre, toque em "Dar 15:00 a …" e depois em "Enviar por WhatsApp" para o avisar. Fica marcado e confirmado.',
+      'Não dá? Toque em "Propor outro horário": o horário fica guardado para o cliente, que aceita com um toque no link. Se disser que não, volta à lista de espera.',
+      'Não consegue mesmo? Toque em Recusar e envie a mensagem.',
+    ],
+    tip: 'Se o cliente marcar outro horário nesse dia, o pedido sai sozinho da lista. As mensagens saem do seu WhatsApp: não há envios automáticos nem custos.',
+  },
+  {
     id: 'oferecer-vaga', group: 'A agenda', title: 'Preencher uma vaga que ficou livre', screen: '/painel', need: 'agenda', words: 'vaga livre cancelou faltou oferecer',
     steps: [
       'Numa marcação cancelada ou com falta, toque em "Oferecer a vaga".',
@@ -174,14 +185,23 @@ export const HELP: HelpTopic[] = [
     steps: [
       'Toque no separador Clientes e escreva o nome ou o telemóvel em Procurar.',
       'Toque no cliente para ver as visitas, as faltas e as notas.',
-      'Toque em "Editar registo" para juntar notas (por exemplo, o corte que prefere) e o dia de anos.',
+      'Toque em "Editar ficha" para juntar o aniversário (dia e mês), o profissional preferido, notas, o NIF e se aceita mensagens.',
+    ],
+  },
+  {
+    id: 'tempo-cliente', group: 'Clientes', title: 'Dar mais tempo a um cliente que demora mais', screen: '/clientes', need: 'clientes', words: 'tempo duração minutos demora mais cabelo comprido cliente lento',
+    steps: [
+      'Em Clientes, toque no cliente e depois em "Definir", em "Tempo de …".',
+      'Escolha o serviço e quanto tempo esse cliente demora (por exemplo, Corte: 60 min). Ou escolha "Todos os serviços" e os minutos a mais.',
+      'Toque em Guardar. Quando ele marcar online, a agenda guarda esse tempo sozinha. O cliente continua a ver só o serviço.',
+      'Só para uma marcação? No Hoje, toque em Editar na marcação e mude a Duração.',
     ],
   },
   {
     id: 'cliente-novo', group: 'Clientes', title: 'Registar um cliente novo', screen: '/clientes', need: 'clientes', words: 'novo cliente registar adicionar lista',
     steps: [
       'Em Clientes, toque em "Novo cliente".',
-      'Escreva o nome e o telemóvel e guarde. Depois pode juntar notas e o aniversário.',
+      'Escreva o nome e o telemóvel. Em "Mais detalhes" (opcional) junte o aniversário, o profissional preferido, como o conheceu, notas, o NIF e se aceita mensagens.',
       'Quando alguém novo marca pela primeira vez, a agenda pergunta "Cliente novo. Quer adicionar?". Toque em "Sim, adicionar".',
     ],
   },
@@ -233,9 +253,63 @@ export const HELP: HelpTopic[] = [
     tip: 'O cliente paga a mensalidade diretamente ao salão (MB Way ou balcão). A CorteCerto não fica com nada.',
   },
   {
+    id: 'indicar', group: 'Conta e assinatura', title: 'Convidar um colega e ganhar um mês grátis', screen: '/indicar', need: 'assinatura', words: 'convidar colega amigo indicar referência mês grátis desconto barbeiro',
+    steps: [
+      'Abra Mais › Convidar um colega.',
+      'Toque em "Enviar por WhatsApp" e escolha o colega. A mensagem já leva o seu link.',
+      'O colega cria o salão pelo link e tem 30 dias grátis para experimentar.',
+      'Quando ele pagar o primeiro mês, a CorteCerto junta um mês grátis à sua assinatura e à dele. Vê o estado de cada colega na mesma página.',
+    ],
+    tip: 'A sua página de marcação também tem, no fim, "É dono de um salão?" com o seu convite: um cliente que tenha um salão também conta.',
+  },
+  {
+    id: 'loja', group: 'Promoções e vendas', title: 'Pôr produtos à venda na loja', screen: '/loja', need: 'lojaProdutos', words: 'loja produtos vender pomada champô óleo foto preço esgotado',
+    steps: [
+      'Abra Mais › Loja e toque em "Adicionar produto".',
+      'Escolha uma foto, escreva o nome e o preço. A descrição é opcional.',
+      'Em "Como o cliente paga", escolha "Paga no salão ao levantar" ou "Paga antes por MB WAY" (precisa do número MB WAY em Definições).',
+      'Em "Lembrar a reposição", escolha daqui a quantas semanas o produto costuma acabar. Toque em Guardar.',
+      'O produto aparece logo na sua página, no separador Loja. Acabou o stock? Toque em Editar e marque Esgotado.',
+    ],
+    tip: 'O preço é sempre seu. O cliente paga diretamente ao salão: a CorteCerto não fica com nada.',
+  },
+  {
+    id: 'loja-stock', group: 'Promoções e vendas', title: 'Contar o stock dos produtos', screen: '/loja', need: 'loja', words: 'stock inventário unidades esgotado encomendar chegou parado',
+    steps: [
+      'Em Mais › Loja, toque em Editar num produto e ligue "Contar o stock". Escreva quantas unidades tem no salão e com quantas quer o aviso.',
+      'A cada venda entregue (reserva ou balcão), a app tira as unidades. Uma reserva por levantar fica guardada para esse cliente.',
+      'Quando sobram poucas, o produto aparece em "Pouco stock", na Loja e em Hoje. Com 0, aparece Esgotado na sua página.',
+      'Chegou uma encomenda? Toque em "Chegou stock" (ou no + ao lado do produto) e escreva quantas unidades chegaram.',
+      'Em "Como estão a vender" vê o que vende mais, para quantas semanas chega o stock e o que está parado.',
+    ],
+    tip: 'Contar o stock é opcional: um produto sem esta opção vende-se como antes, sem contas.',
+  },
+  {
+    id: 'loja-reservas', group: 'Promoções e vendas', title: 'Entregar reservas e vender no balcão', screen: '/loja', need: 'loja', words: 'loja reserva levantar entregue mb way balcão venda',
+    steps: [
+      'Quando um cliente reserva, recebe um aviso no telemóvel e a reserva aparece em Hoje e em Mais › Loja › "Reservas por levantar".',
+      'Pagamento por MB WAY: quando o dinheiro chegar, toque em "MB WAY recebido".',
+      'Quando o cliente levar o produto, toque em "Entregue e pago" (ou "Entregue", se já pagou).',
+      'Vendeu um produto no salão sem reserva? Use "Vender no balcão". Com o telemóvel do cliente, a app lembra a reposição.',
+      'O cliente desistiu? Toque em Cancelar.',
+    ],
+    tip: 'As vendas da loja aparecem nas Estatísticas (só o dono vê os valores) e em Clientes, no filtro "Compraram na loja".',
+  },
+  {
+    id: 'loja-partilhar', group: 'Promoções e vendas', title: 'Partilhar a loja e lembrar a reposição', screen: '/loja', need: 'loja', words: 'loja link partilhar qr poster reposição lembrete whatsapp',
+    steps: [
+      'Em Mais › Loja, toque em "Partilhar a loja" para enviar o link por WhatsApp, ou em "Copiar link" para a bio do Instagram.',
+      'Toque em "Poster com QR" e imprima: ponha junto aos produtos ou no espelho. O cliente lê o código e reserva.',
+      'Depois de marcar, o cliente também vê "Quer levar alguma coisa na visita?" com os seus produtos.',
+      'Algumas semanas depois de uma compra, o cliente aparece em "Lembrar a reposição". Toque em "Enviar lembrete": abre o WhatsApp com a mensagem pronta.',
+    ],
+    tip: 'O lembrete nunca é enviado sozinho: é sempre o salão que toca para enviar.',
+  },
+  {
     id: 'pacotes', group: 'Promoções e vendas', title: 'Vender pacotes e packs de sessões', screen: '/pacotes', need: 'pacotes', words: 'pacote pack casamento evento combo sessões',
     steps: [
       'Abra Mais › Pacotes e crie um pacote: nome, descrição, preço e, se for um pack, o número de sessões e a validade.',
+      'Falta um serviço? Toque em "+ Outro serviço" na lista dos serviços incluídos: fica só para pacotes, a não ser que marque "Também se pode marcar sozinho".',
       'Os pacotes aparecem na sua página de marcação.',
       'Pedidos de casamentos e eventos aparecem em Pedidos: faça a proposta com o preço e o sinal e envie por WhatsApp.',
       'Os packs que vendeu estão em "Packs vendidos". Na agenda, toque em "Usar sessão do pack" quando o cliente vier.',

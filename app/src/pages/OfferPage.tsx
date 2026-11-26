@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { euros, supabase } from '../lib/supabase'
+import { euros, supabase, type Service } from '../lib/supabase'
 import { mediaUrl } from '../lib/brand'
 import { clientTheme, themeById, themeStyle } from '../lib/themes'
 import { dateInTz, formatTime } from '../lib/time'
@@ -57,8 +57,8 @@ export default function OfferPage() {
         setMine(((b ?? [])[0] as Mine | undefined) ?? null)
       } else {
         const minutes = (new Date(o.ends_at).getTime() - Math.max(Date.now(), new Date(o.starts_at).getTime())) / 60000
-        const { data: sv } = await supabase.from('services').select('id,name,duration_min,price_cents').eq('salon_id', o.salon_id).eq('active', true).order('price_cents')
-        const fit = (sv ?? []).filter(s => s.duration_min <= minutes + 0.5)
+        const { data: sv } = await supabase.from('services').select('*').eq('salon_id', o.salon_id).eq('active', true).order('price_cents')
+        const fit = ((sv ?? []) as Service[]).filter(s => !s.packages_only && s.duration_min <= minutes + 0.5)
         setServices(fit); if (fit.length) setServiceId(fit[0].id)
       }
     })()

@@ -13,7 +13,7 @@ import { loadMySalon } from '../lib/mySalon'
 import HelpLink from '../HelpLink'
 import PushToggle from '../components/PushToggle'
 
-interface SvcRow { id?: string; name: string; duration: string; price: string; active: boolean }
+interface SvcRow { id?: string; name: string; duration: string; price: string; active: boolean; packagesOnly?: boolean }
 interface DayRow { open: boolean; opens: string; closes: string }
 
 const centsToText = (c: number) => (c / 100).toFixed(2).replace('.', ',')
@@ -43,10 +43,10 @@ export default function SettingsPage() {
     setProfile(s.areas ? { type: s.type as SalonType, areas: s.areas, booking_mode: s.booking_mode ?? 'ambos', work_place: s.work_place ?? 'salao' } : null)
     setInfo({ name: s.name, whatsapp: s.whatsapp ?? '', mbway: s.mbway_number ?? '', deposit: centsToText(s.deposit_cents), theme: s.theme, change: s.client_change_hours == null ? '' : String(s.client_change_hours), address: s.address ?? '', news: s.news ?? '', review: s.google_review_url ?? '' })
     const [sv, hr] = await Promise.all([
-      supabase.from('services').select('id,name,duration_min,price_cents,active').eq('salon_id', s.id).order('name'),
+      supabase.from('services').select('*').eq('salon_id', s.id).order('name'),
       supabase.from('opening_hours').select('weekday,opens,closes').eq('salon_id', s.id),
     ])
-    setServices((sv.data ?? []).map(x => ({ id: x.id, name: x.name, duration: String(x.duration_min), price: centsToText(x.price_cents), active: x.active })))
+    setServices((sv.data ?? []).map(x => ({ id: x.id, name: x.name, duration: String(x.duration_min), price: centsToText(x.price_cents), active: x.active, packagesOnly: x.packages_only })))
     setDays(WEEKDAYS.map((_, i) => {
       const h = (hr.data ?? []).find(x => x.weekday === i)
       return h ? { open: true, opens: h.opens.slice(0, 5), closes: h.closes.slice(0, 5) } : { open: false, opens: '09:00', closes: '19:00' }
@@ -100,7 +100,7 @@ export default function SettingsPage() {
       }).eq('id', s.id).select('id'),
       // Services are switched off rather than deleted, so past bookings keep their history.
       ...services.filter(x => x.name.trim()).map(x => {
-        const row = { salon_id: s.id, name: x.name.trim(), duration_min: Number(x.duration), price_cents: parseEuros(x.price), active: x.active }
+        const row = { salon_id: s.id, name: x.name.trim(), duration_min: Number(x.duration), price_cents: parseEuros(x.price), active: x.active, ...(x.packagesOnly !== undefined ? { packages_only: x.packagesOnly } : {}) }
         return x.id ? supabase.from('services').update(row).eq('id', x.id) : supabase.from('services').insert(row)
       }),
     ])
@@ -164,9 +164,10 @@ export default function SettingsPage() {
           <label>Min<input inputMode="numeric" value={s.duration} onChange={e => setSvc(i, { duration: e.target.value })} /></label>
           <label>€<input inputMode="decimal" value={s.price} onChange={e => setSvc(i, { price: e.target.value })} /></label>
           <label className="check"><input type="checkbox" checked={s.active} onChange={e => setSvc(i, { active: e.target.checked })} />Ativo</label>
+          {s.packagesOnly !== undefined && <label className="check svc-pack-only"><input type="checkbox" checked={s.packagesOnly} onChange={e => setSvc(i, { packagesOnly: e.target.checked })} />Só em pacotes (não aparece sozinho na página de marcação)</label>}
         </div>
       ))}
-      <button type="button" onClick={() => setServices(r => [...r, { name: '', duration: '30', price: '', active: true }])}>+ Adicionar serviço</button>
+      <button type="button" onClick={() => setServices(r => [...r, { name: '', duration: '30', price: '', active: true, packagesOnly: r.some(x => x.packagesOnly !== undefined) ? false : undefined }])}>+ Adicionar serviço</button>
 
       <h2>Equipa</h2>
       <p className="muted">Profissionais, comissões e acessos ao painel estão em <Link to="/equipa">Mais &gt; Equipa</Link>.</p>

@@ -4,6 +4,7 @@ import type { BillingFields } from '../../lib/billing'
 import { METHOD_LABEL, type Invoice, type PaymentMethod } from '../../lib/invoices'
 import { PaymentRequests } from './PaymentRequests'
 import { DocumentHistory } from './Documents'
+import { AdminReferrals } from './AdminReferrals'
 import { emailRequest } from '../../lib/paymentRequest'
 import { cleanIban, daysLate, moneySummary, nextPaidUntil, REMINDER_LABEL } from '../../lib/money'
 
@@ -195,6 +196,8 @@ export function AdminMoney({ salons, onOpen, onChanged }: { salons: SalonLite[];
       </section>
 
       <DocumentHistory invoices={invoices} salons={salons} onOpen={onOpen} />
+
+      <AdminReferrals onOpen={onOpen} />
 
       <section className="card">
         <h2>Últimos 6 meses</h2>
