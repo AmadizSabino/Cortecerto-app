@@ -747,4 +747,12 @@ reset role; reset request.jwt.claim.sub;
 select pg_temp.check(trial_ends_at = :'colega_trial'::timestamptz + interval '30 days', 'the new salon gets a free month') from salons where id = :'colega';
 select pg_temp.check(case when :'barb_sub' = 'ativa' and :'barb_paid' <> '' then paid_until >= :'barb_paid'::timestamptz + interval '30 days'
   else trial_ends_at >= :'barb_trial'::timestamptz + interval '30 days' end, 'and so does the salon that invited it') from salons where id = :'salon';
+-- 0035: services made from the package form
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000b';
+select add_package_service(:'salon', ' Massagem capilar ', 20, 1500) as extra_svc \gset
+select pg_temp.check(packages_only and duration_min = 20 and name = 'Massagem capilar', 'a gestor adds a service only for packages') from services where id = :'extra_svc';
+do $$ begin perform add_package_service(current_setting('t.salon')::uuid, '', 20, 100); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%nome_invalido%' then raise; end if; end $$;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000c1';
+do $$ begin perform add_package_service(current_setting('t.salon')::uuid, 'X', 20, 100); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+reset role; reset request.jwt.claim.sub;
 \echo All database checks passed

@@ -87,6 +87,52 @@ function Proposal({ salon, req, pkg, pros, onDone }: { salon: Salon; req: Req; p
 }
 
 /** Mais > Pacotes (migration 0022): combos, events by proposal and prepaid packs. */
+const NEW_SERVICE_ERRORS: Record<string, string> = {
+  sem_permissao: 'O seu acesso não permite criar serviços.',
+  nome_invalido: 'Escreva o nome do serviço.',
+  duracao_invalida: 'A duração deve ficar entre 5 e 600 minutos.',
+  preco_invalido: 'Indique um preço válido.',
+}
+
+/** "+ Outro serviço": creates a service right from the package form (migration 0035). */
+function NewService({ salonId, onAdded }: { salonId: string; onAdded: (s: Service) => void }) {
+  const [open, setOpen] = useState(false)
+  const [v, setV] = useState({ name: '', minutes: '30', price: '', alone: false })
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  if (!open) return <button type="button" className="link" style={{ justifySelf: 'start' }} onClick={() => setOpen(true)}>+ Outro serviço</button>
+  async function add() {
+    const price = parseEuros(v.price)
+    if (!v.name.trim()) return setError(NEW_SERVICE_ERRORS.nome_invalido)
+    if (!(price >= 0) || !v.price.trim()) return setError(NEW_SERVICE_ERRORS.preco_invalido)
+    setBusy(true); setError('')
+    const minutes = Number(v.minutes)
+    const { data, error } = await supabase.rpc('add_package_service', { p_salon: salonId, p_name: v.name, p_minutes: minutes, p_price_cents: price, p_packages_only: !v.alone })
+    setBusy(false)
+    if (error) {
+      const key = Object.keys(NEW_SERVICE_ERRORS).find(k => error.message.includes(k))
+      return setError(key ? NEW_SERVICE_ERRORS[key] : /add_package_service/.test(error.message) ? 'Falta correr a migração 0035 no Supabase.' : 'Não foi possível criar o serviço.')
+    }
+    onAdded({ id: data as string, name: v.name.trim(), duration_min: minutes, price_cents: price, packages_only: !v.alone })
+    setV({ name: '', minutes: '30', price: '', alone: false }); setOpen(false)
+  }
+  return (
+    <div className="card soft new-service">
+      <label>Serviço<input value={v.name} maxLength={80} placeholder="Ex.: Tratamento de hidratação" onChange={e => setV({ ...v, name: e.target.value })} /></label>
+      <div className="row">
+        <label style={{ flex: 1 }}>Minutos<input inputMode="numeric" value={v.minutes} onChange={e => setV({ ...v, minutes: e.target.value.replace(/\D/g, '') })} /></label>
+        <label style={{ flex: 1 }}>Preço sozinho (€)<input inputMode="decimal" value={v.price} onChange={e => setV({ ...v, price: e.target.value })} /></label>
+      </div>
+      <label className="check"><input type="checkbox" checked={v.alone} onChange={e => setV({ ...v, alone: e.target.checked })} /><span>Também se pode marcar sozinho na página de marcação</span></label>
+      {error && <p className="error small" role="alert">{error}</p>}
+      <div className="row" style={{ justifyContent: 'flex-start', gap: 12 }}>
+        <button type="button" className="btn-inline" disabled={busy} onClick={add}>{busy ? 'A criar…' : 'Criar e incluir'}</button>
+        <button type="button" className="link" onClick={() => { setOpen(false); setError('') }}>Cancelar</button>
+      </div>
+    </div>
+  )
+}
+
 export default function PackagesPage() {
   const [session, setSession] = useState<Session | null>()
   const [salon, setSalon] = useState<Salon | null>()
@@ -115,7 +161,7 @@ export default function PackagesPage() {
     if (!salon) return
     const [pk, sv, pr, rq, cp] = await Promise.all([
       supabase.from('packages').select('*').eq('salon_id', salon.id).order('position'),
-      supabase.from('services').select('id,name,duration_min,price_cents').eq('salon_id', salon.id).eq('active', true).order('name'),
+      supabase.from('services').select('*').eq('salon_id', salon.id).eq('active', true).order('name'),
       supabase.from('professionals').select('id,name').eq('salon_id', salon.id).eq('active', true).order('name'),
       supabase.from('package_requests').select('*').eq('salon_id', salon.id).order('created_at', { ascending: false }).limit(100),
       supabase.from('client_packs').select('*').eq('salon_id', salon.id).order('created_at', { ascending: false }).limit(200),
@@ -242,8 +288,12 @@ export default function PackagesPage() {
               <fieldset className="chips-set"><legend>{f.mode === 'pack' ? 'Serviço do pack' : 'Serviços incluídos'}</legend>
                 {services.map(s => (
                   <label key={s.id} className="check"><input type={f.mode === 'pack' ? 'radio' : 'checkbox'} name="incl" checked={f.included.includes(s.id)}
-                    onChange={e => setForm({ ...f, included: f.mode === 'pack' ? [s.id] : e.target.checked ? [...f.included, s.id] : f.included.filter(x => x !== s.id) })} />{s.name} · {euros(s.price_cents)}</label>
+                    onChange={e => setForm({ ...f, included: f.mode === 'pack' ? [s.id] : e.target.checked ? [...f.included, s.id] : f.included.filter(x => x !== s.id) })} /><span>{s.name} · {euros(s.price_cents)}{s.packages_only && <small className="muted"> · só em pacotes</small>}</span></label>
                 ))}
+                <NewService salonId={salon.id} onAdded={svc => {
+                  setServices(list => [...list, svc].sort((a, b) => a.name.localeCompare(b.name)))
+                  setForm(cur => cur && { ...cur, included: cur.mode === 'pack' ? [svc.id] : [...cur.included, svc.id] })
+                }} />
               </fieldset>
               <div className="row">
                 <label style={{ flex: 1 }}>{f.mode === 'evento' ? 'Preço (pessoa principal)' : f.mode === 'pack' ? 'Preço do pack' : 'Preço do pacote'} (€)<input inputMode="decimal" value={f.price} onChange={e => setForm({ ...f, price: e.target.value })} /></label>

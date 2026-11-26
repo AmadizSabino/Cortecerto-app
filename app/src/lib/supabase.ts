@@ -17,7 +17,7 @@ export interface Salon {
   areas?: string[]; booking_mode?: 'marcacao' | 'sem_marcacao' | 'ambos'; work_place?: 'salao' | 'domicilio' | 'ambos' // migration 0022
   styles_hidden?: string[] // migration 0030: style cards the salon doesn't show
 }
-export interface Service { id: string; name: string; duration_min: number; price_cents: number; at_home?: boolean }
+export interface Service { id: string; name: string; duration_min: number; price_cents: number; at_home?: boolean; packages_only?: boolean }
 export interface Professional { id: string; name: string; at_home?: boolean }
 export interface Booking {
   id: string; starts_at: string; ends_at: string; client_name: string; client_phone: string
