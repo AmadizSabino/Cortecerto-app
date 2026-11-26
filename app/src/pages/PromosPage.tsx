@@ -9,7 +9,7 @@ import { parseEuros } from '../lib/onboarding'
 import { mediaUrl, uploadMedia } from '../lib/brand'
 import { runAi } from '../lib/ai'
 import { codeFrom, fillPhrase, hashtags, offerText, phrasesFor, promoLink, upcoming, WEEKDAYS, whenText, type Occasion, type Promo } from '../lib/promos'
-import { promoImage, sharePost } from '../lib/promoImage'
+import { downloadBlob, promoImage, sharePost } from '../lib/promoImage'
 import { addDays, dateInTz, zonedToUtc } from '../lib/time'
 import { loadHours } from '../lib/scheduleData'
 import { NO_HOURS, type SalonHours } from '../lib/schedule'
@@ -55,6 +55,8 @@ export default function PromosPage() {
   const [sharing, setSharing] = useState<string | null>(null) // promo id with the "send to clients" list open
   const [sent, setSent] = useState<Set<string>>(new Set())
   const [note, setNote] = useState('')
+  // On a computer the system share menu rarely lists Instagram or TikTok: show the picture and the sites instead.
+  const [desk, setDesk] = useState<{ id: string; url: string; blob: Blob; name: string; caption: string } | null>(null)
   const [hours, setHours] = useState<SalonHours>(NO_HOURS)
   const [proIds, setProIds] = useState<string[]>([])
   const [busy7, setBusy7] = useState<{ professional_id: string; start: Date; end: Date }[]>([])
@@ -200,6 +202,11 @@ export default function PromosPage() {
       })
       // Instagram usually drops the text that comes with a shared picture: the caption is copied first, ready to paste.
       await navigator.clipboard?.writeText(caption(p)).catch(() => {})
+      if (!window.matchMedia?.('(pointer: coarse)').matches) {
+        if (desk) URL.revokeObjectURL(desk.url)
+        setDesk({ id: p.id, url: URL.createObjectURL(img), blob: img, name: p.code, caption: caption(p) })
+        setBusy(''); return
+      }
       const how = await sharePost(img, caption(p), p.code)
       setNote(how === 'descarregado' ? 'Imagem descarregada e legenda copiada: cole-a no Instagram ou no Facebook.' : how === 'partilhado' ? 'Legenda copiada: se a app não a mostrar, cole-a no post.' : '')
     } catch { setNote('Não foi possível criar a imagem.') }
@@ -342,6 +349,26 @@ export default function PromosPage() {
               <button className="link" onClick={() => { setForm(toForm(p)); setError(''); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Editar</button>
               <button className="link" onClick={() => toggle(p)}>{p.active ? 'Pausar' : 'Ativar'}</button>
             </div>
+            {desk?.id === p.id && (
+              <div className="next-visit post-desk">
+                <img src={desk.url} alt="Imagem do post" />
+                <div>
+                  <p className="small" style={{ marginTop: 0 }}><b>1.</b> Descarregue a imagem. <b>2.</b> Abra a rede e crie um post com ela. <b>3.</b> Cole a legenda (já está copiada).</p>
+                  <div className="actions">
+                    <button className="btn-inline" onClick={() => downloadBlob(desk.blob, `${desk.name}.jpg`)}><Icon name="download" size={16} />Descarregar imagem</button>
+                    <button onClick={() => { navigator.clipboard?.writeText(desk.caption); setNote('Legenda copiada.') }}>Copiar legenda</button>
+                  </div>
+                  <div className="actions">
+                    <a className="btn-social" href="https://www.instagram.com/" target="_blank" rel="noreferrer">Instagram</a>
+                    <a className="btn-social" href="https://business.facebook.com/latest/composer" target="_blank" rel="noreferrer">Facebook</a>
+                    <a className="btn-social" href="https://www.tiktok.com/tiktokstudio/upload" target="_blank" rel="noreferrer">TikTok</a>
+                    {'share' in navigator && <button className="link" onClick={() => sharePost(desk.blob, desk.caption, desk.name)}>Outras apps…</button>}
+                  </div>
+                  <p className="small muted" style={{ marginBottom: 0 }}>No Instagram toque em "+ Criar". No Facebook, o Meta Business Suite publica no Facebook e no Instagram de uma vez. No telemóvel, "Publicar post" abre logo as apps.</p>
+                  <button className="link" onClick={() => { URL.revokeObjectURL(desk.url); setDesk(null) }}>Fechar</button>
+                </div>
+              </div>
+            )}
             {sharing === p.id && (
               <div className="next-visit">
                 <p className="small muted" style={{ marginTop: 0 }}>Só aparecem os clientes que aceitaram receber promoções na última marcação ({consented.length}).</p>
