@@ -80,7 +80,7 @@ export default {
     if (url.pathname === '/api/manifest') return clientManifest(url)
     if (url.pathname.startsWith('/api/ai/')) return handleAi(request, env, url.pathname.slice('/api/ai/'.length))
     if (url.pathname.startsWith('/api/')) return new Response('Not found', { status: 404 })
-    // Only / and /s/* reach here (run_worker_first): their link previews are filled in (meta.ts).
+    // Only /, /s/*, /painel* and /app* reach here (run_worker_first). / and /s/* get link previews (meta.ts).
     if (url.pathname === '/' || url.pathname.startsWith('/s/')) return withMeta(request, env)
     return env.ASSETS.fetch(request)
   },
