@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildClients, daysUntilBirthday, filterClients, isAtRisk, mergeRegistered } from './clients'
+import { buildClients, daysUntilBirthday, filterClients, isAtRisk, mergedConsent, mergeRegistered, validNif } from './clients'
 import type { Booking } from './supabase'
 
 const now = new Date('2026-11-20T12:00:00Z')
@@ -88,4 +88,18 @@ describe('mergeRegistered', () => {
     ])
     expect(mergeRegistered(fromBookings, [])[0].registered).toBe(false)
   })
+})
+
+it('checks a Portuguese NIF', () => {
+  expect(validNif('123456789')).toBe(true)
+  expect(validNif('123456780')).toBe(false)
+  expect(validNif('12345')).toBe(false)
+})
+
+it('uses the most recent consent: the salon in person or the latest booking', () => {
+  const salon = { consent_messages: true, consent_at: '2026-11-20T10:00:00Z' }
+  expect(mergedConsent({ consent: false, at: '2026-11-01T10:00:00Z' }, salon)).toBe(true)
+  expect(mergedConsent({ consent: false, at: '2026-11-25T10:00:00Z' }, salon)).toBe(false)
+  expect(mergedConsent({ consent: true, at: null }, undefined)).toBe(true)
+  expect(mergedConsent({ consent: false, at: null }, { consent_messages: false, consent_at: '2026-11-20T10:00:00Z' })).toBe(false)
 })
