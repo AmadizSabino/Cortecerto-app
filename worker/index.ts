@@ -63,7 +63,7 @@ const DAILY = '0 8 * * *' // must match wrangler.jsonc
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
-    const moved = canonicalRedirect(url)
+    const moved = canonicalRedirect(url, request.method)
     if (moved) return moved
     if (url.pathname === '/api/notify-booking') return notifyOwner<Claimed>(request, env, url.origin, 'claim_booking_notification', bookingEmail, id => announceBooking(env, id, null))
     if (url.pathname === '/api/notify-request') return announceRequest(request, env)
@@ -96,8 +96,11 @@ export default {
  */
 const CANONICAL = 'cortecerto.pt'
 const ALIASES = new Set(['www.cortecerto.pt', 'cortecerto.com.pt', 'www.cortecerto.com.pt', 'cortecerto.eu', 'www.cortecerto.eu', 'cortecerto-app.amadiz-sabino.workers.dev'])
-export function canonicalRedirect(url: URL): Response | null {
+export function canonicalRedirect(url: URL, method = 'GET'): Response | null {
   if (!ALIASES.has(url.hostname)) return null
+  // Apps installed from an old address keep calling /api/* there. A redirect would make the browser
+  // block those calls (another origin), so the API answers on every address; only pages move.
+  if (url.pathname.startsWith('/api/') || (method !== 'GET' && method !== 'HEAD')) return null
   return Response.redirect(`https://${CANONICAL}${url.pathname}${url.search}`, 301)
 }
 
