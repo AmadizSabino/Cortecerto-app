@@ -614,3 +614,15 @@ body.no-scroll { overflow: hidden; }
 .shop-card-hoje { display: flex; gap: 12px; align-items: center; text-decoration: none; color: inherit; }
 .product-card .product-photo { height: auto; }
 .order .actions .danger-link { margin-top: 0; align-self: center; padding: 0 6px; }
+.danger-text { color: var(--danger); font-weight: 600; }
+.restock { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; margin-top: 10px; }
+.restock label { margin: 0; }
+.restock .link { grid-column: 1 / -1; justify-self: start; }
+.perf { padding: 4px 16px; }
+.perf-row { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+.perf-row:first-child { border-top: 0; }
+.perf-row small { display: block; }
+.perf-value { text-align: right; white-space: nowrap; }
+.perf-value small { display: block; }
+.stock-hint { color: var(--warn); font-weight: 600; }
+.warn-avatar { background: var(--warn); color: #fff; }

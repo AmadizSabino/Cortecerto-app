@@ -12,8 +12,8 @@ interface Done { product: Product; qty: number; pay: ProductPay }
  * up in the salon. Paid in the salon, or by MB WAY to the salon's number when the salon asks for it.
  * `compact`: the short "Levar na visita" strip after a booking, with the client's details known.
  */
-export default function ShopView({ salon, products, client, compact = false, onAll }: {
-  salon: Salon; products: Product[]; client?: { name: string; phone: string }
+export default function ShopView({ salon, products, left = {}, client, compact = false, onAll }: {
+  salon: Salon; products: Product[]; left?: Record<string, number>; client?: { name: string; phone: string }
   compact?: boolean; onAll?: () => void
 }) {
   const [open, setOpen] = useState<Product | null>(null)
@@ -26,7 +26,12 @@ export default function ShopView({ salon, products, client, compact = false, onA
   const [done, setDone] = useState<Done[]>([])
   const [copied, setCopied] = useState(false)
 
-  const list = compact ? products.filter(p => !p.sold_out).slice(0, 3) : products
+  // Units left (migration 0033): none counts as sold out; a few are shown as the last ones.
+  const out = (p: Product) => p.sold_out || left[p.id] === 0
+  const maxQty = (p: Product) => Math.max(1, Math.min(10, left[p.id] ?? 10))
+  const [stockNow, setStockNow] = useState(left)
+  const leftOf = (p: Product) => stockNow[p.id] ?? left[p.id]
+  const list = compact ? products.filter(p => !out(p)).slice(0, 3) : products
   if (list.length === 0) return null
   const mbway = salon.mbway_number ? formatPhone(salon.mbway_number).replace('+351 ', '') : null
   const last = done[done.length - 1]
@@ -45,6 +50,7 @@ export default function ShopView({ salon, products, client, compact = false, onA
     const row = (data ?? [])[0] as { id: string; pay: ProductPay } | undefined
     if (row) fetch('/api/notify-order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: row.id }), keepalive: true }).catch(() => {})
     setDone(d => [...d, { product: open, qty, pay: row?.pay ?? open.pay }])
+    if (leftOf(open) != null) setStockNow(st => ({ ...st, [open.id]: Math.max(0, (st[open.id] ?? left[open.id]) - qty) }))
     setOpen(null)
   }
 
@@ -61,7 +67,7 @@ export default function ShopView({ salon, products, client, compact = false, onA
         <div className="qty" role="group" aria-label="Quantidade">
           <button type="button" aria-label="Menos" disabled={qty <= 1} onClick={() => setQty(q => q - 1)}>−</button>
           <b aria-live="polite">{qty}</b>
-          <button type="button" aria-label="Mais" disabled={qty >= 10} onClick={() => setQty(q => q + 1)}>+</button>
+          <button type="button" aria-label="Mais" disabled={qty >= maxQty(open)} onClick={() => setQty(q => q + 1)}>+</button>
           <span className="muted small grow" style={{ textAlign: 'right' }}>Total <b>{euros(open.price_cents * qty)}</b></span>
         </div>
         {!client && <>
@@ -124,12 +130,14 @@ export default function ShopView({ salon, products, client, compact = false, onA
       {confirmation}
       <div className="shop-grid">
         {list.map(p => (
-          <button key={p.id} className={`product-card${p.sold_out ? ' sold-out' : ''}`} disabled={p.sold_out} onClick={() => pick(p)}>
+          <button key={p.id} className={`product-card${out(p) || leftOf(p) === 0 ? ' sold-out' : ''}`} disabled={out(p) || leftOf(p) === 0} onClick={() => pick(p)}>
             <ProductPhoto path={p.photo_path} name={p.name} />
             <span className="product-info">
               <span className="t">{p.name}</span>
               <span className="price">{euros(p.price_cents)}</span>
-              {p.sold_out ? <small className="muted">Esgotado</small> : <small className="reserve">Reservar</small>}
+              {out(p) || leftOf(p) === 0 ? <small className="muted">Esgotado</small>
+                : leftOf(p) != null && leftOf(p) <= 3 ? <small className="reserve">Reservar · {leftOf(p) === 1 ? 'última unidade' : `últimas ${leftOf(p)}`}</small>
+                : <small className="reserve">Reservar</small>}
             </span>
           </button>
         ))}

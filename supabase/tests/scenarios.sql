@@ -698,4 +698,28 @@ select forget_client(:'salon', '351919999999') \g /dev/null
 reset role;
 select pg_temp.check((select count(*) from product_orders where client_name = 'Muito') = 0
   and (select count(*) from product_orders where client_name = 'Cliente apagado' and status = 'cancelado') = 5, 'forgetting a client cancels and anonymises their reservations');
+-- 0033: stock
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+insert into products (salon_id, name, price_cents, stock, low_stock) values (:'salon', 'Champô', 900, 3, 1) returning id as champo \gset
+reset role; reset request.jwt.claim.sub;
+set role anon;
+select id as st1 from reserve_product(:'champo', 2, 'Ana', '931000001') \gset
+select pg_temp.check(left_qty = 1, 'a reservation holds units') from product_stock_left(:'salon') where product_id = :'champo';
+select set_config('t.champo', :'champo', false) \g /dev/null
+do $$ begin perform reserve_product(current_setting('t.champo')::uuid, 2, 'Bia', '931000002'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_stock%' then raise; end if; end $$;
+select reserve_product(:'champo', 1, 'Bia', '931000002') \g /dev/null
+do $$ begin perform reserve_product(current_setting('t.champo')::uuid, 1, 'Caio', '931000003'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%produto_esgotado%' then raise; end if; end $$;
+reset role;
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+update product_orders set status = 'entregue', paid_at = now(), delivered_at = now() where id = :'st1';
+select pg_temp.check(stock = 1, 'delivering takes units out') from products where id = :'champo';
+update product_orders set status = 'cancelado', cancelled_at = now() where id = :'st1';
+select pg_temp.check(stock = 3, 'cancelling a delivered sale puts them back') from products where id = :'champo';
+insert into product_orders (salon_id, product_id, product_name, price_cents, qty, client_name, source, status, paid_at, delivered_at)
+  values (:'salon', :'champo', 'Champô', 900, 5, 'Balcão', 'balcao', 'entregue', now(), now());
+select pg_temp.check(stock = 0, 'a counter sale never takes stock below 0') from products where id = :'champo';
+select pg_temp.check(add_product_stock(:'champo', 6) = 6, 'a delivery adds units');
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+do $$ begin perform add_product_stock(current_setting('t.champo')::uuid, 1); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+reset role; reset request.jwt.claim.sub;
 \echo All database checks passed

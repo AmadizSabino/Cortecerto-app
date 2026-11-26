@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buyerKeys, readyMessage, refillMessage, refillsDue, shopError, shopSales, type Order } from './shop'
+import { buyerKeys, heldUnits, lowStock, performance, readyMessage, refillMessage, refillsDue, shopError, shopSales, stockLeft, weeksText, type Order, type Product } from './shop'
 
 const euros = (c: number) => `${(c / 100).toFixed(2).replace('.', ',')} €`
 const base: Order = {
@@ -74,5 +74,36 @@ describe('messages', () => {
   it('errors in the client words', () => {
     expect(shopError('ERROR: produto_esgotado')).toMatch(/esgotou/)
     expect(shopError('??')).toMatch(/Tente de novo/)
+  })
+})
+
+describe('stock', () => {
+  const prod = (p: Partial<Product>): Product => ({ id: 'p1', salon_id: 's', name: 'Pomada mate', description: null, price_cents: 1500, photo_path: null,
+    pay: 'salao', refill_weeks: 6, sold_out: false, active: true, position: 0, created_at: '2026-06-01T10:00:00Z', stock: 5, low_stock: 2, ...p })
+  const now = new Date('2026-11-20T10:00:00Z')
+
+  it('holds units for open reservations', () => {
+    const held = heldUnits([o({ status: 'reservado', qty: 2 }), o({ status: 'pago' }), o({ status: 'entregue' }), o({ status: 'reservado', product_id: null })])
+    expect(held.get('p1')).toBe(3)
+    expect(stockLeft(prod({}), held)).toBe(2)
+    expect(stockLeft(prod({ stock: 1 }), held)).toBe(0)
+    expect(stockLeft(prod({ stock: null }), held)).toBeNull()
+  })
+
+  it('warns at the low level, fewest first', () => {
+    const held = new Map([['p1', 3]])
+    const list = lowStock([prod({}), prod({ id: 'p2', name: 'Óleo', stock: 0 }), prod({ id: 'p3', stock: 10 }), prod({ id: 'p4', stock: null }), prod({ id: 'p5', stock: 0, active: false })], held)
+    expect(list.map(p => [p.id, p.left])).toEqual([['p2', 0], ['p1', 2]])
+  })
+
+  it('measures each product: pace, weeks left and idle ones', () => {
+    const orders = [o({ paid_at: '2026-11-10T10:00:00Z', qty: 2 }), o({ id: 'x', paid_at: '2026-09-01T10:00:00Z', qty: 4 }), o({ id: 'y', paid_at: '2026-05-01T10:00:00Z' })]
+    const [a, b] = performance([prod({ stock: 6 }), prod({ id: 'p2', name: 'Óleo', stock: null })], orders, new Map(), now)
+    expect([a.units30, a.units90, a.revenue90]).toEqual([2, 6, 9000])
+    expect(a.weeksLeft).toBe(12.9) // 6 left at 6 per 90 days
+    expect(a.idle).toBe(false)
+    expect(b.idle).toBe(true)
+    expect(weeksText(0.5)).toBe('menos de 1 semana')
+    expect(weeksText(12.9)).toBe('cerca de 13 semanas')
   })
 })
