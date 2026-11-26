@@ -39,6 +39,7 @@ import LegalPage from './pages/LegalPage'
 import InstallPage from './pages/InstallPage'
 import HelpPage from './pages/HelpPage'
 import StylesPage from './pages/StylesPage'
+import ShopPage from './pages/ShopPage'
 import { LEGAL_DOCS } from './lib/legal'
 
 export default function App() {
@@ -85,6 +86,7 @@ export default function App() {
         <Route path="/clube" element={<ClubPage />} />
         <Route path="/ia" element={<AiPage />} />
         <Route path="/estilos" element={<StylesPage />} />
+        <Route path="/loja" element={<ShopPage />} />
         <Route path="/assinatura" element={<BillingPage />} />
         <Route path="/palavra-passe" element={<PasswordPage />} />
         <Route path="/f/:slug" element={<QueueJoinPage />} />

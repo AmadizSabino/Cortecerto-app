@@ -26,7 +26,7 @@ export const HELP_GROUPS = ['Começar', 'A agenda', 'Clientes', 'No salão', 'Pr
 export const SCREEN_LABEL: Record<string, string> = {
   '/painel': 'Hoje', '/semana': 'Semana', '/clientes': 'Clientes', '/mais': 'Mais', '/lembretes': 'Lembretes', '/fila': 'Fila de espera',
   '/poster': 'Poster com QR', '/convidar': 'Convidar clientes', '/clube': 'Clube', '/pacotes': 'Pacotes', '/promocoes': 'Social Media Manager',
-  '/ia': 'Assistente IA', '/estilos': 'Estilos', '/definicoes': 'Definições', '/horarios': 'Horários e folgas', '/equipa': 'Equipa', '/precos': 'Preços por profissional',
+  '/ia': 'Assistente IA', '/estilos': 'Estilos', '/loja': 'Loja', '/definicoes': 'Definições', '/horarios': 'Horários e folgas', '/equipa': 'Equipa', '/precos': 'Preços por profissional',
   '/estatisticas': 'Estatísticas', '/marca': 'Marca e galeria', '/domicilio': 'Ao domicílio', '/assinatura': 'Assinatura', '/palavra-passe': 'Palavra-passe',
 }
 
@@ -251,6 +251,38 @@ export const HELP: HelpTopic[] = [
       'Quem paga no balcão: use "Juntar um cliente".',
     ],
     tip: 'O cliente paga a mensalidade diretamente ao salão (MB Way ou balcão). A CorteCerto não fica com nada.',
+  },
+  {
+    id: 'loja', group: 'Promoções e vendas', title: 'Pôr produtos à venda na loja', screen: '/loja', need: 'lojaProdutos', words: 'loja produtos vender pomada champô óleo foto preço esgotado',
+    steps: [
+      'Abra Mais › Loja e toque em "Adicionar produto".',
+      'Escolha uma foto, escreva o nome e o preço. A descrição é opcional.',
+      'Em "Como o cliente paga", escolha "Paga no salão ao levantar" ou "Paga antes por MB WAY" (precisa do número MB WAY em Definições).',
+      'Em "Lembrar a reposição", escolha daqui a quantas semanas o produto costuma acabar. Toque em Guardar.',
+      'O produto aparece logo na sua página, no separador Loja. Acabou o stock? Toque em Editar e marque Esgotado.',
+    ],
+    tip: 'O preço é sempre seu. O cliente paga diretamente ao salão: a CorteCerto não fica com nada.',
+  },
+  {
+    id: 'loja-reservas', group: 'Promoções e vendas', title: 'Entregar reservas e vender no balcão', screen: '/loja', need: 'loja', words: 'loja reserva levantar entregue mb way balcão venda',
+    steps: [
+      'Quando um cliente reserva, recebe um aviso no telemóvel e a reserva aparece em Hoje e em Mais › Loja › "Reservas por levantar".',
+      'Pagamento por MB WAY: quando o dinheiro chegar, toque em "MB WAY recebido".',
+      'Quando o cliente levar o produto, toque em "Entregue e pago" (ou "Entregue", se já pagou).',
+      'Vendeu um produto no salão sem reserva? Use "Vender no balcão". Com o telemóvel do cliente, a app lembra a reposição.',
+      'O cliente desistiu? Toque em Cancelar.',
+    ],
+    tip: 'As vendas da loja aparecem nas Estatísticas (só o dono vê os valores) e em Clientes, no filtro "Compraram na loja".',
+  },
+  {
+    id: 'loja-partilhar', group: 'Promoções e vendas', title: 'Partilhar a loja e lembrar a reposição', screen: '/loja', need: 'loja', words: 'loja link partilhar qr poster reposição lembrete whatsapp',
+    steps: [
+      'Em Mais › Loja, toque em "Partilhar a loja" para enviar o link por WhatsApp, ou em "Copiar link" para a bio do Instagram.',
+      'Toque em "Poster com QR" e imprima: ponha junto aos produtos ou no espelho. O cliente lê o código e reserva.',
+      'Depois de marcar, o cliente também vê "Quer levar alguma coisa na visita?" com os seus produtos.',
+      'Algumas semanas depois de uma compra, o cliente aparece em "Lembrar a reposição". Toque em "Enviar lembrete": abre o WhatsApp com a mensagem pronta.',
+    ],
+    tip: 'O lembrete nunca é enviado sozinho: é sempre o salão que toca para enviar.',
   },
   {
     id: 'pacotes', group: 'Promoções e vendas', title: 'Vender pacotes e packs de sessões', screen: '/pacotes', need: 'pacotes', words: 'pacote pack casamento evento combo sessões',

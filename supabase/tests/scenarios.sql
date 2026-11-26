@@ -651,4 +651,51 @@ select forget_client(:'salon', '351917100005') \g /dev/null
 reset role;
 select pg_temp.check((select count(*) from client_times where phone_key = '351917000001') = 0
   and (select count(*) from slot_requests where client_name = 'Rui C') = 0, 'forgetting a client removes their times and requests');
+-- 0032: the salon's shop
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+insert into products (salon_id, name, price_cents, pay, refill_weeks) values (:'salon', 'Pomada mate', 1500, 'mbway', 6) returning id as pomada \gset
+insert into products (salon_id, name, price_cents, sold_out) values (:'salon', 'Óleo de barba', 1200, true) returning id as oleo \gset
+insert into products (salon_id, name, price_cents, active) values (:'salon', 'Escondido', 900, false) returning id as escondido \gset
+reset role; reset request.jwt.claim.sub;
+set role anon;
+select pg_temp.check(count(*) = 2, 'clients see only the products on sale') from products where salon_id = :'salon';
+select id as enc, pay as enc_pay from reserve_product(:'pomada', 2, 'Tiago', '912345678', 'Guardem-me até sexta') \gset
+select pg_temp.check(:'enc_pay' = 'mbway', 'the client is told how to pay');
+select set_config('t.oleo', :'oleo', false) \g /dev/null
+select set_config('t.escondido', :'escondido', false) \g /dev/null
+select set_config('t.pomada', :'pomada', false) \g /dev/null
+do $$ begin perform reserve_product(current_setting('t.oleo')::uuid, 1, 'Tiago', '912345678'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%produto_esgotado%' then raise; end if; end $$;
+do $$ begin perform reserve_product(current_setting('t.escondido')::uuid, 1, 'Tiago', '912345678'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%produto_invalido%' then raise; end if; end $$;
+do $$ begin perform reserve_product(current_setting('t.pomada')::uuid, 1, 'Tiago', '12'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%dados_cliente%' then raise; end if; end $$;
+do $$ begin perform reserve_product(current_setting('t.pomada')::uuid, 50, 'Tiago', '912345678'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%quantidade_invalida%' then raise; end if; end $$;
+select reserve_product(:'pomada', 1, 'Muito', '919999999') \g /dev/null
+select reserve_product(:'pomada', 1, 'Muito', '919999999') \g /dev/null
+select reserve_product(:'pomada', 1, 'Muito', '919999999') \g /dev/null
+select reserve_product(:'pomada', 1, 'Muito', '919999999') \g /dev/null
+select reserve_product(:'pomada', 1, 'Muito', '919999999') \g /dev/null
+do $$ begin perform reserve_product(current_setting('t.pomada')::uuid, 1, 'Muito', '919 999 999'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%reservas_a_mais%' then raise; end if; end $$;
+select pg_temp.check(count(*) = 0, 'clients cannot read reservations') from product_orders;
+do $$ begin insert into products (salon_id, name, price_cents) values (current_setting('t.salon')::uuid, 'X', 100); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%row-level security%' then raise; end if; end $$;
+reset role;
+select pg_temp.check(product_name = 'Pomada mate' and price_cents = 1500 and qty = 2 and refill_weeks = 6 and status = 'reservado' and note is not null,
+  'a reservation keeps the product, price and refill time') from product_orders where id = :'enc';
+set role service_role;
+select pg_temp.check(count(*) = 1 and min(product_name) = 'Pomada mate', 'a new reservation is announced') from claim_product_order_push(:'enc');
+select pg_temp.check(count(*) = 0, 'and only once') from claim_product_order_push(:'enc');
+reset role;
+-- The salon receives the MB WAY, hands it over, and sells at the counter.
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+select pg_temp.check(count(*) = 6, 'the salon sees its reservations') from product_orders where salon_id = :'salon';
+do $$ begin update product_orders set status = 'pago' where client_name = 'Tiago'; raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%check%' then raise; end if; end $$;
+update product_orders set status = 'entregue', paid_at = now(), delivered_at = now() where id = :'enc';
+insert into product_orders (salon_id, product_id, product_name, price_cents, client_name, client_phone, source, status, paid_at, delivered_at)
+  values (:'salon', :'pomada', 'Pomada mate', 1500, 'Venda ao balcão', '', 'balcao', 'entregue', now(), now());
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+select pg_temp.check(count(*) = 0, 'another salon sees no reservations') from product_orders where salon_id = :'salon';
+reset role;
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+select forget_client(:'salon', '351919999999') \g /dev/null
+reset role;
+select pg_temp.check((select count(*) from product_orders where client_name = 'Muito') = 0
+  and (select count(*) from product_orders where client_name = 'Cliente apagado' and status = 'cancelado') = 5, 'forgetting a client cancels and anonymises their reservations');
 \echo All database checks passed

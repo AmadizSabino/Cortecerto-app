@@ -15,6 +15,7 @@ import { photoToDataUrl, runAi } from '../lib/ai'
 import HelpLink from '../HelpLink'
 import ClientTimes from '../components/ClientTimes'
 import type { ClientTime } from '../lib/clientTimes'
+import { buyerKeys, orderTotal, type Order } from '../lib/shop'
 
 const FILTERS: { id: ClientFilter; label: string }[] = [
   { id: 'todos', label: 'Todos' },
@@ -22,6 +23,7 @@ const FILTERS: { id: ClientFilter; label: string }[] = [
   { id: 'faltas', label: 'Com faltas' },
   { id: 'consentimento', label: 'Aceitam mensagens' },
   { id: 'aniversario', label: 'Aniversários' },
+  { id: 'loja', label: 'Compraram na loja' },
 ]
 
 const MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
@@ -173,6 +175,8 @@ export default function ClientsPage() {
   const [noteSeed, setNoteSeed] = useState<Record<string, string>>({})
   // Per-client service times (migration 0031); null before it, so the card doesn't offer them.
   const [times, setTimes] = useState<ClientTime[] | null>(null)
+  // Shop purchases (migration 0032): for "Compraram na loja" and the client card.
+  const [buys, setBuys] = useState<Order[]>([])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -193,6 +197,8 @@ export default function ClientsPage() {
         supabase.from('salon_clients').select('phone_key,name,phone,email,source,created_at').eq('salon_id', s.id),
         supabase.from('client_times').select('id,phone_key,service_id,minutes').eq('salon_id', s.id),
       ])
+      supabase.from('product_orders').select('*').eq('salon_id', s.id).in('status', ['pago', 'entregue']).order('paid_at', { ascending: false }).limit(5000)
+        .then(({ data, error }) => { if (!error) setBuys((data ?? []) as Order[]) })
       setTimes(ct.error ? null : (ct.data ?? []) as ClientTime[])
       // Before migration 0018 there is no client list of the salon's own: clients come from bookings only.
       setRegisterReady(!rg.error)
@@ -208,7 +214,8 @@ export default function ClientsPage() {
   const [now] = useState(() => new Date())
   const today = dateInTz(now, salon?.timezone ?? 'Europe/Lisbon')
   const clients = useMemo(() => mergeRegistered(buildClients(bookings ?? [], services, now), registered), [bookings, services, now, registered])
-  const shown = useMemo(() => filterClients(clients, query, filter, now, notes, today), [clients, query, filter, now, notes, today])
+  const buyers = useMemo(() => buyerKeys(buys), [buys])
+  const shown = useMemo(() => filterClients(clients, query, filter, now, notes, today, buyers), [clients, query, filter, now, notes, today, buyers])
   const atRiskCount = useMemo(() => clients.filter(c => isAtRisk(c, now)).length, [clients, now])
   const birthdayCount = useMemo(() => clients.filter(c => birthdaySoon(notes[c.key], today) !== null).length, [clients, notes, today])
 
@@ -299,6 +306,7 @@ export default function ClientsPage() {
                   {registerReady && !c.registered && <span className="tag">Não registado</span>}
                   {c.bookings.length === 0 && <span className="tag">Sem marcações</span>}
                   {c.nextBooking && <span className="tag">Marcado</span>}
+                  {buyers.has(c.key) && <span className="tag">Loja</span>}
                   {risk && <span className="tag warn">Em risco</span>}
                   {c.noShows > 0 && <span className="tag warn">{c.noShows} {c.noShows === 1 ? 'falta' : 'faltas'}</span>}
                 </span>
@@ -315,6 +323,10 @@ export default function ClientsPage() {
                 </div>
                 <div className="muted">{c.consent ? 'Aceita receber mensagens ✓' : 'Não aceitou mensagens de promoção'}</div>
                 {bday !== null && <div>🎂 {birthdayLabel(bday)}</div>}
+                {buyers.has(c.key) && (() => {
+                  const mine = buys.filter(b => b.client_phone && waNumber(b.client_phone) === c.key).slice(0, 5)
+                  return <div className="small"><b>Compras na loja:</b> {mine.map(b => `${b.qty > 1 ? `${b.qty} × ` : ''}${b.product_name} (${fmtDate(b.paid_at!)}${can(role, 'revenue') ? `, ${euros(orderTotal(b))}` : ''})`).join(' · ')}</div>
+                })()}
                 <div className="actions">
                   <a className="wa" href={waLink(c.phone, '')} target="_blank" rel="noreferrer">WhatsApp</a>
                   {c.consent && bday !== null && (

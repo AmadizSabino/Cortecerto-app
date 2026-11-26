@@ -40,7 +40,7 @@ export function mergeRegistered(clients: Client[], registered: RegisteredClient[
   return [...only, ...merged]
 }
 
-export type ClientFilter = 'todos' | 'em_risco' | 'faltas' | 'consentimento' | 'aniversario'
+export type ClientFilter = 'todos' | 'em_risco' | 'faltas' | 'consentimento' | 'aniversario' | 'loja'
 
 /** What the salon keeps about a client (table client_notes). */
 export interface ClientNote {
@@ -129,6 +129,7 @@ export function birthdaySoon(note: ClientNote | undefined, today: string): numbe
 export function filterClients(
   clients: Client[], query: string, filter: ClientFilter, now = new Date(),
   notes: Record<string, ClientNote> = {}, today = now.toISOString().slice(0, 10),
+  buyers: Set<string> = new Set(), // phone keys of shop buyers (lib/shop.ts buyerKeys)
 ): Client[] {
   const q = fold(query.trim())
   const qDigits = query.replace(/\D/g, '')
@@ -137,6 +138,7 @@ export function filterClients(
     if (filter === 'faltas' && c.noShows === 0) return false
     if (filter === 'consentimento' && !c.consent) return false
     if (filter === 'aniversario' && birthdaySoon(notes[c.key], today) === null) return false
+    if (filter === 'loja' && !buyers.has(c.key)) return false
     if (!q) return true
     return fold(c.name).includes(q)
       || (qDigits.length >= 3 && c.key.includes(qDigits))

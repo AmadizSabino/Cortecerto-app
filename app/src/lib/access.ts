@@ -15,12 +15,12 @@ export const LEVELS: { id: Level; label: string; short: string; can: string[]; c
   },
   {
     id: 'rececao', label: 'Receção', short: 'Agenda, clientes e Clube',
-    can: ['Tudo o que a Agenda faz', 'Lista de clientes, notas e registo de clientes novos', 'Convidar clientes', 'Membros do Clube', 'Posters'],
+    can: ['Tudo o que a Agenda faz', 'Lista de clientes, notas e registo de clientes novos', 'Convidar clientes', 'Membros do Clube', 'Posters', 'Reservas e vendas da loja'],
     cannot: 'Não vê estatísticas, preços, horários nem comissões.',
   },
   {
     id: 'gestor', label: 'Gestor', short: 'Gere a equipa, horários e preços',
-    can: ['Tudo o que a Receção faz', 'Promoções e posts', 'Horários, folgas e férias', 'Preços por profissional', 'Equipa e comissões', 'Definições do Clube', 'Assistente IA'],
+    can: ['Tudo o que a Receção faz', 'Promoções e posts', 'Horários, folgas e férias', 'Preços por profissional', 'Equipa e comissões', 'Definições do Clube', 'Produtos da loja', 'Assistente IA'],
     cannot: 'Não vê a faturação nem as estatísticas, não dá acessos, não muda as definições do salão nem a assinatura, e não exporta nem apaga dados.',
   },
 ]
@@ -38,8 +38,8 @@ export const atLeast = (role: Role, need: Role) => RANK[role] >= RANK[need]
 /** The lowest role that may open each part of the panel. */
 export const NEED = {
   agenda: 'agenda', semana: 'agenda', fila: 'agenda', lembretes: 'agenda', estilos: 'agenda',
-  clientes: 'rececao', convidar: 'rececao', clube: 'rececao', poster: 'rececao',
-  promocoes: 'gestor', pacotes: 'gestor', domicilio: 'gestor', horarios: 'gestor', precos: 'gestor', equipa: 'gestor', clubeDefinicoes: 'gestor', ia: 'gestor', estilosMostrar: 'gestor',
+  clientes: 'rececao', convidar: 'rececao', clube: 'rececao', poster: 'rececao', loja: 'rececao',
+  promocoes: 'gestor', pacotes: 'gestor', domicilio: 'gestor', horarios: 'gestor', precos: 'gestor', equipa: 'gestor', clubeDefinicoes: 'gestor', ia: 'gestor', estilosMostrar: 'gestor', lojaProdutos: 'gestor',
   // Money (takings, revenue, commissions totals) is for the owner only.
   revenue: 'dono', estatisticas: 'dono',
   acessos: 'dono', definicoes: 'dono', assinatura: 'dono', exportar: 'dono', apagarCliente: 'dono',

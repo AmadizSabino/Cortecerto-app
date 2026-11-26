@@ -80,6 +80,18 @@ export function requestMessage(r: PushRequest, now = new Date()): PushMessage {
   }
 }
 
+/** A client reserved a product in the salon's shop (migration 0032). Money only for the owner. */
+export interface PushOrder {
+  salon_id: string; owner_id: string; client_name: string; product_name: string; qty: number; price_cents: number; pay: 'salao' | 'mbway'
+}
+
+export function orderMessage(o: PushOrder, money: boolean): PushMessage {
+  const what = `${o.qty > 1 ? `${o.qty} × ` : ''}${o.product_name}`
+  const cash = money ? ` · ${euros(o.price_cents * o.qty)}` : ''
+  const pay = o.pay === 'mbway' ? 'Vai pagar por MB WAY: confirme quando receber.' : 'Paga no salão quando levantar.'
+  return { title: '🛍️ Nova reserva na loja', body: `${o.client_name} reservou ${what}${cash}.\n${pay}`, url: '/loja#reservas', tag: 'loja' }
+}
+
 // ---------------------------------------------------------------------------- sending
 
 /** Tells everyone in the salon who switched notifications on, except the person who made the booking. */
@@ -115,6 +127,24 @@ export async function announceRequest(request: Request, env: PushEnv): Promise<R
   if (!res.ok || !keys) return new Response(null, { status: 204 })
   const msg = requestMessage(r)
   const sent = await Promise.all(((await res.json()) as Subscription[]).map(s => sendPush(env, keys, s, msg)))
+  return new Response(null, { status: sent.some(Boolean) ? 202 : 204 })
+}
+
+/** POST /api/notify-order { id }: a new reservation in the shop, from the booking page. Announced once (claim_product_order_push). */
+export async function announceOrder(request: Request, env: PushEnv): Promise<Response> {
+  if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 })
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) return new Response(null, { status: 204 })
+  let id = ''
+  try { id = String(((await request.json()) as { id?: unknown }).id ?? '') } catch { /* bad body */ }
+  if (!UUID.test(id)) return new Response('Bad request', { status: 400 })
+  const claim = await rest(env, 'rpc/claim_product_order_push', { method: 'POST', body: JSON.stringify({ p_order: id }) })
+  if (!claim.ok) return new Response(null, { status: 204 })
+  const o = ((await claim.json()) as PushOrder[])[0]
+  if (!o) return new Response(null, { status: 204 })
+  const res = await rest(env, `push_subscriptions?select=endpoint,p256dh,auth,user_id&salon_id=eq.${o.salon_id}`)
+  const keys = res.ok ? await vapidKeys(env) : null
+  if (!res.ok || !keys) return new Response(null, { status: 204 })
+  const sent = await Promise.all(((await res.json()) as Subscription[]).map(s => sendPush(env, keys, s, orderMessage(o, s.user_id === o.owner_id))))
   return new Response(null, { status: sent.some(Boolean) ? 202 : 204 })
 }
 

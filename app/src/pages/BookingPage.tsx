@@ -28,6 +28,8 @@ import { lockState, type BillingFields } from '../lib/billing'
 import { track } from '../lib/track'
 import { salonAt } from '../lib/salonAt'
 import { requestLink, shortWhen, takenTimes } from '../lib/slotRequests'
+import ShopView from '../components/ShopView'
+import type { Product } from '../lib/shop'
 
 const ERRORS: Record<string, string> = {
   horario_ocupado: 'Esse horário acabou de ser ocupado. Escolha outro, por favor.',
@@ -145,6 +147,9 @@ export default function BookingPage() {
   const [askNote, setAskNote] = useState('')
   const [requested, setRequested] = useState<string | null>(null) // request id once sent
   // The salon may keep more time for this client (client_times, migration 0031): their own length, once their phone is known.
+  // The salon's shop (migration 0032): ?loja=1 opens it (the link the salon shares).
+  const [products, setProducts] = useState<Product[]>([])
+  const [view, setView] = useState<'marcar' | 'loja'>(() => new URLSearchParams(location.search).get('loja') ? 'loja' : 'marcar')
   const [myMinutes, setMyMinutes] = useState<{ service: string; phone: string; minutes: number } | null>(null)
 
   useEffect(() => {
@@ -158,6 +163,8 @@ export default function BookingPage() {
         .then(({ data, error }) => { if (!error && data) setPromo(data as Promo) })
       supabase.from('salon_photos').select('id,path,caption,position').eq('salon_id', s.id).order('position').order('created_at')
         .then(({ data, error }) => { if (!error) setPhotos((data ?? []) as Photo[]) }) // migration 0019
+      supabase.from('products').select('*').eq('salon_id', s.id).eq('active', true).order('position').order('created_at')
+        .then(({ data, error }) => { if (!error) setProducts((data ?? []) as Product[]) }) // migration 0032
       const [sv, pr, hr, ov, cl] = await Promise.all([
         supabase.from('services').select('*').eq('salon_id', s.id).eq('active', true).order('price_cents'),
         supabase.from('professionals').select('*').eq('salon_id', s.id).eq('active', true).order('name'),
@@ -528,6 +535,8 @@ export default function BookingPage() {
               <a className="btn ghost inline sm" onClick={() => track('whatsapp', { page: 'salao', salon: salon.id })} href={waLink(salon.whatsapp, msg)} target="_blank" rel="noreferrer"><WhatsAppIcon size={16} />Enviar mensagem por WhatsApp</a>
             </div>
           )}
+          {products.length > 0 && <ShopView compact salon={salon} products={products} client={{ name, phone }}
+            onAll={() => { setDone(null); setDoneDeposit(null); toStep(1, true); setService(undefined); setSlot(undefined); if (!skipPro) setProId(undefined); setView('loja'); window.scrollTo({ top: 0 }) }} />}
           <div className="card">
             <h3>Precisa de cancelar ou mudar?</h3>
             <p className="muted small" style={{ margin: '4px 0 8px' }}>Guarde este link. O salão também o envia no lembrete.</p>
@@ -563,6 +572,13 @@ export default function BookingPage() {
             <small className="muted">{whenText(promo, today)}{promo.service_ids ? ` · ${services.filter(x => promo.service_ids!.includes(x.id)).map(x => x.name).join(', ')}` : ''}</small>
           </section>
         )}
+        {products.length > 0 && (
+          <div className="shop-tabs" role="tablist" aria-label="Marcar ou loja">
+            <button role="tab" aria-selected={view === 'marcar'} className={view === 'marcar' ? 'sel' : ''} onClick={() => setView('marcar')}><Icon name="calendar" size={16} />Marcar</button>
+            <button role="tab" aria-selected={view === 'loja'} className={view === 'loja' ? 'sel' : ''} onClick={() => setView('loja')}><Icon name="bag" size={16} />Loja <span className="count">{products.length}</span></button>
+          </div>
+        )}
+        {view === 'loja' && products.length > 0 ? <ShopView salon={salon} products={products} /> : <>
         {club && (step === 1 || joining) && <ClubOffer club={club} open={joining} setOpen={setJoining} form={joinForm} setForm={setJoinForm} state={joinState}
           onJoin={async () => {
             setJoinState(undefined)
@@ -775,6 +791,7 @@ export default function BookingPage() {
             </div>
           </div>
         )}
+        </>}
         {footer}
       </main>
     </div>

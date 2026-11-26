@@ -16,6 +16,7 @@ import { onTheWay } from '../lib/home'
 import { proposalMessage } from '../lib/proposal'
 import SetupChecklist from '../SetupChecklist'
 import FirstBooking from '../components/FirstBooking'
+import ShopReservations from '../components/ShopReservations'
 import TermsGate from '../TermsGate'
 import RemindersCard from '../RemindersCard'
 import NextVisit from '../NextVisit'
@@ -238,6 +239,7 @@ export default function AgendaPage() {
       </div>
       <SlotRequests salon={salon} services={services} pros={pros} locked={locked} refresh={refresh} onBooked={reload} />
       {!locked && <FirstBooking salon={salon} />}
+      {!locked && can(role, 'loja') && <ShopReservations salonId={salon.id} />}
       <InstallCard />
       {!locked && <PushNudge />}
       {!locked && <RemindersCard salon={salon} />}

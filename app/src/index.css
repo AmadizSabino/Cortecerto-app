@@ -573,3 +573,44 @@ body.no-scroll { overflow: hidden; }
 .slot.taken small { opacity: .85; }
 .slots-legend { display: flex; gap: 8px; align-items: flex-start; margin: 10px 0 0; }
 .slot.taken.mini { flex: none; width: 28px; min-height: 18px; height: 18px; padding: 0; border: 1px dashed var(--line); border-radius: 6px; margin-top: 2px; }
+
+/* The salon's shop (migration 0032) */
+.shop-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; background: color-mix(in srgb, var(--fg) 6%, var(--card)); border-radius: 999px; margin: 14px 0 4px; }
+.shop-tabs button { border: 0; background: transparent; min-height: 40px; color: var(--muted); }
+.shop-tabs button.sel { background: var(--card); color: var(--fg); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+.shop-tabs .count { font-size: .72rem; font-weight: 700; background: var(--accent); color: var(--accent-fg); border-radius: 999px; padding: 1px 7px; }
+.shop-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+@media (min-width: 640px) { .shop-grid { grid-template-columns: repeat(3, 1fr); } }
+.product-card { display: flex; flex-direction: column; align-items: stretch; padding: 0; border-radius: var(--radius); overflow: hidden; background: var(--card); border: 1px solid var(--line); text-align: left; font-weight: 400; min-height: 0; }
+.product-card:hover:not(:disabled) { border-color: var(--accent); }
+.product-card.sold-out { opacity: .6; cursor: default; }
+.product-card .product-photo { width: 100%; aspect-ratio: 1; border-radius: 0; }
+.product-info { display: grid; gap: 2px; padding: 10px 12px 12px; }
+.product-info .t { font-weight: 600; line-height: 1.25; }
+.product-info .price { font-family: var(--heading-font); font-weight: 800; }
+.product-info .reserve { color: var(--accent); font-weight: 600; }
+.product-photo { display: block; width: 64px; height: 64px; object-fit: cover; border-radius: 12px; background: color-mix(in srgb, var(--accent) 10%, var(--card)); flex: none; }
+.product-photo.empty, .product-hero.empty, .addon-photo.empty { display: grid; place-items: center; color: var(--accent); }
+.product-hero { display: block; width: calc(100% + 36px); margin: 0 -18px 14px; aspect-ratio: 4 / 3; max-height: 36vh; object-fit: cover; background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
+.product-sheet .price { font-family: var(--heading-font); font-size: 1.3rem; white-space: nowrap; }
+.qty { display: flex; align-items: center; gap: 12px; margin: 14px 0 4px; }
+.qty button { width: 40px; padding: 0; font-size: 1.2rem; }
+.qty b { min-width: 20px; text-align: center; font-size: 1.1rem; }
+.pay-note { display: flex; gap: 8px; align-items: flex-start; background: color-mix(in srgb, var(--accent) 8%, var(--card)); border-radius: 12px; padding: 10px 12px; margin: 10px 0 4px; }
+.pay-note svg { flex: none; margin-top: 2px; color: var(--accent); }
+.shop-done svg { vertical-align: -3px; color: var(--ok); }
+.product-row { display: flex; gap: 12px; align-items: center; }
+.product-edit-photo { display: flex; gap: 12px; align-items: center; margin: 10px 0; }
+.product-edit-photo .product-photo { width: 84px; height: 84px; }
+.pay-choice { border: 0; padding: 0; margin: 12px 0 4px; display: grid; gap: 10px; }
+.pay-choice legend { font-weight: 600; margin-bottom: 6px; padding: 0; }
+.pay-choice input[type=radio] { width: 20px; height: 20px; accent-color: var(--accent); flex: none; margin: 2px 0 0; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.addon-list { display: grid; gap: 8px; }
+.addon { display: flex; gap: 12px; align-items: center; justify-content: flex-start; text-align: left; border-radius: 14px; padding: 8px 12px 8px 8px; font-weight: 400; width: 100%; }
+.addon .t { display: block; font-weight: 600; }
+.addon-photo { display: block; width: 48px; height: 48px; object-fit: cover; border-radius: 10px; background: color-mix(in srgb, var(--accent) 10%, var(--card)); flex: none; }
+.addon-plus { width: 32px; height: 32px; border-radius: 999px; display: grid; place-items: center; background: var(--accent); color: var(--accent-fg); flex: none; }
+.shop-card-hoje { display: flex; gap: 12px; align-items: center; text-decoration: none; color: inherit; }
+.product-card .product-photo { height: auto; }
+.order .actions .danger-link { margin-top: 0; align-self: center; padding: 0 6px; }
