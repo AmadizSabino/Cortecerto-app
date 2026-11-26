@@ -264,6 +264,17 @@ export const HELP: HelpTopic[] = [
     tip: 'O preço é sempre seu. O cliente paga diretamente ao salão: a CorteCerto não fica com nada.',
   },
   {
+    id: 'loja-stock', group: 'Promoções e vendas', title: 'Contar o stock dos produtos', screen: '/loja', need: 'loja', words: 'stock inventário unidades esgotado encomendar chegou parado',
+    steps: [
+      'Em Mais › Loja, toque em Editar num produto e ligue "Contar o stock". Escreva quantas unidades tem no salão e com quantas quer o aviso.',
+      'A cada venda entregue (reserva ou balcão), a app tira as unidades. Uma reserva por levantar fica guardada para esse cliente.',
+      'Quando sobram poucas, o produto aparece em "Pouco stock", na Loja e em Hoje. Com 0, aparece Esgotado na sua página.',
+      'Chegou uma encomenda? Toque em "Chegou stock" (ou no + ao lado do produto) e escreva quantas unidades chegaram.',
+      'Em "Como estão a vender" vê o que vende mais, para quantas semanas chega o stock e o que está parado.',
+    ],
+    tip: 'Contar o stock é opcional: um produto sem esta opção vende-se como antes, sem contas.',
+  },
+  {
     id: 'loja-reservas', group: 'Promoções e vendas', title: 'Entregar reservas e vender no balcão', screen: '/loja', need: 'loja', words: 'loja reserva levantar entregue mb way balcão venda',
     steps: [
       'Quando um cliente reserva, recebe um aviso no telemóvel e a reserva aparece em Hoje e em Mais › Loja › "Reservas por levantar".',

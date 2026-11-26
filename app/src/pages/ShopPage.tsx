@@ -11,17 +11,22 @@ import { lockState, type BillingFields } from '../lib/billing'
 import { themeById, themeStyle } from '../lib/themes'
 import { formatPhone, waLink, waNumber } from '../lib/whatsapp'
 import {
-  DEFAULT_REFILL_WEEKS, isOpen, orderTotal, PAY_LABEL, readyMessage, REFILL_CHOICES, refillMessage, refillsDue,
-  shopLink, shopSales, STATUS_LABEL, type Order, type Product, type ProductPay,
+  DEFAULT_LOW_STOCK, DEFAULT_REFILL_WEEKS, heldUnits, isOpen, lowStock, orderTotal, PAY_LABEL, performance, readyMessage, REFILL_CHOICES,
+  refillMessage, refillsDue, shopLink, shopSales, STATUS_LABEL, stockLeft, weeksText, type Order, type Product, type ProductPay,
 } from '../lib/shop'
 import HelpLink from '../HelpLink'
 import ProductPhoto from '../components/ProductPhoto'
 
-interface Draft { id?: string; name: string; price: string; description: string; pay: ProductPay; refill: string; sold_out: boolean; active: boolean; photo_path: string | null }
-const EMPTY: Draft = { name: '', price: '', description: '', pay: 'salao', refill: String(DEFAULT_REFILL_WEEKS), sold_out: false, active: true, photo_path: null }
+interface Draft {
+  id?: string; name: string; price: string; description: string; pay: ProductPay; refill: string; sold_out: boolean; active: boolean; photo_path: string | null
+  count: boolean; stock: string; low: string
+}
+const EMPTY: Draft = { name: '', price: '', description: '', pay: 'salao', refill: String(DEFAULT_REFILL_WEEKS), sold_out: false, active: true, photo_path: null, count: true, stock: '', low: String(DEFAULT_LOW_STOCK) }
+const money = (c: number) => (c / 100).toFixed(2).replace('.', ',')
 const toDraft = (p: Product): Draft => ({
-  id: p.id, name: p.name, price: (p.price_cents / 100).toFixed(2).replace('.', ','), description: p.description ?? '',
+  id: p.id, name: p.name, price: money(p.price_cents), description: p.description ?? '',
   pay: p.pay, refill: p.refill_weeks ? String(p.refill_weeks) : '', sold_out: p.sold_out, active: p.active, photo_path: p.photo_path,
+  count: p.stock != null, stock: p.stock != null ? String(p.stock) : '', low: String(p.low_stock ?? DEFAULT_LOW_STOCK),
 })
 
 /** Mais > Loja (migration 0032): products (managers), reservations and counter sales (from Receção), sales (owner). */
@@ -40,6 +45,8 @@ export default function ShopPage() {
   const [saleMsg, setSaleMsg] = useState<{ ok: boolean; text: string }>()
   const [copied, setCopied] = useState(false)
   const [showOld, setShowOld] = useState(false)
+  // Stock (migration 0033): the "Chegou stock" box open on a product.
+  const [restock, setRestock] = useState<{ id: string; n: string; at: 'low' | 'list' } | null>(null)
 
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setSession(data.session)) }, [])
   useEffect(() => {
@@ -62,6 +69,9 @@ export default function ShopPage() {
 
   const now = useMemo(() => new Date(), [orders]) // eslint-disable-line react-hooks/exhaustive-deps
   const refills = useMemo(() => refillsDue(orders, now), [orders, now])
+  const held = useMemo(() => heldUnits(orders), [orders])
+  const low = useMemo(() => lowStock(products, held), [products, held])
+  const perf = useMemo(() => performance(products, orders, held, now), [products, orders, held, now])
   const month = useMemo(() => shopSales(orders, new Date(now.getTime() - 30 * 86_400_000).toISOString(), now.toISOString()), [orders, now])
 
   if (session === undefined) return <main className="page">A carregar…</main>
@@ -99,9 +109,15 @@ export default function ShopPage() {
     if (!d.name.trim()) { setDraftMsg('Escreva o nome do produto.'); return }
     if (isNaN(price) || price <= 0) { setDraftMsg('Indique o preço, por exemplo 14,90.'); return }
     if (d.pay === 'mbway' && !salon!.mbway_number) { setDraftMsg('Para pedir MB WAY, ponha primeiro o número MB WAY do salão em Definições.'); return }
+    const stock = d.count ? Number(d.stock.trim() || 'x') : null
+    const lowAt = d.count ? Number(d.low.trim() || '0') : null
+    if (d.count && (!Number.isInteger(stock) || stock! < 0 || stock! > 100000)) { setDraftMsg('Indique quantas unidades tem no salão (0 se não tem nenhuma).'); return }
+    if (d.count && (!Number.isInteger(lowAt) || lowAt! < 0 || lowAt! > 1000)) { setDraftMsg('Indique a partir de quantas unidades quer o aviso.'); return }
+
     const row = {
       salon_id: salon!.id, name: d.name.trim(), price_cents: price, description: d.description.trim() || null, pay: d.pay,
       refill_weeks: d.refill ? Number(d.refill) : null, sold_out: d.sold_out, active: d.active, photo_path: d.photo_path,
+      stock, low_stock: lowAt,
     }
     setBusy(true)
     const { error } = d.id
@@ -122,6 +138,22 @@ export default function ShopPage() {
     } catch { setDraftMsg('Não foi possível enviar a foto. Experimente outra.') }
     setBusy(false)
   }
+
+  async function addStock(e: React.FormEvent) {
+    e.preventDefault()
+    const n = Number(restock!.n)
+    if (!Number.isInteger(n) || n < 1) return
+    const { data, error } = await supabase.rpc('add_product_stock', { p_product: restock!.id, p_units: n })
+    if (!error) { setProducts(ps => ps.map(p => p.id === restock!.id ? { ...p, stock: data as number, sold_out: false } : p)); setRestock(null) }
+  }
+
+  const restockBox = (p: Product, at: 'low' | 'list') => restock?.id === p.id && restock.at === at && (
+    <form className="restock" onSubmit={addStock}>
+      <label>Unidades que chegaram<input inputMode="numeric" autoFocus value={restock.n} placeholder="12" onChange={e => setRestock({ id: p.id, at, n: e.target.value.replace(/\D/g, '') })} /></label>
+      <button className="btn-inline" disabled={!restock.n}>Juntar ao stock</button>
+      <button type="button" className="link" onClick={() => setRestock(null)}>Cancelar</button>
+    </form>
+  )
 
   async function removeProduct(p: Product) {
     const { error } = await supabase.from('products').delete().eq('id', p.id)
@@ -173,6 +205,20 @@ export default function ShopPage() {
           </div>
         )}
 
+        {low.length > 0 && <>
+          <h2 id="stock">Pouco stock</h2>
+          {low.map(p => (
+            <div key={p.id} className="card low-stock">
+              <div className="between">
+                <span><b>{p.name}</b><br /><small className="muted">{p.left === 0 ? 'Acabou' : `${p.left} ${p.left === 1 ? 'unidade' : 'unidades'} para vender`}{(held.get(p.id) ?? 0) > 0 ? ` · ${held.get(p.id)} ${held.get(p.id) === 1 ? 'reservada' : 'reservadas'}` : ''}</small></span>
+                <span className={`tag ${p.left === 0 ? 'warn' : 'pendente'}`}>{p.left === 0 ? 'Esgotado' : 'Encomendar'}</span>
+              </div>
+              {manager && !locked && restock?.id !== p.id && <div className="actions"><button className="btn-inline" onClick={() => setRestock({ id: p.id, n: '', at: 'low' })}><Icon name="plus" size={16} />Chegou stock</button></div>}
+              {restockBox(p, 'low')}
+            </div>
+          ))}
+        </>}
+
         <h2 id="reservas">Reservas por levantar</h2>
         {loaded && open.length === 0 && <p className="muted">Sem reservas por levantar. Quando um cliente reservar na sua página, aparece aqui.</p>}
         {open.map(o => (
@@ -215,7 +261,7 @@ export default function ShopPage() {
             <label>Produto
               <select value={sale.product} onChange={e => setSale({ ...sale, product: e.target.value })}>
                 <option value="">Escolha o produto</option>
-                {products.map(p => <option key={p.id} value={p.id}>{p.name} · {euros(p.price_cents)}</option>)}
+                {products.map(p => { const left = stockLeft(p, held); return <option key={p.id} value={p.id}>{p.name} · {euros(p.price_cents)}{left != null ? ` · ${left} em stock` : ''}</option> })}
               </select>
             </label>
             <div className="grid2">
@@ -263,6 +309,15 @@ export default function ShopPage() {
                 {REFILL_CHOICES.map(w => <option key={w} value={w}>{w} semanas depois da compra</option>)}
               </select>
             </label>
+            <fieldset className="pay-choice">
+              <legend>Stock</legend>
+              <label className="check"><input type="checkbox" checked={draft.count} onChange={e => setDraft({ ...draft, count: e.target.checked })} /><span>Contar o stock<br /><small className="muted">A app tira uma unidade a cada venda entregue, avisa quando está a acabar e marca Esgotado quando chega a 0.</small></span></label>
+              {draft.count && <div className="grid2">
+                <label>Unidades no salão<input inputMode="numeric" value={draft.stock} placeholder="10" onChange={e => setDraft({ ...draft, stock: e.target.value.replace(/\D/g, '') })} /></label>
+                <label>Avisar com<input inputMode="numeric" value={draft.low} onChange={e => setDraft({ ...draft, low: e.target.value.replace(/\D/g, '') })} /></label>
+              </div>}
+              {draft.count && <p className="muted small" style={{ margin: 0 }}>Avisa quando sobrarem {draft.low || 0} ou menos para vender.</p>}
+            </fieldset>
             <label className="check"><input type="checkbox" checked={draft.sold_out} onChange={e => setDraft({ ...draft, sold_out: e.target.checked })} />Esgotado (aparece, mas não se pode reservar)</label>
             <label className="check"><input type="checkbox" checked={draft.active} onChange={e => setDraft({ ...draft, active: e.target.checked })} />Mostrar na página do salão</label>
             <p className="muted small">O preço é seu. Use o mesmo que pratica no balcão.</p>
@@ -277,20 +332,47 @@ export default function ShopPage() {
 
         <div className="product-list">
           {products.filter(p => p.id !== draft?.id).map(p => (
-            <div key={p.id} className="card product-row">
+            <div key={p.id} className="card">
+              <div className="product-row">
               <ProductPhoto path={p.photo_path} name={p.name} />
               <span className="grow">
                 <b>{p.name}</b><br />
                 <small className="muted">{euros(p.price_cents)} · {p.pay === 'mbway' ? 'MB WAY antes' : 'paga ao levantar'}{p.refill_weeks ? ` · reposição ${p.refill_weeks} sem.` : ''}</small>
+                {p.stock != null && <><br /><small className={stockLeft(p, held) === 0 ? 'danger-text' : ''}>{p.stock} em stock{(held.get(p.id) ?? 0) > 0 ? ` · ${held.get(p.id)} ${held.get(p.id) === 1 ? 'reservada' : 'reservadas'}` : ''}</small></>}
                 <span className="tags" style={{ justifyContent: 'flex-start', marginTop: 4 }}>
                   {!p.active && <span className="tag">Escondido</span>}
                   {p.sold_out && <span className="tag warn">Esgotado</span>}
                 </span>
               </span>
+              {manager && !locked && p.stock != null && restock?.id !== p.id && <button className="sm" aria-label={`Chegou stock de ${p.name}`} onClick={() => setRestock({ id: p.id, n: '', at: 'list' })}><Icon name="plus" size={16} /></button>}
               {manager && !locked && <button className="sm" onClick={() => { setDraft(toDraft(p)); setDraftMsg(''); toForm() }}>Editar</button>}
+              </div>
+              {restockBox(p, 'list')}
             </div>
           ))}
         </div>
+
+        {perf.some(x => x.units90 > 0 || x.idle) && <>
+          <h2>Como estão a vender</h2>
+          <p className="muted small" style={{ marginTop: -4 }}>Últimos 90 dias, online e no balcão.</p>
+          <div className="card perf">
+            {perf.filter(x => x.units90 > 0 || x.idle).map(x => (
+              <div key={x.product.id} className="perf-row">
+                <span className="grow">
+                  <b>{x.product.name}</b>
+                  <small className="muted">
+                    {x.units90 ? `${x.units90} ${x.units90 === 1 ? 'vendido' : 'vendidos'}${x.units30 ? ` · ${x.units30} nos últimos 30 dias` : ''}` : 'Sem vendas'}
+                    {x.weeksLeft != null && ` · stock para ${weeksText(x.weeksLeft)}`}
+                  </small>
+                </span>
+                <span className="perf-value">
+                  {x.idle ? <span className="tag warn">Parado</span> : owner && <b>{euros(x.revenue90)}</b>}
+                </span>
+              </div>
+            ))}
+          </div>
+          {perf.some(x => x.idle) && <p className="muted small">Parado: à venda há mais de 60 dias sem nenhuma venda. Experimente mudar o preço, pô-lo à vista no balcão ou deixar de o ter.</p>}
+        </>}
 
         {old.length > 0 && <p><button className="link" onClick={() => setShowOld(!showOld)}>{showOld ? 'Esconder' : 'Ver'} vendas e reservas anteriores</button></p>}
         {showOld && old.map(o => (

@@ -21,6 +21,10 @@ export interface Product {
   active: boolean
   position: number
   created_at: string
+  /** Units in the salon (migration 0033). Null: not counted. */
+  stock?: number | null
+  /** Warn when what is left gets to this or below. */
+  low_stock?: number | null
 }
 
 export type OrderStatus = 'reservado' | 'pago' | 'entregue' | 'cancelado'
@@ -65,6 +69,7 @@ export const SHOP_ERRORS: Record<string, string> = {
   produto_esgotado: 'Este produto esgotou entretanto. Pergunte ao salão quando volta a haver.',
   dados_cliente: 'Indique o seu nome e um telemóvel válido.',
   quantidade_invalida: 'Escolha entre 1 e 10 unidades.',
+  sem_stock: 'Não há tantas unidades. Escolha menos ou fale com o salão.',
   reservas_a_mais: 'Já tem 5 reservas por levantar neste salão. Levante-as primeiro ou fale com o salão.',
   salao_bloqueado: 'De momento não é possível reservar por aqui. Fale diretamente com o salão.',
 }
@@ -156,3 +161,68 @@ export function readyMessage(o: Pick<Order, 'client_name' | 'product_name' | 'qt
 
 /** The shop on the client page: /s/<slug>?loja=1. */
 export const shopLink = (origin: string, slug: string) => `${origin}/s/${slug}?loja=1`
+
+// ---------------------------------------------------------------------------- stock (migration 0033)
+
+export const DEFAULT_LOW_STOCK = 2
+const DAY_MS = 86_400_000
+
+/** Units held by open reservations, per product. */
+export function heldUnits(orders: Pick<Order, 'product_id' | 'qty' | 'status'>[]): Map<string, number> {
+  const held = new Map<string, number>()
+  for (const o of orders) if (o.product_id && isOpen(o)) held.set(o.product_id, (held.get(o.product_id) ?? 0) + o.qty)
+  return held
+}
+
+/** What is left to sell: in the salon minus what clients reserved. Null when the salon doesn't count it. */
+export const stockLeft = (p: Pick<Product, 'id' | 'stock'>, held: Map<string, number>) =>
+  p.stock == null ? null : Math.max(0, p.stock - (held.get(p.id) ?? 0))
+
+/** Counted products on sale whose units left reached the warning level. Fewest left first. */
+export function lowStock(products: Product[], held: Map<string, number>): (Product & { left: number })[] {
+  return products
+    .filter(p => p.active && p.stock != null)
+    .map(p => ({ ...p, left: stockLeft(p, held)! }))
+    .filter(p => p.left <= (p.low_stock ?? DEFAULT_LOW_STOCK))
+    .sort((a, b) => a.left - b.left || a.name.localeCompare(b.name))
+}
+
+export interface Performance {
+  product: Product
+  units30: number
+  units90: number
+  revenue90: number
+  lastSale: Date | null
+  /** Weeks the units left last at the pace of the last 90 days. */
+  weeksLeft: number | null
+  /** On sale for 60+ days with no sale in the last 60. */
+  idle: boolean
+}
+
+export function performance(products: Product[], orders: Order[], held: Map<string, number>, now = new Date()): Performance[] {
+  const t = now.getTime()
+  return products.map(p => {
+    const sales = orders.filter(o => o.product_id === p.id && isSale(o))
+    const since = (days: number) => sales.filter(o => t - new Date(o.paid_at!).getTime() <= days * DAY_MS)
+    const s90 = since(90)
+    const units90 = s90.reduce((n, o) => n + o.qty, 0)
+    const revenue90 = s90.reduce((n, o) => n + orderTotal(o), 0)
+    const last = sales.reduce<number | null>((m, o) => Math.max(m ?? 0, new Date(o.paid_at!).getTime()), null)
+    const left = stockLeft(p, held)
+    return {
+      product: p,
+      units30: since(30).reduce((n, o) => n + o.qty, 0),
+      units90, revenue90,
+      lastSale: last == null ? null : new Date(last),
+      weeksLeft: left == null || left === 0 || units90 === 0 ? null : Math.round((left / (units90 / (90 / 7))) * 10) / 10,
+      idle: p.active && t - new Date(p.created_at).getTime() >= 60 * DAY_MS && (last == null || t - last > 60 * DAY_MS),
+    }
+  }).sort((a, b) => b.units90 - a.units90 || b.revenue90 - a.revenue90 || a.product.name.localeCompare(b.product.name))
+}
+
+/** "3 semanas" / "1 semana" / "menos de 1 semana". */
+export function weeksText(w: number): string {
+  if (w < 1) return 'menos de 1 semana'
+  const n = Math.round(w)
+  return n === 1 ? 'cerca de 1 semana' : `cerca de ${n} semanas`
+}
