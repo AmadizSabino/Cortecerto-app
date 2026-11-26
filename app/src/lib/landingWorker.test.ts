@@ -27,4 +27,10 @@ describe('canonical address', () => {
     expect(canonicalRedirect(new URL('https://cortecerto-app.amadiz-sabino.workers.dev/painel'))!.headers.get('location')).toBe('https://cortecerto.pt/painel')
     expect(canonicalRedirect(new URL('https://claude-x-cortecerto-app.amadiz-sabino.workers.dev/'))).toBeNull()
   })
+  it('never redirects the API, so apps installed from an old address keep working', async () => {
+    const { canonicalRedirect } = await import('../../../worker/index')
+    expect(canonicalRedirect(new URL('https://cortecerto-app.amadiz-sabino.workers.dev/api/ai/owner-assistant'), 'POST')).toBeNull()
+    expect(canonicalRedirect(new URL('https://cortecerto-app.amadiz-sabino.workers.dev/api/push/key'))).toBeNull()
+    expect(canonicalRedirect(new URL('https://www.cortecerto.pt/painel'), 'POST')).toBeNull()
+  })
 })
