@@ -32,6 +32,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     { to: '/marca', icon: 'camera', label: 'Marca e galeria', hint: 'Logótipo, capa, texto e fotos do seu trabalho', need: 'equipa' },
     { to: '/equipa', icon: 'users', label: 'Equipa', hint: 'Profissionais, comissões e acessos ao painel', need: 'equipa' },
     { to: '/ia', icon: 'spark', label: 'Assistente IA', hint: 'Antes e depois, relatórios, respostas e mais', need: 'ia' },
+    { to: '/indicar', icon: 'gift', label: 'Convidar um colega', hint: 'Um mês grátis para os dois por cada salão', need: 'assinatura' },
     { to: '/assinatura', icon: 'card', label: 'Assinatura', hint: 'Período grátis e pagamento', need: 'assinatura' },
     { to: '/definicoes', icon: 'settings', label: 'Definições', hint: 'Salão, serviços, sinal e estilo', need: 'definicoes' },
   ] },

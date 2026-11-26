@@ -626,3 +626,7 @@ body.no-scroll { overflow: hidden; }
 .perf-value small { display: block; }
 .stock-hint { color: var(--warn); font-weight: 600; }
 .warn-avatar { background: var(--warn); color: #fff; }
+.referral-hero { text-align: center; }
+.referral-gift { width: 64px; height: 64px; border-radius: 999px; display: inline-grid; place-items: center; background: color-mix(in srgb, var(--accent) 18%, var(--card)); color: var(--accent); }
+.referral-steps { display: grid; gap: 6px; padding-left: 22px; margin: 4px 0 16px; color: var(--muted); }
+.invite-note { margin-top: 0; }

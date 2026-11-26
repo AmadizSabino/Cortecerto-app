@@ -722,4 +722,29 @@ select pg_temp.check(add_product_stock(:'champo', 6) = 6, 'a delivery adds units
 set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
 do $$ begin perform add_product_stock(current_setting('t.champo')::uuid, 1); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
 reset role; reset request.jwt.claim.sub;
+-- 0034: a salon invites another salon
+insert into auth.users values ('00000000-0000-0000-0000-0000000000c1','colega@x.pt');
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000c1'; set request.jwt.claim.email='colega@x.pt';
+select create_salon('{"slug":"colega","name":"Colega","type":"barbearia","theme":"b3","deposit_cents":0,
+  "services":[{"name":"Corte","duration_min":30,"price_cents":1000}],"professionals":["Zé"],
+  "hours":[{"weekday":1,"opens":"09:00","closes":"18:00"}]}'::jsonb) as colega \gset
+select set_config('t.colega', :'colega', false) \g /dev/null
+do $$ begin perform set_referrer(current_setting('t.colega')::uuid, 'colega'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%convite_invalido%' then raise; end if; end $$;
+select pg_temp.check(set_referrer(:'colega', ' Barb-Teste ') = 'Barb', 'the new salon records who invited it');
+select pg_temp.check(set_referrer(:'colega', 'outro') = 'Barb', 'only once');
+do $$ begin perform set_referrer(current_setting('t.salon')::uuid, 'colega'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+do $$ begin perform admin_reward_referral(current_setting('t.colega')::uuid); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+select pg_temp.check(count(*) = 1 and bool_and(not paying) and min(name) = 'Colega', 'the inviting owner sees the salon they brought') from my_referrals(:'salon');
+reset role;
+select trial_ends_at as colega_trial from salons where id = :'colega' \gset
+select trial_ends_at as barb_trial, paid_until as barb_paid, subscription as barb_sub from salons where id = :'salon' \gset
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+select pg_temp.check(count(*) = 1, 'the admin sees the invite') from admin_referrals();
+select admin_reward_referral(:'colega');
+do $$ begin perform admin_reward_referral(current_setting('t.colega')::uuid); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%ja_dado%' then raise; end if; end $$;
+reset role; reset request.jwt.claim.sub;
+select pg_temp.check(trial_ends_at = :'colega_trial'::timestamptz + interval '30 days', 'the new salon gets a free month') from salons where id = :'colega';
+select pg_temp.check(case when :'barb_sub' = 'ativa' and :'barb_paid' <> '' then paid_until >= :'barb_paid'::timestamptz + interval '30 days'
+  else trial_ends_at >= :'barb_trial'::timestamptz + interval '30 days' end, 'and so does the salon that invited it') from salons where id = :'salon';
 \echo All database checks passed

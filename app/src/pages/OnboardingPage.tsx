@@ -10,6 +10,7 @@ import { REQUIRED } from '../lib/legal'
 import { recordAcceptance } from '../lib/acceptance'
 import { parseEuros, slugify, SUGGESTED_SERVICES, WEEKDAYS, type SalonType } from '../lib/onboarding'
 import BusinessProfile, { type Profile } from '../components/BusinessProfile'
+import { clearInvite, savedInvite } from '../lib/referral'
 
 interface ServiceRow { name: string; duration: string; price: string }
 interface DayRow { open: boolean; opens: string; closes: string }
@@ -43,6 +44,13 @@ export default function OnboardingPage() {
   const [accepted, setAccepted] = useState<Record<string, boolean>>({})
   const [heard, setHeard] = useState<Heard | ''>('')
   const [heardDetail, setHeardDetail] = useState('')
+  // Invited by another salon (?convite=, migration 0034): who, to show it and record it after sign-up.
+  const [invite] = useState(() => savedInvite())
+  const [inviter, setInviter] = useState<string | null>(null)
+  useEffect(() => {
+    if (!invite) return
+    supabase.from('salons').select('name').eq('slug', invite).maybeSingle().then(({ data }) => { if (data) setInviter((data as { name: string }).name) })
+  }, [invite])
 
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setSession(data.session)) }, [])
 
@@ -104,6 +112,12 @@ export default function OnboardingPage() {
     if (salonId) await supabase.from('salons').update({ areas: [...new Set([profile.type, ...profile.areas])], booking_mode: profile.booking_mode, work_place: profile.work_place }).eq('id', salonId)
     // How they heard (migration 0028). Best effort, like the profile above.
     if (salonId && heard) await supabase.from('salons').update({ heard_from: heard, heard_detail: heardDetail.trim() || null }).eq('id', salonId)
+    // Who invited them (migration 0034). Best effort: a wrong or old code is simply ignored.
+    if (salonId && invite && inviter) {
+      const { error: refError } = await supabase.rpc('set_referrer', { p_salon: salonId, p_code: invite })
+      if (!refError && !heard) await supabase.from('salons').update({ heard_from: 'amigo', heard_detail: inviter.slice(0, 120) }).eq('id', salonId)
+    }
+    clearInvite()
     // Before migration 0004 this fails quietly; the panel then asks again once it can record it.
     await recordAcceptance(REQUIRED, salonId ?? null)
     nav('/no-ar', { replace: true })
@@ -115,6 +129,7 @@ export default function OnboardingPage() {
       <form onSubmit={next}>
         {step === 1 && <>
           <h1>O seu salão</h1>
+          {inviter && <p className="card soft small invite-note">🎁 <b>{inviter}</b> convidou-o para a CorteCerto. Quando pagar o primeiro mês, ganham os dois um mês grátis.</p>}
           <BusinessProfile value={profile} onChange={changeProfile} onMainChange={pickType} />
           <label>Nome do salão
             <input value={name} required onChange={e => { setName(e.target.value); if (!slugTouched) setSlug(slugify(e.target.value)) }} />
