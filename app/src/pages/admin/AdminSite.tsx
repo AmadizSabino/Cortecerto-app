@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { siteFunnels, SOURCE_LABEL, type SiteStats } from '../../lib/siteStats'
+import { CTA_LABEL, funnelSteps, siteFunnels, SOURCE_LABEL, type FunnelStats, type SiteStats } from '../../lib/siteStats'
 import { Bars } from './AdminDashboard'
 import { HEARD_LABEL } from '../../lib/growth'
 
@@ -25,11 +25,14 @@ function Funnel({ steps }: { steps: { label: string; count: number }[] }) {
 export function AdminSite({ onOpen }: { onOpen: (salonId: string) => void }) {
   const [days, setDays] = useState(30)
   const [s, setS] = useState<SiteStats | null>()
+  const [funnel, setFunnel] = useState<FunnelStats | null>(null)
   const [heard, setHeard] = useState<{ heard_from: string; salons: number; paying: number }[]>([])
   useEffect(() => { supabase.rpc('admin_heard_from').then(({ data }) => setHeard((data ?? []) as typeof heard)) }, [])
   useEffect(() => {
     setS(undefined)
     supabase.rpc('admin_site_stats', { p_days: days }).then(({ data, error }) => setS(error ? null : data as SiteStats))
+    // Detailed funnel (migration 0037). Before it runs, the simpler funnel below stays.
+    supabase.rpc('admin_funnel', { p_days: days }).then(({ data, error }) => setFunnel(error ? null : data as FunnelStats))
   }, [days])
 
   const chips = (
@@ -59,11 +62,36 @@ export function AdminSite({ onOpen }: { onOpen: (salonId: string) => void }) {
         <div className="stat"><b>{devices ? pct(Number(s.devices.telemovel ?? 0), devices) : '—'}</b><span>Visitantes no telemóvel</span></div>
       </div>
 
+      {funnel ? (() => {
+        const ff = funnelSteps(funnel)
+        const ctas = Object.entries(funnel.cta).sort((a, b) => Number(b[1]) - Number(a[1]))
+        return <>
+          <section className="card">
+            <h2>Do site ao salão no ar</h2>
+            <Funnel steps={ff.signup} />
+            <p className="muted small">Visitantes únicos por dia em cada passo. A percentagem compara com o passo anterior: onde cai mais é onde vale a pena mexer.</p>
+          </section>
+          <section className="card">
+            <h2>Assistente do salão</h2>
+            <Funnel steps={ff.wizard} />
+            <p className="muted small">Quantos acabaram cada passo do registo do salão (nome e link, serviços, equipa e horário, sinal e termos). Uma conta que pára a meio vale um contacto.</p>
+          </section>
+          <section className="card">
+            <h2>Botões que levam ao registo</h2>
+            {ctas.length === 0 ? <p className="muted">Ainda sem cliques neste período.</p> : (
+              <table className="money-table"><tbody>
+                {ctas.map(([k, n]) => <tr key={k}><td>{CTA_LABEL[k] ?? k}</td><td className="num">{n}</td></tr>)}
+              </tbody></table>
+            )}
+            <p className="muted small">Mexeram na calculadora das faltas: <b>{funnel.calculator}</b></p>
+          </section>
+        </>
+      })() : (
       <section className="card">
         <h2>Do site ao salão criado</h2>
         <Funnel steps={f.signup} />
         <p className="muted small">Visitantes únicos por dia na página inicial. Uma conta criada que não chega a "salão criado" ficou a meio do registo: vale um contacto.</p>
-      </section>
+      </section>)}
 
       <section className="card">
         <h2>Visitantes por dia</h2>

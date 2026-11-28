@@ -7,6 +7,7 @@ import { supabase, type Salon } from '../lib/supabase'
 import { loadMySalon } from '../lib/mySalon'
 import { themeById, themeStyle } from '../lib/themes'
 import { publicOrigin } from '../lib/publicOrigin'
+import { track } from '../lib/track'
 
 /** What to send clients so they book online. */
 const shareText = (salon: Pick<Salon, 'name'>, link: string) => `Já pode marcar no ${salon.name} online, a qualquer hora: ${link}`
@@ -22,6 +23,8 @@ export default function LivePage() {
 
   useEffect(() => { supabase.auth.getSession().then(({ data }) => setSession(data.session)) }, [])
   useEffect(() => { if (session) loadMySalon(session.user.id).then(r => setSalon(r.salon)) }, [session])
+  // Last stage of the sign-up funnel in /admin > Site (migration 0037).
+  useEffect(() => { if (salon) track('passo', { page: 'registo', detail: 'no_ar', salon: salon.id, key: 'no_ar' }) }, [salon])
 
   if (session === null) return <Navigate to="/painel" replace />
   if (session === undefined || salon === undefined) return <main className="page"><p className="muted">A carregar…</p></main>

@@ -1,5 +1,5 @@
 /**
- * POST /api/t { n, p, path?, src?, ref?, salon? }: one anonymous visit or click (migration 0027).
+ * POST /api/t { n, p, path?, src?, ref?, salon?, d? }: one anonymous visit or click (migration 0027).
  *
  * No cookies and nothing personal is stored. The visitor code is a hash of the connection,
  * the browser and the day, cut to 16 characters: it counts unique visitors per day and
@@ -8,7 +8,9 @@
 
 export interface TrackEnv { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY?: string }
 
-export const EVENTS = ['visita', 'conta_criada', 'salao_criado', 'marcacao_inicio', 'marcacao_feita', 'whatsapp', 'instalar'] as const
+export const EVENTS = ['visita', 'conta_criada', 'salao_criado', 'marcacao_inicio', 'marcacao_feita', 'whatsapp', 'instalar',
+  // Funnel (migration 0037): site buttons, the calculator, the sign-up form, the salon wizard steps.
+  'cta', 'calculadora', 'registo_aberto', 'passo'] as const
 export const PAGES = ['site', 'registo', 'salao', 'painel', 'outra'] as const
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const BOT = /bot|crawl|spider|slurp|preview|monitor|headless|lighthouse|facebookexternalhit|whatsapp\//i
@@ -61,6 +63,7 @@ export async function track(request: Request, env: TrackEnv): Promise<Response> 
     name, page, salon_id: salon,
     path: typeof b.path === 'string' ? b.path.split(/[?#]/)[0].slice(0, 120) : null,
     src: cleanSrc(b.src),
+    detail: cleanSrc(b.d),
     ref: refName(b.ref, new URL(request.url).hostname),
     visitor: await visitorCode(request, env.SUPABASE_SERVICE_ROLE_KEY.slice(-16)),
     device: /mobi|android|iphone|ipad/i.test(ua) ? 'telemovel' : 'computador',
@@ -70,6 +73,14 @@ export async function track(request: Request, env: TrackEnv): Promise<Response> 
     headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
     body: JSON.stringify(row),
   }).catch(() => null)
+  // Before migration 0037 the new events and the detail column are refused: keep the old events.
+  if (res && res.status === 400 && row.detail) {
+    await fetch(`${env.SUPABASE_URL}/rest/v1/site_events`, {
+      method: 'POST',
+      headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ ...row, detail: undefined }),
+    }).catch(() => {})
+  }
   // A salon id that no longer exists fails the foreign key: keep the event without it.
   if (res && res.status === 409 && salon) {
     await fetch(`${env.SUPABASE_URL}/rest/v1/site_events`, {
