@@ -138,7 +138,7 @@ export default function PackagesPage() {
   const [session, setSession] = useState<Session | null>()
   const [salon, setSalon] = useState<Salon | null>()
   const [role, setRole] = useState<Role>('dono')
-  const [tab, setTab] = useState<'pacotes' | 'pedidos' | 'packs'>('pacotes')
+  const [tab, setTab] = useState<'pacotes' | 'pedidos' | 'packs'>(() => location.hash === '#pedidos' ? 'pedidos' : location.hash === '#packs' ? 'packs' : 'pacotes')
   const [pkgs, setPkgs] = useState<Package[]>([])
   const [items, setItems] = useState<PackageItem[]>([])
   const [photos, setPhotos] = useState<Photo[]>([])

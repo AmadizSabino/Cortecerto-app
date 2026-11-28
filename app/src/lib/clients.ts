@@ -184,3 +184,26 @@ export function filterClients(
       || fold(notes[c.key]?.notes ?? '').includes(q)
   })
 }
+
+const firstName = (n: string) => n.trim().split(/\s+/)[0]?.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() ?? ''
+
+/** True when a booking was made under another person's name than the client's (a shared phone). */
+export function otherPerson(clientName: string, bookingName: string): boolean {
+  const a = firstName(clientName), b = firstName(bookingName)
+  return !!a && !!b && a !== b && bookingName !== 'Cliente apagado'
+}
+
+/**
+ * Other names this phone number booked under, most recent first (a shared family phone, or tests).
+ * Clients are kept per phone number, so the salon should see when one number covers several people.
+ */
+export function otherNames(name: string, bookings: Pick<Booking, 'client_name'>[]): string[] {
+  const seen = new Set<string>(), out: string[] = []
+  for (const b of bookings) {
+    if (!otherPerson(name, b.client_name)) continue
+    const k = firstName(b.client_name)
+    if (seen.has(k)) continue
+    seen.add(k); out.push(b.client_name.trim())
+  }
+  return out
+}

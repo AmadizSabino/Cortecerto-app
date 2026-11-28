@@ -639,3 +639,4 @@ body.no-scroll { overflow: hidden; }
 .post-desk .actions { margin-top: 8px; flex-wrap: wrap; }
 .btn-social { display: inline-flex; align-items: center; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); color: var(--fg); text-decoration: none; font-weight: 600; font-size: .9rem; }
 @media (max-width: 520px) { .post-desk { grid-template-columns: 1fr; } .post-desk img { max-width: 220px; } }
+.shared-phone { margin: 0; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--accent, #b5462f) 12%, transparent); }
