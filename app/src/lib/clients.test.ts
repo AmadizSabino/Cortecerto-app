@@ -103,3 +103,13 @@ it('uses the most recent consent: the salon in person or the latest booking', ()
   expect(mergedConsent({ consent: true, at: null }, undefined)).toBe(true)
   expect(mergedConsent({ consent: false, at: null }, { consent_messages: false, consent_at: '2026-11-20T10:00:00Z' })).toBe(false)
 })
+
+describe('otherNames', () => {
+  it('lists the other people who booked with the same phone, once each', async () => {
+    const { otherNames, otherPerson } = await import('./clients')
+    const bs = [{ client_name: 'Maria Guedes' }, { client_name: 'alexandre' }, { client_name: 'Maria G.' }, { client_name: 'Sundar Mohanan' }, { client_name: 'Cliente apagado' }]
+    expect(otherNames('Alexandre Valadas', bs)).toEqual(['Maria Guedes', 'Sundar Mohanan'])
+    expect(otherPerson('José Martins', 'Jose M.')).toBe(false)
+    expect(otherNames('Ana', [{ client_name: 'Ana Costa' }])).toEqual([])
+  })
+})

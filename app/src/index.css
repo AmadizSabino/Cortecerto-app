@@ -647,3 +647,4 @@ body.no-scroll { overflow: hidden; }
 .signup-steps li.now::before { background: var(--accent, #b5462f); border-color: var(--accent, #b5462f); color: #fff; }
 .signup-steps span { color: var(--muted, #888); font-size: .78rem; }
 .signup-next { margin: 4px 0 0; }
+.shared-phone { margin: 0; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--accent, #b5462f) 12%, transparent); }

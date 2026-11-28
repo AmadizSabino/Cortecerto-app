@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { euros, supabase, type Booking, type Salon, type Service } from '../lib/supabase'
-import { AT_RISK_DAYS, birthdaySoon, buildClients, daysSince, filterClients, isAtRisk, mergeRegistered, type Client, type ClientDetails, type ClientFilter, type ClientNote, type RegisteredClient, HEARD_FROM, validNif } from '../lib/clients'
+import { AT_RISK_DAYS, birthdaySoon, buildClients, daysSince, filterClients, isAtRisk, mergeRegistered, type Client, type ClientDetails, type ClientFilter, type ClientNote, type RegisteredClient, HEARD_FROM, validNif, otherNames, otherPerson } from '../lib/clients'
 import { dateInTz, formatTime } from '../lib/time'
 import { formatPhone, waLink, waNumber } from '../lib/whatsapp'
 import { themeById, themeStyle } from '../lib/themes'
@@ -89,8 +89,9 @@ function NoteEditor({ salonId, phoneKey, note, draft, onSaved }: {
 }
 
 /** Adds a client to the salon's own list, or completes one (salon_clients, migrations 0018 and 0036). */
-function RegisterForm({ salonId, initial, note, pros, onSaved, onNote, onClose }: {
+function RegisterForm({ salonId, initial, note, pros, known, onSaved, onNote, onClose }: {
   salonId: string; initial: { name: string; phone: string; email?: string | null; details?: ClientDetails }
+  known: (phoneKey: string) => { name: string; bookings: number; registered?: boolean } | undefined
   note?: ClientNote; pros: { id: string; name: string }[]
   onSaved: (r: RegisteredClient) => void; onNote: (n: ClientNote) => void; onClose: () => void
 }) {
@@ -109,6 +110,10 @@ function RegisterForm({ salonId, initial, note, pros, onSaved, onNote, onClose }
   const [saving, setSaving] = useState(false)
   const hasMore = Boolean(day || notes || pro || heard || nif || det.consent_messages != null)
   const dayMax = month ? DAYS_IN_MONTH[Number(month) - 1] : 31
+  // Clients are kept per phone number: say so when this number already belongs to someone else.
+  const typedKey = waNumber(phone)
+  const owner = typedKey.length >= 11 && typedKey !== waNumber(initial.phone) ? known(typedKey) : undefined
+  const shared = owner && name.trim() && otherPerson(name, owner.name) ? owner : undefined
   async function save(e: React.FormEvent) {
     e.preventDefault(); setError('')
     const key = waNumber(phone)
@@ -145,6 +150,7 @@ function RegisterForm({ salonId, initial, note, pros, onSaved, onNote, onClose }
       <div className="row"><strong>{initial.name ? 'Ficha do cliente' : 'Registar cliente'}</strong><button type="button" className="link" onClick={onClose}>Fechar</button></div>
       <label>Nome<input value={name} onChange={e => setName(e.target.value)} autoComplete="off" /></label>
       <label>Telemóvel<input value={phone} onChange={e => setPhone(e.target.value)} inputMode="tel" autoComplete="off" placeholder="912 345 678" /></label>
+      {shared && <p className="shared-phone small">Este número já tem {shared.bookings ? `${shared.bookings === 1 ? '1 marcação' : `${shared.bookings} marcações`} em nome de` : 'a ficha de'} <b>{shared.name}</b>. Cada número tem uma só ficha: ao guardar, {shared.registered ? 'a ficha passa a chamar-se' : 'o histórico desse número aparece em'} {name.trim().split(/\s+/)[0]}.</p>}
       <label><span>Email <span className="muted">(opcional)</span></span><input type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="off" /></label>
       <details className="more-details" open={hasMore}>
         <summary>Mais detalhes <span className="muted">(opcional)</span></summary>
@@ -328,6 +334,7 @@ export default function ClientsPage() {
         </span>
       </header>
       {registering && registerReady && <RegisterForm salonId={salon.id} initial={registering} pros={pros} note={notes[waNumber(registering.phone)]}
+        known={k => { const c = clients.find(x => x.key === k); return c && { name: c.name, bookings: c.bookings.length, registered: c.registered } }}
         onNote={n => { setNotes(ns => ({ ...ns, [n.phone_key]: n })); setNoteRev(r => ({ ...r, [n.phone_key]: (r[n.phone_key] ?? 0) + 1 })) }} onClose={() => { setRegistering(null); if (params.get('novo')) setParams({}, { replace: true }) }}
         onSaved={r => { setRegistered(rs => [...rs.filter(x => x.phone_key !== r.phone_key), r]); setRegistering(null); setOpen(r.phone_key); setQuery(''); setFilter('todos'); if (params.get('novo')) setParams({}, { replace: true }) }} />}
 
@@ -391,6 +398,7 @@ export default function ClientsPage() {
                     c.details.nif && `NIF ${c.details.nif}`].filter(Boolean).join(' · ')}
                 </div>}
                 {bday !== null && <div>🎂 {birthdayLabel(bday)}</div>}
+                {(() => { const others = otherNames(c.name, c.bookings); return others.length > 0 && <div className="shared-phone small">Este número também marcou em nome de {others.slice(0, 4).join(', ')}{others.length > 4 ? ` e mais ${others.length - 4}` : ''}. Telemóvel partilhado?</div> })()}
                 {buyers.has(c.key) && (() => {
                   const mine = buys.filter(b => b.client_phone && waNumber(b.client_phone) === c.key).slice(0, 5)
                   return <div className="small"><b>Compras na loja:</b> {mine.map(b => `${b.qty > 1 ? `${b.qty} × ` : ''}${b.product_name} (${fmtDate(b.paid_at!)}${can(role, 'revenue') ? `, ${euros(orderTotal(b))}` : ''})`).join(' · ')}</div>
@@ -421,7 +429,7 @@ export default function ClientsPage() {
                   {c.bookings.map(b => (
                     <li key={b.id} className={`st-${b.status}`}>
                       <span>{fmtDate(b.starts_at)}</span>
-                      <span>{services[b.service_id]?.name ?? 'Serviço'}</span>
+                      <span>{services[b.service_id]?.name ?? 'Serviço'}{otherPerson(c.name, b.client_name) && <small className="muted"> · {b.client_name}</small>}</span>
                       <span className="tag">{STATUS_LABEL[b.status]}</span>
                     </li>
                   ))}
