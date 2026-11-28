@@ -73,3 +73,33 @@ export function siteFunnels(s: SiteStats) {
 export const usdToEur = (usd: number | null | undefined, rate: number) => n(usd) * rate
 
 export const eurText = (v: number) => new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: v > 0 && v < 0.1 ? 3 : 2 }).format(v)
+
+/** admin_funnel() (migration 0037): unique daily visitors at each stage of the sign-up funnel. */
+export interface FunnelStats {
+  days: number
+  stages: { id: string; n: number }[]
+  cta: Record<string, number>
+  steps: Record<string, number>
+  calculator: number
+}
+
+const STAGE_LABEL: Record<string, string> = {
+  visita: 'Visitaram o site', cta: 'Clicaram em "Experimentar"', registo_aberto: 'Abriram o registo',
+  conta_criada: 'Criaram conta', salao_criado: 'Criaram o salão', no_ar: 'Viram o salão no ar',
+}
+export const CTA_LABEL: Record<string, string> = {
+  hero: 'Topo da página', menu: 'Menu', calculadora: 'Calculadora das faltas', construir: '"Construa connosco"',
+  preco: 'Preço', final: 'Fim da página', fixo: 'Botão fixo no telemóvel', outro: 'Outro',
+}
+
+/** The funnel as labelled steps, and the wizard: how many finished each of its 4 steps. */
+export function funnelSteps(f: FunnelStats): { signup: { label: string; count: number }[]; wizard: { label: string; count: number }[] } {
+  return {
+    signup: f.stages.map(s => ({ label: STAGE_LABEL[s.id] ?? s.id, count: Number(s.n) })),
+    wizard: [
+      { label: 'Criaram conta', count: Number(f.stages.find(s => s.id === 'conta_criada')?.n ?? 0) },
+      ...[1, 2, 3].map(i => ({ label: `Passo ${i} de 4`, count: Number(f.steps[`passo${i}`] ?? 0) })),
+      { label: 'Salão criado (passo 4)', count: Number(f.stages.find(s => s.id === 'salao_criado')?.n ?? 0) },
+    ],
+  }
+}

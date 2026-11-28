@@ -90,7 +90,7 @@ export default function OnboardingPage() {
     const v = validate()
     setError(v)
     if (v) return
-    if (step < 4) { setStep(step + 1); return }
+    if (step < 4) { track('passo', { page: 'registo', detail: `passo${step}`, key: `passo${step}` }); setStep(step + 1); return }
     setSaving(true)
     const { data: salonId, error } = await supabase.rpc('create_salon', {
       p: {

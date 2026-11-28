@@ -20,6 +20,7 @@ const ADMIN_HELP: Record<AdminTab, string[]> = {
   ],
   site: [
     'Quantas pessoas visitam o site e as páginas dos salões, de onde vêm, e quantas criam conta ou marcam.',
+    '"Do site ao salão no ar" mostra onde as pessoas param: clique em Experimentar, registo aberto, conta, salão criado e salão no ar. "Botões que levam ao registo" diz qual botão do site funciona melhor.',
     'Junte ?src= aos links que partilha (por exemplo /?src=instagram) para os ver separados em "De onde vêm".',
     '"Como os salões conheceram a CorteCerto" vem da pergunta no fim do registo.',
     'Um salão com muitas visitas e poucas marcações costuma ter poucos horários livres ou preços em falta: vale um telefonema.',

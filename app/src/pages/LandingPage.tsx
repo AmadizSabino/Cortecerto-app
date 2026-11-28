@@ -131,15 +131,16 @@ const WITH_VAT = Math.round(PLAN.priceCents * (1 + PLAN.vatRate))
 function NoShowCalculator() {
   const [perWeek, setPerWeek] = useState('3')
   const [avg, setAvg] = useState('15')
+  const used = () => track('calculadora', { page: 'site', key: 'calculadora' })
   const r = noShowCost(parseNumber(perWeek), Math.round(parseNumber(avg) * 100), WITH_VAT)
   const valid = !isNaN(parseNumber(perWeek)) && !isNaN(parseNumber(avg))
   return (
     <div className="lp-calc">
       <div className="lp-calc-inputs">
         <label className="lp-slider"><span className="lp-slider-top">Faltas por semana<output>{perWeek}</output></span>
-          <input type="range" min={0} max={15} step={1} value={perWeek} onChange={e => setPerWeek(e.target.value)} /></label>
+          <input type="range" min={0} max={15} step={1} value={perWeek} onChange={e => { setPerWeek(e.target.value); used() }} /></label>
         <label className="lp-slider"><span className="lp-slider-top">Preço médio de um serviço<output>{avg} €</output></span>
-          <input type="range" min={5} max={80} step={1} value={avg} onChange={e => setAvg(e.target.value)} /></label>
+          <input type="range" min={5} max={80} step={1} value={avg} onChange={e => { setAvg(e.target.value); used() }} /></label>
         <p className="lp-small-print">Arraste para os números do seu salão. Fica só no seu ecrã, não guardamos nada.</p>
       </div>
       <div className="lp-calc-out" aria-live="polite">
@@ -148,7 +149,7 @@ function NoShowCalculator() {
           <p className="lp-calc-big huge">{euros(r.lostCents)}</p>
           <p className="lp-calc-year">ou {euros(r.lostCents * 12)} por ano.</p>
           <p>Se os lembretes e a troca de horário evitarem metade, recupera <strong>{euros(r.savedCents)}</strong> por mês{r.paysFor >= 1 ? `, ${r.paysFor >= 2 ? `${Math.floor(r.paysFor)} vezes` : 'mais do que'} o que custa a CorteCerto (${euros(WITH_VAT)} com IVA).` : '.'}</p>
-          <Link to={SIGNUP} className="lp-cta">Quero recuperar este dinheiro</Link>
+          <Link to={SIGNUP} className="lp-cta" onClick={() => track('cta', { page: 'site', detail: 'calculadora' })}>Quero recuperar este dinheiro</Link>
         </> : <p>Escreva dois números, por exemplo 3 faltas e 15 €.</p>}
       </div>
     </div>
@@ -298,7 +299,7 @@ export default function LandingPage() {
           </nav>
           <div className="lp-nav-actions">
             <Link to="/painel" className="lp-login">Entrar</Link>
-            <Link to={SIGNUP} className="lp-cta sm lp-nav-cta">Começar grátis</Link>
+            <Link to={SIGNUP} className="lp-cta sm lp-nav-cta" onClick={() => track('cta', { page: 'site', detail: 'menu' })}>Começar grátis</Link>
           </div>
         </div>
       </header>
@@ -311,7 +312,7 @@ export default function LandingPage() {
           <h1>Menos faltas. <span>Mais cadeiras ocupadas.</span></h1>
           <p className="lp-lead">Os clientes marcam online a qualquer hora e recebem o lembrete no WhatsApp do salão. Se não puderem vir, mudam a hora sozinhos. Menos mensagens, menos faltas, mais tempo para cortar.</p>
           <div className="lp-cta-row">
-            <Link to={SIGNUP} className="lp-cta lg" id="lp-hero-cta">{trial}</Link>
+            <Link to={SIGNUP} className="lp-cta lg" id="lp-hero-cta" onClick={() => track('cta', { page: 'site', detail: 'hero' })}>{trial}</Link>
             <a href={`/s/${EXAMPLE_SLUG}?src=site-exemplo`} target="_blank" rel="noreferrer" className="lp-ghost">Ver uma página de marcação a funcionar ›</a>
           </div>
           <ul className="lp-trust">{TRUST.map(t => <li key={t}><Check />{t}</li>)}</ul>
@@ -435,7 +436,7 @@ export default function LandingPage() {
           <ul className="lp-perks">
             {FOUNDERS.perks.map(p => <li key={p.title}><span className="lp-ico"><Icon name={p.icon} size={20} /></span><span><b>{p.title}</b><small>{p.text}</small></span></li>)}
           </ul>
-          <Link to={SIGNUP} className="lp-cta lg">Quero construir convosco</Link>
+          <Link to={SIGNUP} className="lp-cta lg" onClick={() => track('cta', { page: 'site', detail: 'construir' })}>Quero construir convosco</Link>
         </div>
         <figure className="lp-promise">
           <blockquote>“{FOUNDER.quote}”</blockquote>
@@ -457,7 +458,7 @@ export default function LandingPage() {
           <ul className="lp-points">
             {['Marcações, clientes e profissionais sem limite', 'Página de marcação e poster com QR', 'Lembretes por WhatsApp sem custo por mensagem', 'Fila de espera, sinais por MB Way e estatísticas', '10 ferramentas de IA incluídas', 'Ajuda em português, por pessoas'].map(p => <li key={p}><Check />{p}</li>)}
           </ul>
-          <Link to={SIGNUP} className="lp-cta lg block">Criar o meu salão grátis</Link>
+          <Link to={SIGNUP} className="lp-cta lg block" onClick={() => track('cta', { page: 'site', detail: 'preco' })}>Criar o meu salão grátis</Link>
           <p className="lp-guarantee"><Icon name="shield" size={16} />Sem fidelização. Cancela quando quiser e leva os seus dados.</p>
         </div>
         <div className="lp-price-side">
@@ -505,13 +506,13 @@ export default function LandingPage() {
         <h2>A próxima cadeira vazia pode ser a última.</h2>
         <p>Crie o seu salão em 15 minutos e partilhe o link ainda hoje.</p>
         <div className="lp-cta-row center">
-          <Link to={SIGNUP} className="lp-cta lg light">{trial}</Link>
+          <Link to={SIGNUP} className="lp-cta lg light" onClick={() => track('cta', { page: 'site', detail: 'final' })}>{trial}</Link>
           <a href="#demonstracao" className="lp-ghost light">Pedir demonstração</a>
         </div>
         <p className="lp-final-note">Sem cartão · Sem fidelização · {price} + IVA por mês depois</p>
       </section>
 
-      <div className={`lp-sticky ${pastHero ? 'show' : ''}`}><Link to={SIGNUP} className="lp-cta block">{trial}</Link></div>
+      <div className={`lp-sticky ${pastHero ? 'show' : ''}`}><Link to={SIGNUP} className="lp-cta block" onClick={() => track('cta', { page: 'site', detail: 'fixo' })}>{trial}</Link></div>
 
       <footer className="lp-foot">
         <div>

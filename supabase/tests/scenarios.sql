@@ -761,4 +761,17 @@ insert into salon_clients (salon_id, phone_key, name, phone, preferred_pro, hear
 select pg_temp.check(preferred_pro = :'ana' and consent_messages, 'a client keeps the preferred professional and the consent') from salon_clients where phone_key = '351919000036';
 do $$ begin insert into salon_clients (salon_id, phone_key, name, phone, nif) values (current_setting('t.salon')::uuid, '351919000037', 'X', '919', '12'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%nif%' then raise; end if; end $$;
 do $$ begin insert into salon_clients (salon_id, phone_key, name, phone, consent_messages) values (current_setting('t.salon')::uuid, '351919000038', 'X', '919', true); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%consent_dated%' then raise; end if; end $$;
+-- 0037: funnel events
+insert into site_events (name, page, detail, visitor) values
+  ('cta', 'site', 'hero', 'f000000000000001'), ('cta', 'site', 'fixo', 'f000000000000002'), ('registo_aberto', 'registo', null, 'f000000000000001'),
+  ('passo', 'registo', 'passo1', 'f000000000000001'), ('passo', 'registo', 'no_ar', 'f000000000000001'), ('calculadora', 'site', null, 'f000000000000002');
+do $$ begin insert into site_events (name, page, detail) values ('cta', 'site', 'Not OK!'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%detail%' then raise; end if; end $$;
+do $$ begin insert into site_events (name, page) values ('clique', 'site'); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%name_check%' then raise; end if; end $$;
+set role authenticated; set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+select pg_temp.check((f->'cta'->>'hero')::int = 1 and (f->'cta'->>'fixo')::int = 1 and (f->'steps'->>'passo1')::int = 1
+  and (f->>'calculator')::int = 1 and (f->'stages'->5->>'id') = 'no_ar' and (f->'stages'->5->>'n')::int = 1, 'the admin gets the sign-up funnel')
+  from (select admin_funnel(30) as f) x;
+set request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+do $$ begin perform admin_funnel(30); raise exception 'SHOULD HAVE FAILED'; exception when others then if sqlerrm not like '%sem_permissao%' then raise; end if; end $$;
+reset role; reset request.jwt.claim.sub;
 \echo All database checks passed

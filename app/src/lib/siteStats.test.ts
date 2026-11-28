@@ -74,3 +74,14 @@ describe('daily summary', () => {
     expect(text).toContain('Lembretes de pagamento por enviar: 2.')
   })
 })
+
+describe('funnelSteps', () => {
+  it('labels the stages and builds the wizard steps', async () => {
+    const { funnelSteps } = await import('./siteStats')
+    const f = funnelSteps({ days: 30, calculator: 4, cta: { hero: 3 }, steps: { passo1: 5, passo2: 4, passo3: 3 },
+      stages: [{ id: 'visita', n: 100 }, { id: 'cta', n: 12 }, { id: 'registo_aberto', n: 10 }, { id: 'conta_criada', n: 6 }, { id: 'salao_criado', n: 3 }, { id: 'no_ar', n: 3 }] })
+    expect(f.signup.map(s => s.count)).toEqual([100, 12, 10, 6, 3, 3])
+    expect(f.signup[1].label).toBe('Clicaram em "Experimentar"')
+    expect(f.wizard.map(s => s.count)).toEqual([6, 5, 4, 3, 3])
+  })
+})

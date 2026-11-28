@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { authError, MIN_PASSWORD } from '../lib/auth'
 import { track } from '../lib/track'
@@ -17,6 +17,7 @@ export default function Login() {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ ok: boolean; text: string }>()
   const back = location.origin + '/painel'
+  useEffect(() => { if (mode === 'criar') track('registo_aberto', { page: 'registo', key: 'registo_aberto' }) }, [mode])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setMsg(undefined)
@@ -44,7 +45,14 @@ export default function Login() {
   return (
     <main className="page">
       <h1>{mode === 'criar' ? 'Crie o seu salão' : 'Painel do salão'}</h1>
-      {mode === 'criar' && <p className="muted" style={{ marginTop: -4 }}>30 dias grátis, sem cartão e sem fidelização. Em 15 minutos tem a página de marcação no ar.</p>}
+      {mode === 'criar' && <>
+        <p className="muted" style={{ marginTop: -4 }}>30 dias grátis, sem cartão e sem fidelização.</p>
+        <ol className="signup-steps" aria-label="Como funciona">
+          <li className="now"><b>Conta</b><span>Email e palavra-passe</span></li>
+          <li><b>Salão</b><span>Nome, serviços e horário</span></li>
+          <li><b>No ar</b><span>O seu link de marcação</span></li>
+        </ol>
+      </>}
       <div className="chips admin-tabs" role="tablist">
         <button role="tab" aria-selected={mode === 'entrar'} className={`chip${mode === 'entrar' ? ' on' : ''}`} onClick={() => go('entrar')}>Entrar</button>
         <button role="tab" aria-selected={mode === 'criar'} className={`chip${mode === 'criar' ? ' on' : ''}`} onClick={() => go('criar')}>Criar conta</button>
@@ -64,6 +72,7 @@ export default function Login() {
         {mode === 'criar' && <p className="muted small">Pelo menos {MIN_PASSWORD} caracteres.</p>}
         <button className="btn" disabled={busy}>{busy ? 'Um momento…' : { entrar: 'Entrar', criar: 'Criar conta e continuar', link: 'Receber link de acesso', esqueci: 'Enviar link' }[mode]}</button>
         {msg && <p className={msg.ok ? 'ok' : 'error'} role="alert">{msg.text}</p>}
+        {mode === 'criar' && <p className="muted small signup-next">A seguir: 4 perguntas rápidas sobre o salão (cerca de 5 minutos) e recebe logo o link para os clientes marcarem. Só paga se quiser continuar ao fim de 30 dias.</p>}
       </form>
       <p className="row" style={{ justifyContent: 'center', gap: 16 }}>
         {mode !== 'esqueci' && <button className="link" onClick={() => go('esqueci')}>Esqueci-me da palavra-passe</button>}

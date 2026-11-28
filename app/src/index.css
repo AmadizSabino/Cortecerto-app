@@ -639,3 +639,11 @@ body.no-scroll { overflow: hidden; }
 .post-desk .actions { margin-top: 8px; flex-wrap: wrap; }
 .btn-social { display: inline-flex; align-items: center; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); color: var(--fg); text-decoration: none; font-weight: 600; font-size: .9rem; }
 @media (max-width: 520px) { .post-desk { grid-template-columns: 1fr; } .post-desk img { max-width: 220px; } }
+/* Sign-up: the three stages, so new salons know how short it is. */
+.signup-steps { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 4px 0 14px; padding: 0; counter-reset: s; }
+.signup-steps li { counter-increment: s; display: grid; gap: 2px; padding: 10px; border-radius: 12px; border: 1px solid var(--line, #3333); font-size: .85rem; }
+.signup-steps li::before { content: counter(s); display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1px solid currentColor; font-size: .75rem; font-weight: 700; margin-bottom: 4px; }
+.signup-steps li.now { border-color: var(--accent, #b5462f); }
+.signup-steps li.now::before { background: var(--accent, #b5462f); border-color: var(--accent, #b5462f); color: #fff; }
+.signup-steps span { color: var(--muted, #888); font-size: .78rem; }
+.signup-next { margin: 4px 0 0; }
